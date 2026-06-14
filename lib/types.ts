@@ -47,3 +47,30 @@ export interface BookingFormData {
   phone: string;
   notes: string;
 }
+
+export interface EmployeeAvailability {
+  id: string;
+  employeeId: string;
+  dayOfWeek: number;        // 0=Monday … 6=Sunday
+  startTime: string;        // "09:00"
+  endTime: string;          // "17:00"
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AvailabilityOverride {
+  id: string;
+  employeeId: string;
+  overrideDate: string;     // ISO date string
+  startTime: string | null;
+  endTime: string | null;
+  isBlocked: boolean;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface TimeSlot {
+  start: string;            // "10:00"
+  end: string;              // "11:00"
+}

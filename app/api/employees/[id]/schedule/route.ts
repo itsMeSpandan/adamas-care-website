@@ -10,9 +10,8 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const schedules = await db.weeklySchedule.findMany({
-      where: { employeeId: id },
-      include: { service: true, employee: true },
+    const schedules = await db.employeeAvailability.findMany({
+      where: { employeeId: id, isActive: true },
       orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
     });
 
@@ -20,8 +19,7 @@ export async function GET(
       dayOfWeek: s.dayOfWeek,
       startTime: s.startTime,
       endTime: s.endTime,
-      serviceName: s.service?.name || "General",
-      employeeName: s.employee.name,
+      employeeId: s.employeeId,
     }));
 
     return NextResponse.json({ schedules: formatted });

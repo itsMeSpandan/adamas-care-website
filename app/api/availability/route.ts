@@ -4,15 +4,17 @@ import { db } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/available-slots?employeeId=xxx&date=2024-06-15&serviceId=yyy
+ * GET /api/availability?employeeId=&date=YYYY-MM-DD&serviceDuration=60
  *
- * Returns available time slots for an employee on a given date,
- * based on their EmployeeAvailability windows minus overrides and existing bookings.
+ * Returns available time slots for a given employee on a specific date,
+ * computed from EmployeeAvailability windows minus overrides and booked slots.
+ * Each slot includes an `employeeId` field so the client knows which employee owns it.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const employeeId = searchParams.get("employeeId");
   const dateStr = searchParams.get("date");
+  const serviceDuration = parseInt(searchParams.get("serviceDuration") || "60", 10);
 
   if (!employeeId || !dateStr) {
     return NextResponse.json(
@@ -28,10 +30,12 @@ export async function GET(request: NextRequest) {
     }
 
     const date = new Date(Date.UTC(year, month - 1, day));
+
+    // Convert JS day (0=Sun) to DB day (0=Mon, 6=Sun)
     const jsDay = date.getUTCDay();
     const dbDay = jsDay === 0 ? 6 : jsDay - 1;
 
-    // Fetch EmployeeAvailability for this day
+    // 1. Fetch EmployeeAvailability rows for this employee and day
     const availability = await db.employeeAvailability.findMany({
       where: {
         employeeId,
@@ -45,27 +49,39 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ slots: [] });
     }
 
-    // Build working windows
+    // 2. Start with availability windows as working windows
     let workingWindows: { start: string; end: string }[] = availability.map((a) => ({
       start: a.startTime,
       end: a.endTime,
     }));
 
-    // Apply overrides
+    // 3. Fetch overrides for this date
     const dayStart = new Date(Date.UTC(year, month - 1, day));
     const overrides = await db.availabilityOverride.findMany({
-      where: { employeeId, overrideDate: dayStart },
+      where: {
+        employeeId,
+        overrideDate: dayStart,
+      },
     });
 
     for (const override of overrides) {
       if (override.isBlocked) {
         if (!override.startTime) {
+          // Full-day block
           workingWindows = [];
           break;
         }
-        workingWindows = subtractTimeRange(workingWindows, override.startTime, override.endTime || "23:59");
-      } else if (override.startTime && override.endTime) {
-        workingWindows.push({ start: override.startTime, end: override.endTime });
+        // Time-range block: subtract from working windows
+        workingWindows = subtractTimeRange(
+          workingWindows,
+          override.startTime,
+          override.endTime || "23:59"
+        );
+      } else {
+        // Extra window: add to working windows
+        if (override.startTime && override.endTime) {
+          workingWindows.push({ start: override.startTime, end: override.endTime });
+        }
       }
     }
 
@@ -73,17 +89,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ slots: [] });
     }
 
+    // 4. Merge overlapping windows
     workingWindows = mergeWindows(workingWindows);
 
-    // Generate 30-minute slots
-    const potentialSlots: string[] = [];
-    for (const w of workingWindows) {
-      potentialSlots.push(...generateSlots(w.start, w.end));
+    // 5. Generate slots of serviceDuration minutes within each window
+    const allSlots: { start: string; end: string; employeeId: string }[] = [];
+    for (const window of workingWindows) {
+      const slots = generateSlots(window.start, window.end, serviceDuration, employeeId);
+      allSlots.push(...slots);
     }
 
-    const uniqueSlots = Array.from(new Set(potentialSlots)).sort();
-
-    // Fetch existing bookings
+    // 6. Fetch existing bookings for this employee on this date
     const dayEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
     const existingBookings = await db.booking.findMany({
       where: {
@@ -91,38 +107,16 @@ export async function GET(request: NextRequest) {
         date: { gte: dayStart, lte: dayEnd },
         status: { notIn: ["cancelled"] },
       },
-      select: { slotStart: true, slotEnd: true, timeSlot: true },
+      select: { slotStart: true, slotEnd: true },
     });
 
-    // Build set of booked minutes
-    const bookedMinutes = new Set<number>();
-    for (const b of existingBookings) {
-      if (b.slotStart && b.slotEnd) {
-        let t = timeToMinutes(b.slotStart);
-        const end = timeToMinutes(b.slotEnd);
-        while (t < end) {
-          bookedMinutes.add(t);
-          t += 30;
-        }
-      } else if (b.timeSlot) {
-        bookedMinutes.add(parseDisplayTime(b.timeSlot));
-      }
-    }
-
-    // Filter out booked slots
-    let availableSlots = uniqueSlots.filter((slot) => !bookedMinutes.has(parseDisplayTime(slot)));
-
-    // Filter past slots if today
-    const now = new Date();
-    const isToday =
-      date.getUTCFullYear() === now.getFullYear() &&
-      date.getUTCMonth() === now.getMonth() &&
-      date.getUTCDate() === now.getDate();
-
-    if (isToday) {
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      availableSlots = availableSlots.filter((slot) => parseDisplayTime(slot) > nowMinutes);
-    }
+    // 7. Remove slots that overlap with existing bookings
+    const availableSlots = allSlots.filter((slot) => {
+      return !existingBookings.some((booking) => {
+        if (!booking.slotStart || !booking.slotEnd) return false;
+        return slotsOverlap(slot.start, slot.end, booking.slotStart, booking.slotEnd);
+      });
+    });
 
     return NextResponse.json({ slots: availableSlots });
   } catch (error) {
@@ -140,32 +134,28 @@ function timeToMinutes(time: string): number {
 }
 
 function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  return `${displayHour}:${mins === 0 ? "00" : mins} ${period}`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function parseDisplayTime(slot: string): number {
-  const match = slot.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return timeToMinutes(slot);
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-  return hours * 60 + minutes;
-}
+function generateSlots(
+  startTime: string,
+  endTime: string,
+  durationMinutes: number,
+  employeeId: string
+): { start: string; end: string; employeeId: string }[] {
+  const slots: { start: string; end: string; employeeId: string }[] = [];
+  let current = timeToMinutes(startTime);
+  const end = timeToMinutes(endTime);
 
-function generateSlots(startTime: string, endTime: string): string[] {
-  const slots: string[] = [];
-  let totalMinutes = timeToMinutes(startTime);
-  const endMinutes = timeToMinutes(endTime);
-
-  while (totalMinutes + 30 <= endMinutes) {
-    slots.push(minutesToTime(totalMinutes));
-    totalMinutes += 30;
+  while (current + durationMinutes <= end) {
+    slots.push({
+      start: minutesToTime(current),
+      end: minutesToTime(current + durationMinutes),
+      employeeId,
+    });
+    current += durationMinutes;
   }
 
   return slots;
@@ -185,8 +175,10 @@ function subtractTimeRange(
     const we = timeToMinutes(w.end);
 
     if (be <= ws || bs >= we) {
+      // No overlap
       result.push(w);
     } else {
+      // Partial overlap — keep the non-overlapping parts
       if (bs > ws) {
         result.push({ start: w.start, end: minutesToTime(Math.min(bs, we)) });
       }
@@ -223,4 +215,17 @@ function mergeWindows(
   }
 
   return merged;
+}
+
+function slotsOverlap(
+  aStart: string,
+  aEnd: string,
+  bStart: string,
+  bEnd: string
+): boolean {
+  const aS = timeToMinutes(aStart);
+  const aE = timeToMinutes(aEnd);
+  const bS = timeToMinutes(bStart);
+  const bE = timeToMinutes(bEnd);
+  return aS < bE && bS < aE;
 }

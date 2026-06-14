@@ -25,19 +25,10 @@ interface BookingWithService {
   date: string;
 }
 
-interface ScheduleEntry {
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  serviceName?: string;
-  employeeName?: string;
-}
-
 export default function EmployeePage() {
   const { user } = useAuth();
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [ratings, setRatings] = useState<BookingWithService[]>([]);
-  const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,10 +41,9 @@ export default function EmployeePage() {
 
     async function fetchData() {
       try {
-        const [empRes, bookingsRes, schedulesRes] = await Promise.all([
+        const [empRes, bookingsRes] = await Promise.all([
           fetch(`/api/employees/${empId}`),
           fetch("/api/bookings"),
-          fetch(`/api/employees/${empId}/schedule`),
         ]);
 
         if (empRes.ok) {
@@ -68,11 +58,6 @@ export default function EmployeePage() {
             (b) => b.employeeId === empId && b.status === "completed" && b.rating != null
           );
           setRatings(myRated);
-        }
-
-        if (schedulesRes.ok) {
-          const schedData = await schedulesRes.json();
-          setSchedules(schedData.schedules || schedData || []);
         }
       } catch {
         // silently fail
@@ -211,8 +196,8 @@ export default function EmployeePage() {
         )}
       </div>
 
-      {/* Weekly Timetable */}
-      <WeeklyTimetable schedules={schedules} showEmployee={false} />
+      {/* Weekly Timetable — new availability-aware version */}
+      <WeeklyTimetable employeeId={user.employeeId} />
     </div>
   );
 }

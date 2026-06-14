@@ -303,7 +303,7 @@ const usersData = [
     email: "sophia@adamascare.com",
     password: "sophia123",
     role: "employee" as const,
-    avatarUrl: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&q=80",
+    avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
     employeeId: "sophia-chen",
   },
   {
@@ -345,9 +345,9 @@ async function main() {
 
   // Clear existing data (Order matters here for foreign keys)
   await prisma.booking.deleteMany();
-  await prisma.shift.deleteMany();
   await prisma.employeeService.deleteMany();
-  await prisma.weeklySchedule.deleteMany();
+  await prisma.employeeAvailability.deleteMany();
+  await prisma.availabilityOverride.deleteMany();
   await prisma.passwordResetToken.deleteMany();
   await prisma.testimonial.deleteMany();
   await prisma.user.deleteMany();
@@ -356,8 +356,7 @@ async function main() {
 
   // 1. Seed Employees FIRST (Without trying to link to services yet)
   for (const employee of employeesData) {
-    // We extract serviceIds so Prisma doesn't try to insert them directly
-    const { serviceIds, ...employeeFields } = employee; 
+    const { serviceIds, ...employeeFields } = employee;
     await prisma.employee.create({
       data: {
         ...employeeFields,
@@ -373,7 +372,6 @@ async function main() {
     await prisma.service.create({
       data: {
         ...serviceFields,
-        // Because the employees now exist in the database, this will succeed
         employeeServices: {
           create: employeeIds.map((employeeId) => ({ employeeId })),
         },
@@ -387,86 +385,46 @@ async function main() {
   console.log(`✅ Seeded ${testimonialsData.length} testimonials`);
 
   // Seed users
-  // Note: Passwords should ideally be hashed with bcrypt before saving!
   await prisma.user.createMany({ data: usersData });
   console.log(`✅ Seeded ${usersData.length} users`);
 
-  // Seed weekly schedules
-  const scheduleData = [
-    // Elena Vasquez - Mon, Wed, Fri (Hair)
-    { employeeId: "elena-vasquez", dayOfWeek: 0, startTime: "09:00", endTime: "12:00", serviceId: "precision-haircut" },
-    { employeeId: "elena-vasquez", dayOfWeek: 0, startTime: "13:00", endTime: "17:00", serviceId: "color-gloss-treatment" },
-    { employeeId: "elena-vasquez", dayOfWeek: 2, startTime: "09:00", endTime: "12:00", serviceId: "precision-haircut" },
-    { employeeId: "elena-vasquez", dayOfWeek: 2, startTime: "13:00", endTime: "17:00", serviceId: "anti-aging-facial" },
-    { employeeId: "elena-vasquez", dayOfWeek: 4, startTime: "09:00", endTime: "15:00", serviceId: "bridal-glam-package" },
-    // Sophia Chen - Mon, Tue, Thu (Hair)
-    { employeeId: "sophia-chen", dayOfWeek: 0, startTime: "10:00", endTime: "14:00", serviceId: "color-gloss-treatment" },
-    { employeeId: "sophia-chen", dayOfWeek: 1, startTime: "09:00", endTime: "13:00", serviceId: "precision-haircut" },
-    { employeeId: "sophia-chen", dayOfWeek: 3, startTime: "10:00", endTime: "16:00", serviceId: "color-gloss-treatment" },
-    // Amara Okafor - Tue, Wed, Fri (Skin)
-    { employeeId: "amara-okafor", dayOfWeek: 1, startTime: "09:00", endTime: "13:00", serviceId: "hydra-facial" },
-    { employeeId: "amara-okafor", dayOfWeek: 2, startTime: "10:00", endTime: "15:00", serviceId: "anti-aging-facial" },
-    { employeeId: "amara-okafor", dayOfWeek: 4, startTime: "09:00", endTime: "12:00", serviceId: "hydra-facial" },
-    // Lina Park - Mon, Wed, Thu (Nails)
-    { employeeId: "lina-park", dayOfWeek: 0, startTime: "09:00", endTime: "13:00", serviceId: "gel-manicure" },
-    { employeeId: "lina-park", dayOfWeek: 2, startTime: "10:00", endTime: "16:00", serviceId: "nail-art-design" },
-    { employeeId: "lina-park", dayOfWeek: 3, startTime: "09:00", endTime: "14:00", serviceId: "gel-manicure" },
-    // Maya Thompson - Tue, Thu, Sat (Body)
-    { employeeId: "maya-thompson", dayOfWeek: 1, startTime: "10:00", endTime: "16:00", serviceId: "deep-tissue-massage" },
-    { employeeId: "maya-thompson", dayOfWeek: 3, startTime: "09:00", endTime: "14:00", serviceId: "aromatherapy-body-wrap" },
-    { employeeId: "maya-thompson", dayOfWeek: 5, startTime: "09:00", endTime: "15:00", serviceId: "deep-tissue-massage" },
-    // James O'Connor - Wed, Thu, Sat (Hair)
-    { employeeId: "james-oconnor", dayOfWeek: 2, startTime: "09:00", endTime: "14:00", serviceId: "precision-haircut" },
-    { employeeId: "james-oconnor", dayOfWeek: 3, startTime: "10:00", endTime: "16:00", serviceId: "color-gloss-treatment" },
-    { employeeId: "james-oconnor", dayOfWeek: 5, startTime: "09:00", endTime: "13:00", serviceId: "precision-haircut" },
-    // Sofia Romano - Tue, Fri, Sat (Nails/Body)
-    { employeeId: "sofia-romano", dayOfWeek: 1, startTime: "09:00", endTime: "13:00", serviceId: "nail-art-design" },
-    { employeeId: "sofia-romano", dayOfWeek: 4, startTime: "10:00", endTime: "15:00", serviceId: "aromatherapy-body-wrap" },
-    { employeeId: "sofia-romano", dayOfWeek: 5, startTime: "10:00", endTime: "16:00", serviceId: "nail-art-design" },
+  // Seed employee availability (recurring weekly windows)
+  // Mirrors the existing weeklySchedule entries as EmployeeAvailability
+  const availabilityData = [
+    // Elena Vasquez — Mon, Wed, Fri (Hair)
+    { employeeId: "elena-vasquez", dayOfWeek: 0, startTime: "09:00", endTime: "12:00" },
+    { employeeId: "elena-vasquez", dayOfWeek: 0, startTime: "13:00", endTime: "17:00" },
+    { employeeId: "elena-vasquez", dayOfWeek: 2, startTime: "09:00", endTime: "12:00" },
+    { employeeId: "elena-vasquez", dayOfWeek: 2, startTime: "13:00", endTime: "17:00" },
+    { employeeId: "elena-vasquez", dayOfWeek: 4, startTime: "09:00", endTime: "15:00" },
+    // Sophia Chen — Mon, Tue, Thu (Hair)
+    { employeeId: "sophia-chen", dayOfWeek: 0, startTime: "10:00", endTime: "14:00" },
+    { employeeId: "sophia-chen", dayOfWeek: 1, startTime: "09:00", endTime: "13:00" },
+    { employeeId: "sophia-chen", dayOfWeek: 3, startTime: "10:00", endTime: "16:00" },
+    // Amara Okafor — Tue, Wed, Fri (Skin)
+    { employeeId: "amara-okafor", dayOfWeek: 1, startTime: "09:00", endTime: "13:00" },
+    { employeeId: "amara-okafor", dayOfWeek: 2, startTime: "10:00", endTime: "15:00" },
+    { employeeId: "amara-okafor", dayOfWeek: 4, startTime: "09:00", endTime: "12:00" },
+    // Lina Park — Mon, Wed, Thu (Nails)
+    { employeeId: "lina-park", dayOfWeek: 0, startTime: "09:00", endTime: "13:00" },
+    { employeeId: "lina-park", dayOfWeek: 2, startTime: "10:00", endTime: "16:00" },
+    { employeeId: "lina-park", dayOfWeek: 3, startTime: "09:00", endTime: "14:00" },
+    // Maya Thompson — Tue, Thu, Sat (Body)
+    { employeeId: "maya-thompson", dayOfWeek: 1, startTime: "10:00", endTime: "16:00" },
+    { employeeId: "maya-thompson", dayOfWeek: 3, startTime: "09:00", endTime: "14:00" },
+    { employeeId: "maya-thompson", dayOfWeek: 5, startTime: "09:00", endTime: "15:00" },
+    // James O'Connor — Wed, Thu, Sat (Hair)
+    { employeeId: "james-oconnor", dayOfWeek: 2, startTime: "09:00", endTime: "14:00" },
+    { employeeId: "james-oconnor", dayOfWeek: 3, startTime: "10:00", endTime: "16:00" },
+    { employeeId: "james-oconnor", dayOfWeek: 5, startTime: "09:00", endTime: "13:00" },
+    // Sofia Romano — Tue, Fri, Sat (Nails/Body)
+    { employeeId: "sofia-romano", dayOfWeek: 1, startTime: "09:00", endTime: "13:00" },
+    { employeeId: "sofia-romano", dayOfWeek: 4, startTime: "10:00", endTime: "15:00" },
+    { employeeId: "sofia-romano", dayOfWeek: 5, startTime: "10:00", endTime: "16:00" },
   ];
 
-  await prisma.weeklySchedule.createMany({ data: scheduleData });
-  console.log(`✅ Seeded ${scheduleData.length} weekly schedule entries`);
-
-  // Seed sample shifts for the current week and next week
-  const now = new Date();
-  const todayDayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
-  const mondayOffset = todayDayOfWeek === 0 ? -6 : 1 - todayDayOfWeek;
-  const thisMonday = new Date(now);
-  thisMonday.setDate(now.getDate() + mondayOffset);
-  thisMonday.setHours(0, 0, 0, 0);
-
-  const shiftData: { employeeId: string; date: Date; startTime: string; endTime: string; serviceId: string | null }[] = [];
-
-  // Generate shifts for this week and next 2 weeks for each employee
-  const employeeSchedules: { id: string; days: number[]; start: string; end: string; service: string }[] = [
-    { id: "elena-vasquez", days: [0, 2, 4], start: "09:00", end: "17:00", service: "precision-haircut" },
-    { id: "sophia-chen", days: [0, 1, 3], start: "10:00", end: "16:00", service: "color-gloss-treatment" },
-    { id: "amara-okafor", days: [1, 2, 4], start: "09:00", end: "15:00", service: "hydra-facial" },
-    { id: "lina-park", days: [0, 2, 3], start: "09:00", end: "14:00", service: "gel-manicure" },
-    { id: "maya-thompson", days: [1, 3, 5], start: "10:00", end: "16:00", service: "deep-tissue-massage" },
-    { id: "james-oconnor", days: [2, 3, 5], start: "09:00", end: "14:00", service: "precision-haircut" },
-    { id: "sofia-romano", days: [1, 4, 5], start: "10:00", end: "15:00", service: "nail-art-design" },
-  ];
-
-  for (let week = 0; week < 3; week++) {
-    for (const emp of employeeSchedules) {
-      for (const day of emp.days) {
-        const date = new Date(thisMonday);
-        date.setDate(thisMonday.getDate() + week * 7 + day);
-        shiftData.push({
-          employeeId: emp.id,
-          date,
-          startTime: emp.start,
-          endTime: emp.end,
-          serviceId: emp.service,
-        });
-      }
-    }
-  }
-
-  await prisma.shift.createMany({ data: shiftData });
-  console.log(`✅ Seeded ${shiftData.length} shift entries`);
+  await prisma.employeeAvailability.createMany({ data: availabilityData });
+  console.log(`✅ Seeded ${availabilityData.length} employee availability entries`);
 
   console.log("🎉 Database seeded successfully!");
 }
