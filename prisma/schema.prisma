@@ -1,0 +1,155 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = "postgresql://neondb_owner:npg_fbalX9DQ8HFh@ep-odd-water-aotlelpb.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+}
+
+enum UserRole {
+  guest
+  user
+  employee
+  admin
+}
+
+enum BookingStatus {
+  confirmed
+  pending
+  cancelled
+  completed
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password      String
+  role          UserRole @default(user)
+  avatarUrl     String
+  employeeId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookings             Booking[]
+  passwordResetTokens  PasswordResetToken[]
+}
+
+model Service {
+  id              String         @id
+  name            String
+  category        String
+  description     String
+  longDescription String
+  durationMinutes Int
+  price           Float
+  imageUrl        String
+  featured        Boolean        @default(false)
+
+  employeeServices EmployeeService[]
+  bookings         Booking[]
+  weeklySchedules  WeeklySchedule[]
+  shifts           Shift[]
+}
+
+model Employee {
+  id              String  @id
+  name            String
+  email           String  @unique @default("")
+  role            String
+  bio             String
+  imageUrl        String
+  rating          Float   @default(0)
+  reviewCount     Int     @default(0)
+  instagramHandle String?
+  yearsExperience Int
+
+  employeeServices EmployeeService[]
+  bookings         Booking[]
+  weeklySchedules  WeeklySchedule[]
+  shifts           Shift[]
+}
+
+model EmployeeService {
+  id         String  @id @default(cuid())
+  serviceId  String
+  employeeId String
+
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, employeeId])
+}
+
+model Testimonial {
+  id          String @id
+  authorName  String
+  avatarUrl   String
+  rating      Int
+  text        String
+  service     String
+  date        String
+}
+
+model Booking {
+  id          String        @id @default(cuid())
+  serviceId   String
+  employeeId  String
+  userId      String?
+  date        DateTime
+  timeSlot    String
+  name        String
+  email       String
+  phone       String
+  notes       String?
+  status      BookingStatus @default(pending)
+  price       Float
+  rating      Int?
+  review      String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  service  Service @relation(fields: [serviceId], references: [id])
+  user     User?   @relation(fields: [userId], references: [id])
+  employee Employee @relation(fields: [employeeId], references: [id])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WeeklySchedule {
+  id         String  @id @default(cuid())
+  employeeId String
+  dayOfWeek  Int     // 0=Monday, 6=Sunday
+  startTime  String  // "09:00"
+  endTime    String  // "17:00"
+  serviceId  String?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  service  Service? @relation(fields: [serviceId], references: [id])
+
+  @@unique([employeeId, dayOfWeek, startTime])
+}
+
+model Shift {
+  id         String   @id @default(cuid())
+  employeeId String
+  date       DateTime // specific date for this shift
+  startTime  String   // "09:00"
+  endTime    String   // "17:00"
+  serviceId  String?
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  service  Service? @relation(fields: [serviceId], references: [id])
+
+  @@unique([employeeId, date, startTime])
+}

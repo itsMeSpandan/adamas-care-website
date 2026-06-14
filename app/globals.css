@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-beige-50 text-beige-800 font-sans;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-beige-700;
+  }
+}
+
+@layer components {
+  .section-padding {
+    @apply px-4 py-20 md:px-8 lg:px-16 xl:px-24;
+  }
+
+  .section-container {
+    @apply mx-auto max-w-7xl;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-xl bg-beige-600 px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:bg-beige-700 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beige-400 focus-visible:ring-offset-2;
+  }
+
+  .btn-outline {
+    @apply inline-flex items-center justify-center rounded-xl border border-beige-400 bg-transparent px-6 py-3 text-sm font-medium text-beige-700 transition-all duration-300 hover:bg-beige-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beige-400 focus-visible:ring-offset-2;
+  }
+}
+
+/* Step indicator animation */
+@keyframes circle-draw {
+  0% {
+    stroke-dashoffset: 276;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes checkmark-draw {
+  0% {
+    stroke-dashoffset: 60;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-circle-draw {
+  animation: circle-draw 0.6s ease-out forwards;
+}
+
+.animate-checkmark-draw {
+  animation: checkmark-draw 0.4s ease-out 0.3s forwards;
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+}
