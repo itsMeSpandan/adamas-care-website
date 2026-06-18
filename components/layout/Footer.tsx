@@ -78,14 +78,13 @@ export default function Footer() {
               Contact
             </h4>
             <ul className="space-y-2 text-sm text-beige-300">
-              <li>142 Blossom Lane, Suite 200</li>
-              <li>Serenity Falls, CA 90210</li>
+              <li className="whitespace-pre-line leading-relaxed">{BRAND.address}</li>
               <li className="pt-2">
                 <a
-                  href="tel:+13105551234"
+                  href="tel:+9238381831"
                   className="transition-colors hover:text-beige-100"
                 >
-                  (310) 555-1234
+                  +91 9238381831
                 </a>
               </li>
               <li>
@@ -97,6 +96,24 @@ export default function Footer() {
                 </a>
               </li>
             </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Map embed */}
+      <div className="border-t border-beige-800">
+        <div className="section-container">
+          <div className="overflow-hidden rounded-xl border border-beige-800">
+            <iframe
+              title={`Map of ${BRAND.name}`}
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(BRAND.address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+              width="100%"
+              height="250"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
         </div>
       </div>

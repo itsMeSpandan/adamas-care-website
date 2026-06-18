@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth, AuthUser } from "@/lib/auth-context";
 import PasswordToggle from "@/components/ui/PasswordToggle";
 import StarRating from "@/components/ui/StarRating";
+import { formatBookingDate } from "@/lib/utils";
 
 type Tab = "profile" | "security" | "bookings";
 
@@ -591,9 +592,9 @@ function ProfileContent() {
                                 </span>
                               </div>
                               <p className="text-sm text-beige-500">
-                                {new Date(booking.date).toLocaleDateString()} &middot; {booking.timeSlot}
+                                {formatBookingDate(booking.date)} &middot; {booking.timeSlot}
                               </p>
-                              <p className="text-sm font-medium text-beige-600">${booking.price}</p>
+                              <p className="text-sm font-medium text-beige-600">₹{booking.price}</p>
                             </div>
 
                             <div className="space-y-2 sm:w-72">

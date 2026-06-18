@@ -76,7 +76,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
     validateField(field, value);
   };
 
-  const handleFieldChange = (field: string, value: string) => {
+  const handleFieldChange = (field: string) => {
     // Clear error on typing
     setFieldErrors((prev) => {
       const next = { ...prev };
@@ -194,7 +194,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
             <div className="border-b border-beige-100 px-6 pt-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-serif text-xl font-semibold text-beige-700">
-                  {mode === "signin" ? "Welcome Back" : "Join {BRAND.name}"}
+                  {mode === "signin" ? "Welcome Back" : `Join ${BRAND.name}`}
                 </h2>
                 <button
                   onClick={handleClose}
@@ -247,7 +247,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
                       autoComplete="name"
                       required
                       value={name}
-                      onChange={(e) => { setName(e.target.value); handleFieldChange("name", e.target.value); }}
+                      onChange={(e) => { setName(e.target.value); handleFieldChange("name"); }}
                       onBlur={() => handleBlur("name", name)}
                       placeholder="Enter your full name"
                       className={`w-full rounded-xl border bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:bg-white focus:outline-none focus:ring-2 ${
@@ -273,7 +273,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
                     autoComplete={mode === "signin" ? "email" : "new-email"}
                     required
                     value={email}
-                    onChange={(e) => { setEmail(e.target.value); handleFieldChange("email", e.target.value); }}
+                    onChange={(e) => { setEmail(e.target.value); handleFieldChange("email"); }}
                     onBlur={() => handleBlur("email", email)}
                     placeholder="you@example.com"
                     className={`w-full rounded-xl border bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:bg-white focus:outline-none focus:ring-2 ${
@@ -298,7 +298,7 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
                       autoComplete={mode === "signin" ? "current-password" : "new-password"}
                       required
                       value={password}
-                      onChange={(e) => { setPassword(e.target.value); handleFieldChange("password", e.target.value); }}
+                      onChange={(e) => { setPassword(e.target.value); handleFieldChange("password"); }}
                       onBlur={() => handleBlur("password", password)}
                       placeholder={mode === "signup" ? "Create a password" : "Enter your password"}
                       className={`w-full rounded-xl border bg-beige-50 px-4 py-3 pr-12 text-sm text-beige-800 placeholder:text-beige-400 focus:bg-white focus:outline-none focus:ring-2 ${

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 
 interface MonthData {
@@ -17,49 +17,71 @@ interface RevenueChartProps {
 
 export default function RevenueChart({ data, totalRevenue }: RevenueChartProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const [chartHeight, setChartHeight] = useState(0);
 
   const maxRevenue = Math.max(...data.map((d) => d.revenue), 1);
+  const hasData = data.some((d) => d.revenue > 0);
 
-  // Calculate y-axis ticks (4 evenly spaced)
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((pct) => ({
+  useEffect(() => {
+    if (!chartRef.current) return;
+    const obs = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setChartHeight(entry.contentRect.height);
+      }
+    });
+    obs.observe(chartRef.current);
+    return () => obs.disconnect();
+  }, []);
+
+  // Y-axis ticks (4 evenly spaced)
+  const yTicks = [1, 0.75, 0.5, 0.25, 0].map((pct) => ({
     value: Math.round(maxRevenue * pct),
-    label: `$${Math.round(maxRevenue * pct).toLocaleString()}`,
+    label: `₹${Math.round(maxRevenue * pct).toLocaleString()}`,
   }));
 
-  const formatCurrency = (value: number) => `$${value.toLocaleString()}`;
+  const formatCurrency = (value: number) => `₹${value.toLocaleString()}`;
+
+  const barAreaHeight = Math.max(chartHeight - 20, 0); // reserve space for month labels
 
   return (
     <div className="flex h-full flex-col">
       {/* Chart area */}
-      <div className="relative flex flex-1 gap-3">
+      <div className="flex flex-1 gap-3 min-h-0">
         {/* Y-axis labels */}
-        <div className="flex w-16 flex-col justify-between py-1 text-right">
-          {yTicks.reverse().map((tick, i) => (
-            <span key={i} className="text-[10px] text-beige-400">
+        <div className="flex w-16 flex-col justify-between text-right" style={{ height: barAreaHeight }}>
+          {yTicks.map((tick, i) => (
+            <span key={i} className="text-[10px] text-beige-400 leading-none">
               {tick.label}
             </span>
           ))}
         </div>
 
         {/* Grid lines + bars */}
-        <div className="relative flex-1">
+        <div ref={chartRef} className="relative flex-1 min-w-0">
           {/* Horizontal grid lines */}
-          <div className="absolute inset-0 flex flex-col justify-between">
+          <div className="absolute inset-x-0 top-0 flex flex-col justify-between" style={{ height: barAreaHeight }}>
             {[0, 1, 2, 3, 4].map((i) => (
-              <div key={i} className="border-t border-beige-100" />
+              <div key={i} className="border-t border-beige-100 w-full" />
             ))}
           </div>
 
+          {!hasData && chartHeight > 0 && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-sm text-beige-400">No revenue data yet</p>
+            </div>
+          )}
+
           {/* Bars */}
-          <div className="relative flex h-full items-end gap-1 sm:gap-2">
+          <div className="absolute inset-x-0 bottom-5 top-0 flex items-end gap-1 sm:gap-2">
             {data.map((month, i) => {
-              const heightPct = maxRevenue > 0 ? (month.revenue / maxRevenue) * 100 : 0;
+              const barHeight = barAreaHeight > 0 ? (month.revenue / maxRevenue) * barAreaHeight : 0;
               const isHovered = hoveredIndex === i;
 
               return (
                 <div
                   key={i}
-                  className="group relative flex flex-1 items-end"
+                  className="group relative flex flex-1 items-end h-full"
                   onMouseEnter={() => setHoveredIndex(i)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
@@ -82,16 +104,16 @@ export default function RevenueChart({ data, totalRevenue }: RevenueChartProps) 
                   )}
 
                   {/* Previous month indicator line */}
-                  {month.prevRevenue > 0 && (
+                  {month.prevRevenue > 0 && barAreaHeight > 0 && (
                     <div
-                      className="absolute left-0 right-0 border-t border-dashed border-beige-300"
-                      style={{ bottom: `${(month.prevRevenue / maxRevenue) * 100}%` }}
+                      className="absolute left-0 right-0 border-t border-dashed border-beige-300 z-[1]"
+                      style={{ bottom: (month.prevRevenue / maxRevenue) * barAreaHeight }}
                     />
                   )}
 
                   {/* Bar */}
                   <motion.div
-                    className={`w-full rounded-t-md transition-colors ${
+                    className={`w-full rounded-t-md transition-colors relative z-[2] ${
                       isHovered
                         ? "bg-amber-500"
                         : month.revenue > 0
@@ -99,7 +121,7 @@ export default function RevenueChart({ data, totalRevenue }: RevenueChartProps) 
                           : "bg-beige-100"
                     }`}
                     initial={{ height: 0 }}
-                    animate={{ height: `${heightPct}%` }}
+                    animate={{ height: Math.max(barHeight, month.revenue > 0 ? 2 : 0) }}
                     transition={{
                       duration: 0.6,
                       delay: i * 0.05,
@@ -108,7 +130,7 @@ export default function RevenueChart({ data, totalRevenue }: RevenueChartProps) 
                   />
 
                   {/* Month label */}
-                  <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-beige-400">
+                  <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 text-[10px] text-beige-400 whitespace-nowrap">
                     {month.shortLabel}
                   </span>
                 </div>
@@ -119,7 +141,7 @@ export default function RevenueChart({ data, totalRevenue }: RevenueChartProps) 
       </div>
 
       {/* Summary line */}
-      <div className="mt-6 flex items-center justify-between border-t border-beige-100 pt-3">
+      <div className="mt-4 flex items-center justify-between border-t border-beige-100 pt-3">
         <span className="text-sm text-beige-500">Total Revenue</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">

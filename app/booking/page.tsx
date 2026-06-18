@@ -16,6 +16,7 @@ interface TimeSlot {
   start: string;
   end: string;
   employeeId?: string;
+  isBooked?: boolean;
 }
 
 const stepLabels = ["Choose Service", "Pick Date & Time", "Confirm"];
@@ -183,7 +184,7 @@ export default function BookingPage() {
           serviceId: selectedService.id,
           employeeId: selectedEmployee?.id || selectedSlot?.employeeId || availableEmployees[0]?.id || "",
           userId: user?.id || null,
-          date: selectedDate.toISOString(),
+          date: format(selectedDate, "yyyy-MM-dd"),
           slotStart: selectedSlot.start,
           slotEnd: selectedSlot.end,
           name,
@@ -500,13 +501,17 @@ export default function BookingPage() {
                         {availableSlots.map((slot) => {
                           const isSelected =
                             selectedSlot?.start === slot.start && selectedSlot?.end === slot.end;
+                          const isBooked = slot.isBooked === true;
                           return (
                             <button
                               key={slot.start}
-                              onClick={() => setSelectedSlot(slot)}
+                              onClick={() => !isBooked && setSelectedSlot(slot)}
+                              disabled={isBooked}
                               className={cn(
                                 "rounded-full border px-3 py-2 text-sm font-medium transition-all duration-200",
-                                isSelected
+                                isBooked
+                                  ? "border-beige-200 bg-beige-200 text-beige-400 opacity-50 cursor-not-allowed line-through"
+                                  : isSelected
                                   ? "border-beige-600 bg-beige-600 text-white"
                                   : "border-beige-300 bg-white text-beige-700 hover:border-beige-400 hover:bg-beige-50"
                               )}

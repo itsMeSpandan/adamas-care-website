@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
-import { cn, displayTime } from "@/lib/utils";
+import { cn, displayTime, parseDateKey, formatBookingDate } from "@/lib/utils";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -90,10 +90,8 @@ function formatDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Parse ISO date string to YYYY-MM-DD using local timezone (matches formatDateKey) */
 function parseLocalDateKey(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return parseDateKey(iso);
 }
 
 export default function ScheduleManagementPage() {
@@ -956,8 +954,8 @@ export default function ScheduleManagementPage() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><p className="text-xs text-beige-400">Client</p><p className="font-medium text-beige-700">{selectedBooking.name}</p></div>
                 <div><p className="text-xs text-beige-400">Time</p><p className="font-medium text-beige-700">{selectedBooking.slotStart || selectedBooking.timeSlot}{selectedBooking.slotEnd ? ` – ${selectedBooking.slotEnd}` : ""}</p></div>
-                <div><p className="text-xs text-beige-400">Date</p><p className="font-medium text-beige-700">{new Date(selectedBooking.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</p></div>
-                <div><p className="text-xs text-beige-400">Price</p><p className="font-medium text-beige-700">${selectedBooking.price.toFixed(2)}</p></div>
+                <div><p className="text-xs text-beige-400">Date</p><p className="font-medium text-beige-700">{formatBookingDate(selectedBooking.date)}</p></div>
+                <div><p className="text-xs text-beige-400">Price</p><p className="font-medium text-beige-700">₹{selectedBooking.price.toFixed(2)}</p></div>
                 <div><p className="text-xs text-beige-400">Status</p>
                   <span className={cn("inline-block rounded-full px-2 py-0.5 text-xs font-medium", STATUS_COLORS[selectedBooking.status]?.bg, STATUS_COLORS[selectedBooking.status]?.text)}>
                     {selectedBooking.status}

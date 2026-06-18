@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { formatBookingDate } from "@/lib/utils";
 
 interface Booking {
   id: string;
@@ -143,14 +144,14 @@ export default function AdminBookingsPage() {
                     <td className="px-6 py-4">
                       <p className="text-beige-700">{booking.service?.name}</p>
                       <p className="text-xs text-beige-400 sm:hidden">
-                        {new Date(booking.date).toLocaleDateString()} &middot; {booking.timeSlot}
+                        {formatBookingDate(booking.date)} &middot; {booking.timeSlot}
                       </p>
                     </td>
                     <td className="px-6 py-4 text-beige-600 hidden sm:table-cell">
                       {new Date(booking.date).toLocaleDateString()} &middot; {booking.timeSlot}
                     </td>
                     <td className="px-6 py-4 text-beige-600 hidden md:table-cell">
-                      ${booking.price}
+                      ₹{booking.price}
                     </td>
                     <td className="px-6 py-4">
                       <div className="relative">

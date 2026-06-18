@@ -124,7 +124,7 @@ Represents a salon/spa service offered.
 | `description` | String | Short description |
 | `longDescription` | String | Full description |
 | `durationMinutes` | Int | Duration in minutes |
-| `price` | Float | Price in USD |
+| `price` | Float | Price in INR |
 | `imageUrl` | String | Service image URL |
 | `featured` | Boolean | Whether to feature on homepage |
 
@@ -138,9 +138,9 @@ Represents a salon staff member.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | String | Primary key (slug-style, e.g., `elena-vasquez`) |
+| `id` | String | Primary key (slug-style, e.g., `priya-sharma`) |
 | `name` | String | Full name |
-| `email` | String | Unique employee email (e.g., `elena@adamascare.com`) |
+| `email` | String | Unique employee email (e.g., `priya@adamascare.com`) |
 | `role` | String | Job title (e.g., `Lead Stylist`) |
 | `bio` | String | Biography |
 | `imageUrl` | String | Profile image URL |
@@ -459,9 +459,13 @@ npx prisma db seed
 5. **Seed Users** (2 demo accounts + 6 employee accounts):
    - `demo@adamascare.com` / `demo123` (user role)
    - `admin@adamascare.com` / `admin123` (admin role)
-   - `elena@adamascare.com` / `elena123` (employee role)
-   - `sophia@adamascare.com` / `sophia123` (employee role)
-   - (and more employee accounts...)
+   - `priya@adamascare.com` / `priya123` (employee role)
+   - `anjali@adamascare.com` / `anjali123` (employee role)
+   - `kavya@adamascare.com` / `kavya123` (employee role)
+   - `rahul@adamascare.com` / `rahul123` (employee role)
+   - `neha@adamascare.com` / `neha123` (employee role)
+   - `sneha@adamascare.com` / `sneha123` (employee role)
+   - `aarti@adamascare.com` / `aarti123` (employee role)
 
 6. **Seed Weekly Schedules** (23 schedule entries across all employees)
 

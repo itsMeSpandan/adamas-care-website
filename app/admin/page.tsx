@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
 import { getBookings, getServices } from "@/lib/queries";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, formatBookingDate } from "@/lib/utils";
 import { db } from "@/lib/db";
 import RevenueChart from "@/components/ui/RevenueChart";
 
@@ -38,11 +38,11 @@ export default async function AdminPage() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
   const thisMonthBookings = completedBookings.filter((b) => {
-    const bd = new Date(b.date);
+    const bd = new Date(b.date.getUTCFullYear(), b.date.getUTCMonth(), b.date.getUTCDate());
     return bd.getMonth() === currentMonth && bd.getFullYear() === currentYear;
   });
   const lastMonthBookings = completedBookings.filter((b) => {
-    const bd = new Date(b.date);
+    const bd = new Date(b.date.getUTCFullYear(), b.date.getUTCMonth(), b.date.getUTCDate());
     const prev = new Date(currentYear, currentMonth - 1, 1);
     return bd.getMonth() === prev.getMonth() && bd.getFullYear() === prev.getFullYear();
   });
@@ -67,7 +67,7 @@ export default async function AdminPage() {
 
   const stats = [
     { label: "Total Bookings", value: totalBookings.toString(), change: bookingsChange !== 0 ? `${bookingsChange > 0 ? "+" : ""}${bookingsChange}% vs last month` : "", up: bookingsChange >= 0 },
-    { label: "Revenue", value: `$${totalRevenue.toLocaleString()}`, change: revenueChange !== 0 ? `${revenueChange > 0 ? "+" : ""}${revenueChange}% vs last month` : "", up: revenueChange >= 0 },
+    { label: "Revenue", value: `₹${totalRevenue.toLocaleString()}`, change: revenueChange !== 0 ? `${revenueChange > 0 ? "+" : ""}${revenueChange}% vs last month` : "", up: revenueChange >= 0 },
     { label: "New Clients", value: totalClients.toString(), change: "", up: true },
     { label: "Avg. Rating", value: avgRating, change: ratedBookings.length > 0 ? `from ${ratedBookings.length} reviews${ratingChange !== 0 ? ` · ${ratingChange > 0 ? "+" : ""}${ratingChange}% vs last month` : ""}` : "", up: ratingChange >= 0 },
   ];
@@ -209,7 +209,7 @@ export default async function AdminPage() {
                   <td className="px-6 py-4 font-medium text-beige-700">{booking.name}</td>
                   <td className="px-6 py-4 text-beige-600">{booking.service.name}</td>
                   <td className="px-6 py-4 text-beige-600">
-                    {booking.date.toLocaleDateString()}
+                    {formatBookingDate(booking.date.toISOString())}
                   </td>
                   <td className="px-6 py-4 text-beige-600">{booking.timeSlot}</td>
                   <td className="px-6 py-4">

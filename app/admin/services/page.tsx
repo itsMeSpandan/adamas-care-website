@@ -305,7 +305,7 @@ export default function AdminServicesPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-beige-700">Price ($) *</label>
+                      <label className="mb-1 block text-sm font-medium text-beige-700">Price (₹) *</label>
                       <input
                         type="number"
                         min={0}

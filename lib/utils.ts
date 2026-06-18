@@ -6,9 +6,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatPrice(price: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 0,
   }).format(price);
 }
@@ -27,3 +27,21 @@ export function displayTime(time: string): string {
   const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
   return `${displayH}:${m.toString().padStart(2, "0")} ${period}`;
 }
+
+/** Extract YYYY-MM-DD from an ISO date string without timezone conversion. */
+export function parseDateKey(iso: string): string {
+  return iso.split("T")[0];
+}
+
+/** Format a booking date for display without timezone shift (uses the raw date part). */
+export function formatBookingDate(iso: string): string {
+  const [y, m, d] = iso.split("T")[0].split("-");
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+

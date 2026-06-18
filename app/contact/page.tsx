@@ -53,9 +53,7 @@ export default function ContactPage() {
                   <div>
                     <p className="font-medium text-beige-700">Address</p>
                     <p className="text-sm text-beige-600">
-                      142 Blossom Lane, Suite 200
-                      <br />
-                      Serenity Falls, CA 90210
+                      {BRAND.address}
                     </p>
                   </div>
                 </div>
@@ -129,7 +127,7 @@ export default function ContactPage() {
                     Find us here
                   </p>
                   <p className="text-xs text-beige-500">
-                    142 Blossom Lane, Serenity Falls
+                    {BRAND.address}
                   </p>
                 </div>
               </div>

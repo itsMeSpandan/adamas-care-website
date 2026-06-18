@@ -73,4 +73,5 @@ export interface AvailabilityOverride {
 export interface TimeSlot {
   start: string;            // "10:00"
   end: string;              // "11:00"
+  isBooked?: boolean;
 }

@@ -110,15 +110,16 @@ export async function GET(request: NextRequest) {
       select: { slotStart: true, slotEnd: true },
     });
 
-    // 7. Remove slots that overlap with existing bookings
-    const availableSlots = allSlots.filter((slot) => {
-      return !existingBookings.some((booking) => {
+    // 7. Mark slots that overlap with existing bookings instead of removing them
+    const slotsWithBookedStatus = allSlots.map((slot) => {
+      const isBooked = existingBookings.some((booking) => {
         if (!booking.slotStart || !booking.slotEnd) return false;
         return slotsOverlap(slot.start, slot.end, booking.slotStart, booking.slotEnd);
       });
+      return { ...slot, isBooked };
     });
 
-    return NextResponse.json({ slots: availableSlots });
+    return NextResponse.json({ slots: slotsWithBookedStatus });
   } catch (error) {
     console.error("Failed to fetch available slots:", error);
     return NextResponse.json(

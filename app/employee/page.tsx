@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 import WeeklyTimetable from "@/components/ui/WeeklyTimetable";
+import { parseDateKey } from "@/lib/utils";
 
 interface EmployeeData {
   id: string;
@@ -20,15 +21,18 @@ interface BookingWithService {
   status: string;
   rating: number | null;
   review: string | null;
-  service: { name: string };
+  service: { name: string; category: string };
   name: string;
   date: string;
+  slotStart: string | null;
+  slotEnd: string | null;
+  timeSlot: string;
 }
 
 export default function EmployeePage() {
   const { user } = useAuth();
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
-  const [ratings, setRatings] = useState<BookingWithService[]>([]);
+  const [allBookings, setAllBookings] = useState<BookingWithService[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -54,10 +58,7 @@ export default function EmployeePage() {
         if (bookingsRes.ok) {
           const bookingsData = await bookingsRes.json();
           const bookings = (bookingsData.bookings || bookingsData || []) as BookingWithService[];
-          const myRated = bookings.filter(
-            (b) => b.employeeId === empId && b.status === "completed" && b.rating != null
-          );
-          setRatings(myRated);
+          setAllBookings(bookings.filter((b) => b.employeeId === empId));
         }
       } catch {
         // silently fail
@@ -68,6 +69,36 @@ export default function EmployeePage() {
 
     fetchData();
   }, [user]);
+
+  // This week's bookings (must be before any early returns)
+  const thisWeekBookings = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const mondayOffset = day === 0 ? -6 : 1 - day;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() + mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    return allBookings
+      .filter((b) => {
+        if (b.status === "cancelled") return false;
+        const bDateKey = parseDateKey(b.date);
+        const weekStartKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`;
+        const weekEndKey = `${weekEnd.getFullYear()}-${String(weekEnd.getMonth() + 1).padStart(2, "0")}-${String(weekEnd.getDate()).padStart(2, "0")}`;
+        return bDateKey >= weekStartKey && bDateKey <= weekEndKey;
+      })
+      .sort((a, b) => {
+        const aDateKey = parseDateKey(a.date);
+        const bDateKey = parseDateKey(b.date);
+        if (aDateKey !== bDateKey) return aDateKey.localeCompare(bDateKey);
+        const aStart = a.slotStart || a.timeSlot;
+        const bStart = b.slotStart || b.timeSlot;
+        return aStart.localeCompare(bStart);
+      });
+  }, [allBookings]);
 
   if (!user?.employeeId) {
     return (
@@ -88,11 +119,12 @@ export default function EmployeePage() {
     );
   }
 
+  // Derived stats (after hooks, after early returns)
+  const ratedBookings = allBookings.filter((b) => b.status === "completed" && b.rating != null);
   const avgRating =
-    ratings.length > 0
-      ? (ratings.reduce((sum, b) => sum + (b.rating ?? 0), 0) / ratings.length).toFixed(1)
+    ratedBookings.length > 0
+      ? (ratedBookings.reduce((sum, b) => sum + (b.rating ?? 0), 0) / ratedBookings.length).toFixed(1)
       : "0.0";
-
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -105,48 +137,47 @@ export default function EmployeePage() {
         </p>
       </div>
 
-      {/* Profile & Rating Card */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-card border border-beige-200 bg-white p-6 shadow-card sm:col-span-2 lg:col-span-1">
+      {/* Profile & Stats Row */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-card border border-beige-200 bg-white p-6 shadow-card">
           <div className="flex items-center gap-4">
             {employeeData && (
-              <div className="relative h-16 w-16 overflow-hidden rounded-full">
-                <Image
-                  src={employeeData.imageUrl}
-                  alt={employeeData.name}
-                  fill
-                  className="object-cover"
-                  sizes="64px"
-                />
+              <div className="relative h-14 w-14 overflow-hidden rounded-full">
+                <Image src={employeeData.imageUrl} alt={employeeData.name} fill className="object-cover" sizes="56px" />
               </div>
             )}
             <div>
-              <p className="text-lg font-semibold text-beige-700">{employeeData?.name || user.name}</p>
-              <p className="text-sm text-beige-500">{employeeData?.role}</p>
+              <p className="text-base font-semibold text-beige-700">{employeeData?.name || user.name}</p>
+              <p className="text-xs text-beige-500">{employeeData?.role}</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-card border border-beige-200 bg-white p-6 shadow-card">
-          <p className="text-sm text-beige-500">Average Rating</p>
+        <div className="rounded-card border border-beige-200 bg-white p-5 shadow-card">
+          <p className="text-xs font-medium uppercase tracking-wider text-beige-400">This Week</p>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-beige-700">{avgRating}</span>
+            <span className="text-2xl font-bold text-beige-700">{thisWeekBookings.length}</span>
+            <span className="text-sm text-beige-500">booking{thisWeekBookings.length !== 1 ? "s" : ""}</span>
+          </div>
+        </div>
+
+        <div className="rounded-card border border-beige-200 bg-white p-5 shadow-card">
+          <p className="text-xs font-medium uppercase tracking-wider text-beige-400">Avg Rating</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-beige-700">{avgRating}</span>
             <span className="text-sm text-beige-400">/ 5.0</span>
           </div>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-beige-100">
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-beige-100">
             <div
               className="h-full rounded-full bg-amber-400 transition-all"
               style={{ width: `${(parseFloat(avgRating) / 5) * 100}%` }}
             />
           </div>
         </div>
-
-        <div className="rounded-card border border-beige-200 bg-white p-6 shadow-card">
-          <p className="text-sm text-beige-500">Total Reviews</p>
-          <span className="mt-1 block text-3xl font-bold text-beige-700">{ratings.length}</span>
-          <p className="mt-1 text-xs text-beige-400">Completed bookings with ratings</p>
-        </div>
       </div>
+
+      {/* Weekly Timetable */}
+      <WeeklyTimetable employeeId={user.employeeId} />
 
       {/* Recent Reviews */}
       <div className="rounded-card border border-beige-200 bg-white shadow-card">
@@ -155,9 +186,9 @@ export default function EmployeePage() {
             Recent Reviews
           </h2>
         </div>
-        {ratings.length > 0 ? (
+        {ratedBookings.length > 0 ? (
           <div className="divide-y divide-beige-100">
-            {ratings.slice(0, 10).map((r) => (
+            {ratedBookings.slice(0, 10).map((r) => (
               <div key={r.id} className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -195,9 +226,6 @@ export default function EmployeePage() {
           </div>
         )}
       </div>
-
-      {/* Weekly Timetable — new availability-aware version */}
-      <WeeklyTimetable employeeId={user.employeeId} />
     </div>
   );
 }
