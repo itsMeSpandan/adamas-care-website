@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getEmployeeById, updateEmployee, deleteEmployee } from "@/lib/queries";
+import { requireRole } from "@/lib/require-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +27,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const PUT = requireRole("admin", async (request: Request, context) => {
+  const { id } = await context!.params!;
   try {
     const body = await request.json();
     const existing = await getEmployeeById(id);
@@ -50,13 +48,10 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const DELETE = requireRole("admin", async (request: Request, context) => {
+  const { id } = await context!.params!;
   try {
     const existing = await getEmployeeById(id);
     if (!existing) {
@@ -75,4 +70,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

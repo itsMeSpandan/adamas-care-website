@@ -86,7 +86,7 @@ export default function Navbar() {
           {/* Desktop CTA + Auth */}
           <div className="hidden items-center gap-3 md:flex">
             <Link href="/booking" className="btn-primary text-sm">
-              Book Now
+              Book appointment
             </Link>
             {isAuthenticated ? (
               <UserPanel />
@@ -178,7 +178,7 @@ export default function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className="btn-primary text-lg"
                 >
-                  Book Now
+                  Book appointment
                 </Link>
                 {!isAuthenticated && (
                   <button

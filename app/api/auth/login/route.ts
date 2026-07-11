@@ -6,6 +6,8 @@ const limiter = rateLimit({ windowMs: 60_000, max: 5 }); // 5 attempts per minut
 export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
+import bcrypt from "bcrypt";
+import { setSessionCookies } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const key = getRateLimitKey(request, "login");
@@ -37,12 +39,20 @@ export async function POST(request: Request) {
 
     const user = await db.user.findUnique({ where: { email } });
 
-    if (!user || user.password !== password) {
+    // Use bcrypt.compare instead of plain-text comparison
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
       );
     }
+
+    // Set httpOnly session cookies
+    await setSessionCookies({
+      userId: user.id,
+      role: user.role,
+      email: user.email,
+    });
 
     // Return user without password
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

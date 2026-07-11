@@ -315,7 +315,7 @@ export default function LoggedInHome() {
                 className="btn-primary mt-4 inline-flex gap-2"
               >
                 <CalendarCheck className="h-5 w-5" />
-                Book Now
+                Book appointment
               </Link>
             </motion.div>
           )}

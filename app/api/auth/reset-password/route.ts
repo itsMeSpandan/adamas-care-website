@@ -6,6 +6,9 @@ const limiter = rateLimit({ windowMs: 60_000, max: 5 }); // 5 attempts per minut
 export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
+import bcrypt from "bcrypt";
+
+const BCRYPT_ROUNDS = 12;
 
 export async function POST(request: Request) {
   const key = getRateLimitKey(request, "reset-password");
@@ -26,11 +29,11 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { token, password } = await request.json();
+    const { email, otp, password } = await request.json();
 
-    if (!token || !password) {
+    if (!email || !otp || !password) {
       return NextResponse.json(
-        { error: "Token and password are required" },
+        { error: "Email, OTP, and password are required" },
         { status: 400 }
       );
     }
@@ -42,46 +45,69 @@ export async function POST(request: Request) {
       );
     }
 
-    const resetToken = await db.passwordResetToken.findUnique({
-      where: { token },
+    // Find the user
+    const user = await db.user.findUnique({ where: { email } });
+    if (!user) {
+      return NextResponse.json(
+        { error: "Invalid email or OTP" },
+        { status: 400 }
+      );
+    }
+
+    // Find the OTP record for this user
+    const resetToken = await db.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        token: otp,
+        used: false,
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    if (!resetToken || resetToken.used) {
+    if (!resetToken) {
       return NextResponse.json(
-        { error: "Invalid or expired reset token" },
+        { error: "Invalid or expired OTP. Please request a new one." },
         { status: 400 }
       );
     }
 
     if (new Date() > resetToken.expiresAt) {
       return NextResponse.json(
-        { error: "Reset token has expired. Please request a new one." },
+        { error: "OTP has expired. Please request a new one." },
         { status: 400 }
       );
     }
 
-    // Update the user's password
+    // Hash the new password before storing
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
     await db.user.update({
-      where: { id: resetToken.userId },
-      data: { password },
+      where: { id: user.id },
+      data: { password: hashedPassword },
     });
 
-    // Mark the token as used
+    // Mark the OTP as used
     await db.passwordResetToken.update({
       where: { id: resetToken.id },
       data: { used: true },
     });
 
-    return NextResponse.json({
-      message: "Password has been reset successfully. You can now sign in.",
-    }, {
-      headers: {
-        "X-RateLimit-Limit": "5",
-        "X-RateLimit-Remaining": String(result.remaining),
+    return NextResponse.json(
+      {
+        message: "Password has been reset successfully. You can now sign in.",
       },
-    });
+      {
+        headers: {
+          "X-RateLimit-Limit": "5",
+          "X-RateLimit-Remaining": String(result.remaining),
+        },
+      }
+    );
   } catch (error) {
     console.error("Reset password error:", error);
-    return NextResponse.json({ error: "Failed to reset password" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to reset password" },
+      { status: 500 }
+    );
   }
 }

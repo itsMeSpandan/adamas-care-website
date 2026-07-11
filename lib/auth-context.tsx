@@ -13,35 +13,12 @@ export interface AuthUser {
   employeeId?: string;
 }
 
-const AUTH_STORAGE_KEY = "adamascare_auth_user";
-
-function loadUserFromStorage(): AuthUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (!stored) return null;
-    const parsed = JSON.parse(stored) as AuthUser;
-    if (parsed && parsed.id && parsed.email) return parsed;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function saveUserToStorage(user: AuthUser | null) {
-  if (typeof window === "undefined") return;
-  if (user) {
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-  } else {
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  }
-}
-
 interface AuthContextType {
   user: AuthUser | null;
   isAdmin: boolean;
   isEmployee: boolean;
   isAuthenticated: boolean;
+  isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   updateUser: (data: Partial<AuthUser>) => void;
   logout: () => void;
@@ -51,30 +28,24 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Restore session from localStorage on mount
+  // Check session on mount via /api/auth/me (reads httpOnly cookie)
   useEffect(() => {
-    const stored = loadUserFromStorage();
-    if (stored) setUser(stored);
-
-    // Sync logout across tabs via storage events
-    function handleStorageEvent(e: StorageEvent) {
-      if (e.key !== AUTH_STORAGE_KEY) return;
-      if (e.newValue) {
-        // Another tab logged in or updated — sync the user
-        try {
-          const parsed = JSON.parse(e.newValue) as AuthUser;
-          if (parsed && parsed.id && parsed.email) setUser(parsed);
-        } catch {
-          // ignore malformed data
+    async function checkSession() {
+      try {
+        const res = await fetch("/api/auth/me", { credentials: "include" });
+        const data = await res.json();
+        if (data.user) {
+          setUser(data.user);
         }
-      } else {
-        // Another tab logged out — clear local state
-        setUser(null);
+      } catch {
+        // No session or error — user stays null
+      } finally {
+        setLoading(false);
       }
     }
-    window.addEventListener("storage", handleStorageEvent);
-    return () => window.removeEventListener("storage", handleStorageEvent);
+    checkSession();
   }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
@@ -83,30 +54,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include",
       });
 
       if (!res.ok) return false;
 
       const data = await res.json();
       setUser(data.user);
-      saveUserToStorage(data.user);
       return true;
     } catch {
       return false;
     }
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
-    saveUserToStorage(null);
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      setUser(null);
+    }
   }, []);
 
   const updateUser = useCallback((data: Partial<AuthUser>) => {
-    setUser((prev) => {
-      const updated = prev ? { ...prev, ...data } : null;
-      saveUserToStorage(updated);
-      return updated;
-    });
+    setUser((prev) => (prev ? { ...prev, ...data } : null));
   }, []);
 
   return (
@@ -116,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAdmin: user?.role === "admin",
         isEmployee: user?.role === "employee",
         isAuthenticated: !!user,
+        isLoading: loading,
         login,
         updateUser,
         logout,

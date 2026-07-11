@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServices, createService } from "@/lib/queries";
+import { requireRole } from "@/lib/require-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,14 +10,11 @@ export async function GET() {
     return NextResponse.json(services);
   } catch (error) {
     console.error("Failed to fetch services:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch services" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch services" }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
+export const POST = requireRole("admin", async (request: Request) => {
   try {
     const body = await request.json();
     const { name, category, description, longDescription, durationMinutes, price, imageUrl, featured, employeeIds } = body;
@@ -28,7 +26,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate a unique ID using timestamp + random
     const id = `svc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
     const service = await createService({
@@ -47,9 +44,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ service }, { status: 201 });
   } catch (error) {
     console.error("Failed to create service:", error);
-    return NextResponse.json(
-      { error: "Failed to create service" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to create service" }, { status: 500 });
   }
-}
+});

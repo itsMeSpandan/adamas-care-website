@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
+import bcrypt from "bcrypt";
+import { setSessionCookies } from "@/lib/auth";
 
 const limiter = rateLimit({ windowMs: 60_000, max: 3 }); // 3 registrations per minute
+const BCRYPT_ROUNDS = 12;
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +45,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate password strength
-    if (password.length < 6) {
+    // Validate password strength (minimum 8 characters)
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
+        { error: "Password must be at least 8 characters" },
         { status: 400 }
       );
     }
@@ -66,16 +69,27 @@ export async function POST(request: Request) {
       );
     }
 
+    // Hash password with bcrypt before storing
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
     const user = await db.user.create({
       data: {
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        password,
+        password: hashedPassword,
         role: "user",
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e8ddd3&color=7c6e5a`,
       },
     });
 
+    // Set httpOnly session cookies
+    await setSessionCookies({
+      userId: user.id,
+      role: user.role,
+      email: user.email,
+    });
+
+    // Return user without password
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
 

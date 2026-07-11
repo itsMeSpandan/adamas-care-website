@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServiceById, updateService, deleteService } from "@/lib/queries";
+import { requireRole } from "@/lib/require-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,8 @@ export async function GET(
   }
 }
 
-export async function PUT(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const PUT = requireRole("admin", async (request: Request, context) => {
+  const { id } = await context!.params!;
   try {
     const body = await request.json();
     const existing = await getServiceById(id);
@@ -36,18 +34,12 @@ export async function PUT(
     return NextResponse.json({ service });
   } catch (error) {
     console.error("Failed to update service:", error);
-    return NextResponse.json(
-      { error: "Failed to update service" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update service" }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const DELETE = requireRole("admin", async (request: Request, context) => {
+  const { id } = await context!.params!;
   try {
     const existing = await getServiceById(id);
     if (!existing) {
@@ -58,9 +50,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete service:", error);
-    return NextResponse.json(
-      { error: "Failed to delete service" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to delete service" }, { status: 500 });
   }
-}
+});

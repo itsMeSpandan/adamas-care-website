@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getEmployees, createEmployee, generateUniqueEmployeeEmail } from "@/lib/queries";
+import { requireRole } from "@/lib/require-auth";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export const POST = requireRole("admin", async (request: Request) => {
   try {
     const body = await request.json();
     const { name, email, role, bio, imageUrl, yearsExperience, instagramHandle, serviceIds } = body;
@@ -57,4 +58,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});

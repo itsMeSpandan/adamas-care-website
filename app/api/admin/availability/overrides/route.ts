@@ -1,14 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireRole } from "@/lib/require-auth";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/admin/availability/overrides?employeeId=&month=YYYY-MM
- * POST /api/admin/availability/overrides
- * DELETE /api/admin/availability/overrides?id=
- */
-export async function GET(request: NextRequest) {
+export const GET = requireRole("admin", async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const employeeId = searchParams.get("employeeId");
   const month = searchParams.get("month");
@@ -43,9 +39,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = requireRole("admin", async (request: Request) => {
   try {
     const body = await request.json();
     const { employeeId, overrideDate, startTime, endTime, isBlocked, note } = body;
@@ -76,9 +72,9 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(request: Request) {
+export const DELETE = requireRole("admin", async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -96,4 +92,4 @@ export async function DELETE(request: Request) {
       { status: 500 }
     );
   }
-}
+});

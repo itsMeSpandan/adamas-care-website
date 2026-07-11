@@ -1,21 +1,26 @@
 import { NextResponse } from "next/server";
 import { updateUser, findUserById, findUserByEmail } from "@/lib/queries";
+import bcrypt from "bcrypt";
+import { requireAuth } from "@/lib/require-auth";
+import { getSessionFromRequest } from "@/lib/auth";
+
+const BCRYPT_ROUNDS = 12;
 
 export const dynamic = "force-dynamic";
 
-export async function PUT(request: Request) {
+export const PUT = requireAuth(async (request: Request) => {
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   try {
     const body = await request.json();
-    const { userId, name, email, avatarUrl, currentPassword, newPassword } = body;
+    // IMPORTANT: the target user is always derived from the authenticated session,
+    // never from a client-supplied `userId` (prevents IDOR / account takeover).
+    const { name, email, avatarUrl, currentPassword, newPassword } = body;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const user = await findUserById(userId);
+    const user = await findUserById(session.userId);
     if (!user) {
       return NextResponse.json(
         { error: "User not found" },
@@ -34,9 +39,9 @@ export async function PUT(request: Request) {
       }
     }
 
-    // If changing password, verify current
+    // If changing password, verify current with bcrypt
     if (newPassword) {
-      if (!currentPassword || currentPassword !== user.password) {
+      if (!currentPassword || !(await bcrypt.compare(currentPassword, user.password))) {
         return NextResponse.json(
           { error: "Current password is incorrect" },
           { status: 401 }
@@ -54,9 +59,9 @@ export async function PUT(request: Request) {
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
-    if (newPassword) updateData.password = newPassword;
+    if (newPassword) updateData.password = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
 
-    const updated = await updateUser(userId, updateData);
+    const updated = await updateUser(session.userId, updateData);
 
     // Return user without password
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -70,4 +75,4 @@ export async function PUT(request: Request) {
       { status: 500 }
     );
   }
-}
+});

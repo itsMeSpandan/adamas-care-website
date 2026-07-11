@@ -311,7 +311,6 @@ export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
                   const isToday = formatDateKey(date) === todayKey;
                   const daySchedules = schedulesByDay[dayIdx];
                   const dayBookings = bookingsByDay[dayIdx];
-                  const hasAvailability = daySchedules.length > 0;
 
                   return (
                     <div

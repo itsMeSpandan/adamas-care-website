@@ -1,15 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireRole } from "@/lib/require-auth";
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/admin/availability?employeeId=
- * POST /api/admin/availability
- * PATCH /api/admin/availability?id=
- * DELETE /api/admin/availability?id=
- */
-export async function GET(request: NextRequest) {
+export const GET = requireRole("admin", async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const employeeId = searchParams.get("employeeId");
 
@@ -34,9 +29,9 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: Request) {
+export const POST = requireRole("admin", async (request: Request) => {
   try {
     const body = await request.json();
     const { employeeId, dayOfWeek, startTime, endTime } = body;
@@ -48,13 +43,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Overlap check: query for any existing row with same employeeId + dayOfWeek
-    // whose time range overlaps the new one
     const existing = await db.employeeAvailability.findMany({
-      where: {
-        employeeId,
-        dayOfWeek,
-      },
+      where: { employeeId, dayOfWeek },
     });
 
     const newStart = timeToMinutes(startTime);
@@ -74,12 +64,7 @@ export async function POST(request: Request) {
     }
 
     const availability = await db.employeeAvailability.create({
-      data: {
-        employeeId,
-        dayOfWeek,
-        startTime,
-        endTime,
-      },
+      data: { employeeId, dayOfWeek, startTime, endTime },
     });
 
     return NextResponse.json({ availability }, { status: 201 });
@@ -90,9 +75,9 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function PATCH(request: Request) {
+export const PATCH = requireRole("admin", async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -121,9 +106,9 @@ export async function PATCH(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(request: Request) {
+export const DELETE = requireRole("admin", async (request: Request) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -141,7 +126,7 @@ export async function DELETE(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(":").map(Number);

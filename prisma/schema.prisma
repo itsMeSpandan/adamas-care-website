@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = "postgresql://neondb_owner:npg_fbalX9DQ8HFh@ep-odd-water-aotlelpb.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -92,8 +92,8 @@ model Testimonial {
 
 model Booking {
   id          String        @id @default(cuid())
-  serviceId   String
-  employeeId  String
+  serviceId   String?
+  employeeId  String?
   userId      String?
   date        DateTime
   timeSlot    String
@@ -110,20 +110,24 @@ model Booking {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  service  Service  @relation(fields: [serviceId], references: [id])
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   user     User?    @relation(fields: [userId], references: [id])
-  employee Employee @relation(fields: [employeeId], references: [id])
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 }
 
 model PasswordResetToken {
   id        String   @id @default(cuid())
-  token     String   @unique
+  token     String
   userId    String
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Uniqueness is scoped per user so two different users can share a 6-digit OTP
+  // without violating the constraint (prevents 500 on forgot-password).
+  @@unique([userId, token])
 }
 
 model EmployeeAvailability {

@@ -1,23 +1,148 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getBookings } from "@/lib/queries";
+import { requireAuth } from "@/lib/require-auth";
+import { getSessionFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+// ---------- Time helpers (local to this route) ----------
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function subtractTimeRange(
+  windows: { start: number; end: number }[],
+  blockStart: number,
+  blockEnd: number
+): { start: number; end: number }[] {
+  const result: { start: number; end: number }[] = [];
+  for (const w of windows) {
+    const ws = w.start;
+    const we = w.end;
+    if (blockEnd <= ws || blockStart >= we) {
+      result.push(w);
+    } else {
+      if (blockStart > ws) {
+        result.push({ start: ws, end: Math.min(blockStart, we) });
+      }
+      if (blockEnd < we) {
+        result.push({ start: Math.max(blockEnd, ws), end: we });
+      }
+    }
+  }
+  return result;
+}
+
+function mergeWindows(
+  windows: { start: number; end: number }[]
+): { start: number; end: number }[] {
+  if (windows.length === 0) return [];
+  const sorted = [...windows].sort((a, b) => a.start - b.start);
+  const merged: { start: number; end: number }[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    if (sorted[i].start <= last.end) {
+      last.end = sorted[i].end > last.end ? sorted[i].end : last.end;
+    } else {
+      merged.push(sorted[i]);
+    }
+  }
+  return merged;
+}
+
+// Verify a requested [slotStart, slotEnd] fits within the employee's active
+// availability windows for the given date (honoring overrides).
+async function isSlotWithinAvailability(
+  employeeId: string,
+  dateStr: string,
+  slotStart: string,
+  slotEnd: string
+): Promise<boolean> {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return false;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const jsDay = date.getUTCDay();
+  const dbDay = jsDay === 0 ? 6 : jsDay - 1;
+
+  const availability = await db.employeeAvailability.findMany({
+    where: { employeeId, dayOfWeek: dbDay, isActive: true },
+    orderBy: { startTime: "asc" },
+  });
+  if (availability.length === 0) return false;
+
+  let windows = availability.map((a) => ({
+    start: timeToMinutes(a.startTime),
+    end: timeToMinutes(a.endTime),
+  }));
+
+  const dayStart = new Date(Date.UTC(year, month - 1, day));
+  const overrides = await db.availabilityOverride.findMany({
+    where: { employeeId, overrideDate: dayStart },
+  });
+
+  for (const override of overrides) {
+    if (override.isBlocked) {
+      if (!override.startTime) {
+        windows = [];
+        break;
+      }
+      windows = subtractTimeRange(
+        windows,
+        timeToMinutes(override.startTime),
+        timeToMinutes(override.endTime || "23:59")
+      );
+    } else if (override.startTime && override.endTime) {
+      windows.push({
+        start: timeToMinutes(override.startTime),
+        end: timeToMinutes(override.endTime),
+      });
+    }
+  }
+
+  if (windows.length === 0) return false;
+  windows = mergeWindows(windows);
+
+  const s = timeToMinutes(slotStart);
+  const e = timeToMinutes(slotEnd);
+  return windows.some((w) => s >= w.start && e <= w.end);
+}
+
+// ------------------------- GET -------------------------
+
+export const GET = requireAuth(async (request: Request) => {
   try {
-    const bookings = await getBookings();
+    const session = await getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    // Staff may view all bookings; a regular customer sees only their own.
+    if (session.role === "admin" || session.role === "employee") {
+      const bookings = await getBookings();
+      return NextResponse.json({ bookings });
+    }
+
+    const bookings = await db.booking.findMany({
+      where: {
+        OR: [{ userId: session.userId }, { email: session.email }],
+      },
+      include: { service: true, user: true, employee: true },
+      orderBy: { createdAt: "desc" },
+    });
     return NextResponse.json({ bookings });
   } catch (error) {
     console.error("Failed to fetch bookings:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch bookings" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
   }
-}
+});
 
-export async function POST(request: Request) {
+// ------------------------- POST ------------------------
+
+export const POST = requireAuth(async (request: Request) => {
   try {
     const body = await request.json();
 
@@ -32,7 +157,6 @@ export async function POST(request: Request) {
       email,
       phone,
       notes,
-      price,
     } = body;
 
     if (
@@ -40,10 +164,10 @@ export async function POST(request: Request) {
       !employeeId ||
       !date ||
       !slotStart ||
+      !slotEnd ||
       !name ||
       !email ||
-      !phone ||
-      price === undefined
+      !phone
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -51,8 +175,45 @@ export async function POST(request: Request) {
       );
     }
 
-    // Conflict check: query for same employeeId + date + overlapping slot
+    // Server-side price: never trust the client-supplied price.
+    const service = await db.service.findUnique({ where: { id: serviceId } });
+    if (!service) {
+      return NextResponse.json({ error: "Invalid service" }, { status: 400 });
+    }
+
+    // The employee must actually offer this service.
+    const assignment = await db.employeeService.findFirst({
+      where: { serviceId, employeeId },
+    });
+    if (!assignment) {
+      return NextResponse.json(
+        { error: "Selected specialist does not offer this service" },
+        { status: 400 }
+      );
+    }
+
+    // Reject past dates (compare as YYYY-MM-DD strings).
+    const today = new Date();
+    const todayKey = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}-${String(today.getUTCDate()).padStart(2, "0")}`;
+    if (typeof date !== "string" || date < todayKey) {
+      return NextResponse.json(
+        { error: "Booking date cannot be in the past" },
+        { status: 400 }
+      );
+    }
+
+    // Reject slots outside the employee's availability windows.
+    const within = await isSlotWithinAvailability(employeeId, date, slotStart, slotEnd);
+    if (!within) {
+      return NextResponse.json(
+        { error: "Selected time is outside the specialist's availability" },
+        { status: 400 }
+      );
+    }
+
     const bookingDate = new Date(date);
+
+    // Conflict check: same employee + date + overlapping slot.
     const dayStart = new Date(bookingDate);
     dayStart.setUTCHours(0, 0, 0, 0);
     const dayEnd = new Date(bookingDate);
@@ -71,7 +232,10 @@ export async function POST(request: Request) {
 
     const hasConflict = existingBookings.some((b) => {
       if (!b.slotStart || !b.slotEnd) return false;
-      return timeToMinutes(slotStart) < timeToMinutes(b.slotEnd) && timeToMinutes(b.slotStart) < timeToMinutes(slotEnd);
+      return (
+        timeToMinutes(slotStart) < timeToMinutes(b.slotEnd) &&
+        timeToMinutes(b.slotStart) < timeToMinutes(slotEnd)
+      );
     });
 
     if (hasConflict) {
@@ -81,7 +245,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Use slotStart as timeSlot for backward compat, include slotStart/slotEnd in single create
     const booking = await db.booking.create({
       data: {
         serviceId,
@@ -95,7 +258,7 @@ export async function POST(request: Request) {
         email,
         phone,
         notes: notes || null,
-        price,
+        price: service.price,
       },
     });
 
@@ -107,9 +270,78 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
+});
 
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
+// ------------------------- PATCH -----------------------
+
+export const PATCH = requireAuth(async (request: Request, context) => {
+  const { id } = await context!.params!;
+
+  const session = await getSessionFromRequest(request);
+  if (!session) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  try {
+    const booking = await db.booking.findUnique({ where: { id } });
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    // Authorization: staff may modify any booking; a customer may only modify
+    // their own (matched by userId or email).
+    const isStaff = session.role === "admin" || session.role === "employee";
+    const isOwner =
+      (booking.userId != null && booking.userId === session.userId) ||
+      booking.email === session.email;
+    if (!isStaff && !isOwner) {
+      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { status, rating, review } = body;
+
+    // Handle status updates
+    if (status) {
+      if (!["pending", "confirmed", "completed", "cancelled"].includes(status)) {
+        return NextResponse.json(
+          { error: "Invalid status. Must be one of: pending, confirmed, completed, cancelled" },
+          { status: 400 }
+        );
+      }
+      const updated = await db.booking.update({ where: { id }, data: { status } });
+      return NextResponse.json({ booking: updated });
+    }
+
+    // Handle rating/review updates
+    if (rating !== undefined) {
+      const numRating = Number(rating);
+      if (isNaN(numRating) || numRating < 0 || numRating > 5) {
+        return NextResponse.json(
+          { error: "Invalid rating. Must be between 0 and 5" },
+          { status: 400 }
+        );
+      }
+
+      const updated = await db.booking.update({
+        where: { id },
+        data: {
+          rating: Math.round(numRating * 10) / 10,
+          review: review ?? null,
+        },
+      });
+      return NextResponse.json({ booking: updated });
+    }
+
+    return NextResponse.json(
+      { error: "Nothing to update. Provide status, rating, or review." },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error("Failed to update booking:", error);
+    return NextResponse.json(
+      { error: "Failed to update booking" },
+      { status: 500 }
+    );
+  }
+});

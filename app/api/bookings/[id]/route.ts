@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { updateBookingStatus } from "@/lib/queries";
+import { requireAuth } from "@/lib/require-auth";
 
 export const dynamic = "force-dynamic";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export const PATCH = requireAuth(async (request: Request, context) => {
+  const { id } = await context!.params!;
   try {
     const body = await request.json();
     const { status, rating, review } = body;
@@ -56,4 +54,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+});

@@ -207,7 +207,7 @@ export default async function AdminPage() {
               {recentBookings.map((booking) => (
                 <tr key={booking.id} className="transition-colors hover:bg-beige-50">
                   <td className="px-6 py-4 font-medium text-beige-700">{booking.name}</td>
-                  <td className="px-6 py-4 text-beige-600">{booking.service.name}</td>
+                  <td className="px-6 py-4 text-beige-600">{booking.service?.name ?? "—"}</td>
                   <td className="px-6 py-4 text-beige-600">
                     {formatBookingDate(booking.date.toISOString())}
                   </td>

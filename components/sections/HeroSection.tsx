@@ -1,84 +1,154 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { animate, createTimeline, stagger } from "animejs";
 import Image from "next/image";
 import Link from "next/link";
-import { BRAND } from "@/lib/brand";
+
+/* ─── headline copy (two lines per spec) ─── */
+const headlineWords = [
+  "Relax into your best self".split(" "),
+  "Beauty & wellness, unhurried".split(" "),
+];
+
+const subtext =
+  "Experience the art of beauty at Adamas Care. Our team of expert stylists and therapists deliver bespoke treatments that leave you feeling radiant, confident, and renewed.";
 
 export default function HeroSection() {
+  const headlineRef = useRef<HTMLHeadingElement>(null);
+  const subtextRef = useRef<HTMLParagraphElement>(null);
+  const ctaGroupRef = useRef<HTMLDivElement>(null);
+  const illustrationRef = useRef<HTMLDivElement>(null);
+
+  /* Check prefers-reduced-motion once at mount (static — acceptable for one-shot load anim) */
+  const prefersReducedMotion =
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false;
+
+  useEffect(() => {
+    if (prefersReducedMotion) return;
+
+    const wordEls = headlineRef.current?.querySelectorAll(".hero-word");
+    if (!wordEls?.length) return;
+
+    /* Timeline: headline → subtext → CTAs */
+    const tl = createTimeline({ defaults: { ease: "outExpo" } });
+
+    // Headline words stagger in
+    tl.add(Array.from(wordEls), {
+      opacity: [0, 1],
+      translateY: [24, 0],
+      duration: 600,
+      delay: stagger(60),
+    });
+
+    // Subtext fades up after headline settles
+    tl.add(
+      subtextRef.current!,
+      {
+        opacity: [0, 1],
+        translateY: [16, 0],
+        duration: 500,
+      },
+      "-=200"
+    );
+
+    // CTAs fade/scale in last
+    tl.add(
+      ctaGroupRef.current!,
+      {
+        opacity: [0, 1],
+        translateY: [12, 0],
+        scale: [0.97, 1],
+        duration: 450,
+      },
+      "-=250"
+    );
+
+    /* Illustration — separate slower entrance, starts roughly parallel with headline */
+    const illustrationAnim = animate(illustrationRef.current!, {
+      opacity: [0, 1],
+      translateY: [32, 0],
+      duration: 800,
+      ease: "outExpo",
+      delay: 100,
+    });
+
+    /* Cleanup: pause all animations on unmount */
+    return () => {
+      tl.pause();
+      illustrationAnim.pause();
+    };
+  }, [prefersReducedMotion]);
+
   return (
     <section className="relative flex min-h-[90vh] items-center bg-beige-50 px-4 py-20 md:px-8 lg:px-16">
       <div className="section-container mx-auto grid items-center gap-12 lg:grid-cols-2">
-        {/* Left content */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-xl"
-        >
-          <h1 className="font-serif text-5xl font-semibold leading-tight text-beige-700 md:text-6xl lg:text-7xl">
-            Luxury you deserve.{" "}
-            <span className="text-beige-400">Moments that last.</span>
+        {/* ── Left: text + CTAs ── */}
+        <div className="max-w-xl">
+          {/* Headline */}
+          <h1
+            ref={headlineRef}
+            className="font-serif text-5xl font-medium leading-tight text-beige-700 md:text-6xl lg:text-7xl"
+          >
+            {headlineWords.map((line, lineIdx) => (
+              <span key={lineIdx} className="block">
+                {line.map((word, wordIdx) => (
+                  <span
+                    key={`${lineIdx}-${wordIdx}`}
+                    className="hero-word inline-block"
+                    style={{ opacity: prefersReducedMotion ? 1 : 0 }}
+                  >
+                    {word}{" "}
+                  </span>
+                ))}
+              </span>
+            ))}
           </h1>
-          <p className="mt-6 text-lg leading-relaxed text-beige-800">
-            Experience the art of beauty at {BRAND.name}. Our team of expert
-            stylists and therapists deliver bespoke treatments that leave you
-            feeling radiant, confident, and renewed.
+
+          {/* Subtext */}
+          <p
+            ref={subtextRef}
+            className="mt-6 max-w-[48ch] text-lg leading-relaxed text-beige-800"
+            style={{ opacity: prefersReducedMotion ? 1 : 0 }}
+          >
+            {subtext}
           </p>
-          <div className="mt-8 flex flex-wrap gap-4">
+
+          {/* CTAs */}
+          <div
+            ref={ctaGroupRef}
+            className="mt-8 flex flex-wrap gap-4"
+            style={{ opacity: prefersReducedMotion ? 1 : 0 }}
+          >
             <Link href="/booking" className="btn-primary px-8 py-3.5 text-base">
-              Book Now
+              Book appointment
             </Link>
             <Link
               href="/services"
               className="btn-outline px-8 py-3.5 text-base"
             >
-              View Services
+              View services
             </Link>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Right image collage */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="relative hidden h-[560px] lg:block"
+        {/* ── Right: illustration ── */}
+        <div
+          ref={illustrationRef}
+          className="relative mx-auto flex h-[480px] w-full max-w-[420px] items-center justify-center lg:h-[560px] lg:max-w-none"
+          style={{ opacity: prefersReducedMotion ? 1 : 0 }}
         >
-          {/* Top image */}
-          <div className="absolute right-0 top-0 h-[280px] w-[220px] overflow-hidden rounded-2xl shadow-card">
-            <Image
-              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80"
-              alt="Salon styling"
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 0px, 220px"
-              priority
-            />
-          </div>
-          {/* Middle image */}
-          <div className="absolute left-12 top-[100px] h-[260px] w-[200px] overflow-hidden rounded-2xl shadow-card">
-            <Image
-              src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=600&q=80"
-              alt="Spa treatment"
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 0px, 200px"
-              priority
-            />
-          </div>
-          {/* Bottom image */}
-          <div className="absolute bottom-0 right-4 h-[240px] w-[260px] overflow-hidden rounded-2xl shadow-card">
-            <Image
-              src="https://images.unsplash.com/photo-1604654894610-df63bc536371?w=600&q=80"
-              alt="Nail art"
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 0px, 260px"
-              priority
-            />
-          </div>
-        </motion.div>
+          <Image
+            src="/images/hero-illustration.png"
+            alt="Relaxing spa day — woman in robe with cucumber face mask"
+            fill
+            className="object-contain"
+            sizes="(max-width: 1024px) 80vw, 420px"
+            priority
+          />
+        </div>
       </div>
     </section>
   );
