@@ -8,6 +8,7 @@ import { useAuth, AuthUser } from "@/lib/auth-context";
 import PasswordToggle from "@/components/ui/PasswordToggle";
 import StarRating from "@/components/ui/StarRating";
 import { formatBookingDate } from "@/lib/utils";
+import { statusColors } from "@/lib/constants";
 
 type Tab = "profile" | "security" | "bookings";
 
@@ -29,12 +30,7 @@ interface Booking {
   service: { name: string };
 }
 
-const statusColors: Record<string, string> = {
-  confirmed: "bg-emerald-100 text-emerald-700",
-  pending: "bg-amber-100 text-amber-700",
-  cancelled: "bg-red-100 text-red-700",
-  completed: "bg-blue-100 text-blue-700",
-};
+
 
 function ProfileContent() {
   const { user, updateUser } = useAuth();

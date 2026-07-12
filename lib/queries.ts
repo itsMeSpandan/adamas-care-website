@@ -311,15 +311,18 @@ export async function generateUniqueEmployeeEmail(name: string): Promise<string>
   const baseSlug = slugifyName(name);
   let candidate = `${baseSlug}@${domain}`;
 
-  // Check if email already exists in Employee, and append a number if so
-  let counter = 1;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
+  // Stage 3.5: Bounded loop — max 50 iterations to prevent infinite loop on DB outage
+  const MAX_ATTEMPTS = 50;
+  for (let counter = 1; counter <= MAX_ATTEMPTS; counter++) {
     const existing = await db.employee.findFirst({ where: { email: candidate } });
     if (!existing) return candidate;
-    counter++;
     candidate = `${baseSlug}${counter}@${domain}`;
   }
+
+  throw new Error(
+    `Could not generate unique email for "${name}" after ${MAX_ATTEMPTS} attempts. ` +
+    "The database may be experiencing issues."
+  );
 }
 
 // --- Time Slots ---

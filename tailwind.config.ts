@@ -10,16 +10,29 @@ const config: Config = {
     extend: {
       colors: {
         beige: {
-          50: "#FAF7F2",
-          100: "#F0EAE0",
-          200: "#E8DFD3",
-          300: "#D9CCBC",
-          400: "#C8A882",
-          500: "#B08B62",
-          600: "#8C6A48",
-          700: "#6B4E32",
-          800: "#4A3420",
-          900: "#2C2016",
+          50: "#F5F1EA",
+          100: "#EDE8DF",
+          200: "#E5DED3",
+          300: "#D4C9B9",
+          400: "#B8AFA3",
+          500: "#9A9189",
+          600: "#C97B5C",
+          700: "#1F1F1F",
+          800: "#1A1A1A",
+          900: "#141414",
+        },
+        blush: {
+          50: "#F5F1EA",
+          100: "#EDE8DF",
+          200: "#E5DED3",
+          300: "#D4C9B9",
+          400: "#C97B5C",
+          500: "#8A9A83",
+        },
+
+        charcoal: {
+          800: "#2D2D2D",
+          900: "#1F1F1F",
         },
       },
       fontFamily: {
@@ -30,8 +43,8 @@ const config: Config = {
         card: "16px",
       },
       boxShadow: {
-        card: "0 2px 16px rgba(44,32,22,0.06)",
-        "card-hover": "0 8px 32px rgba(44,32,22,0.12)",
+        card: "0 2px 16px rgba(31,31,31,0.06)",
+        "card-hover": "0 8px 32px rgba(31,31,31,0.12)",
       },
     },
   },

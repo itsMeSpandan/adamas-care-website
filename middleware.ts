@@ -18,6 +18,28 @@ export function middleware(request: NextRequest) {
     "max-age=63072000; includeSubDomains; preload"
   );
 
+  // Stage 3.3: Content-Security-Policy
+  // 'unsafe-inline' for script-src is required by Next.js for:
+  //   - Inline hydration scripts injected by Next.js
+  //   - The theme-init inline script in layout.tsx
+  //   - React hydration and chunk loading
+  // style-src 'unsafe-inline' is required for Tailwind CSS.
+  // img-src: unsplash for service/employee images, ui-avatars for default avatars
+  // font-src: 'self' for local/next/font, plus Google Fonts
+  const csp = [
+    "default-src 'self'",
+    "img-src 'self' https://images.unsplash.com https://ui-avatars.com data: blob:",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; ");
+
+  response.headers.set("Content-Security-Policy", csp);
+
   // Prevent caching of API responses
   if (request.nextUrl.pathname.startsWith("/api")) {
     response.headers.set(

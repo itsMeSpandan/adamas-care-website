@@ -7,7 +7,7 @@ import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format } from "date-fns";
 import { Service, Employee } from "@/lib/types";
-import { formatPrice, formatDuration, cn } from "@/lib/utils";
+import { formatPrice, formatDuration, displayTime, cn } from "@/lib/utils";
 import StarIcon from "@/components/ui/StarIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
@@ -265,13 +265,6 @@ export default function BookingPage() {
       </div>
     );
   }
-
-  const displayTime = (t: string) => {
-    const [h, m] = t.split(":").map(Number);
-    const period = h >= 12 ? "PM" : "AM";
-    const displayH = h > 12 ? h - 12 : h === 0 ? 12 : h;
-    return `${displayH}:${String(m).padStart(2, "0")} ${period}`;
-  };
 
   return (
     <div className="section-padding bg-beige-50">
@@ -630,8 +623,8 @@ export default function BookingPage() {
               >
                 <div className="mx-auto mb-8 flex h-24 w-24 items-center justify-center">
                   <svg width="96" height="96" viewBox="0 0 96 96">
-                    <circle cx="48" cy="48" r="44" fill="none" stroke="#C8A882" strokeWidth="3" className="animate-circle-draw" style={{ strokeDasharray: "276", strokeDashoffset: "276" }} />
-                    <polyline points="30,50 42,62 66,38" fill="none" stroke="#8C6A48" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="animate-checkmark-draw" />
+                    <circle cx="48" cy="48" r="44" fill="none" stroke="#E8D5C4" strokeWidth="3" className="animate-circle-draw" style={{ strokeDasharray: "276", strokeDashoffset: "276" }} />
+                    <polyline points="30,50 42,62 66,38" fill="none" stroke="#C97B5C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="animate-checkmark-draw" />
                   </svg>
                 </div>
 

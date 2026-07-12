@@ -1,10 +1,18 @@
 /**
  * In-memory sliding-window rate limiter for Next.js API routes.
  * 
+ * Stage 3.1 improvements:
+ * - Uses trusted proxy headers (X-Real-IP, then X-Forwarded-For) instead of raw client IP
+ * - Supports per-email limiting via `getEmailKey()` helper
+ * 
  * Usage:
  *   const limiter = rateLimit({ windowMs: 60_000, max: 10 });
  *   const result = limiter.check("ip:127.0.0.1");
  *   if (!result.success) return 429 response.
+ * 
+ * For per-email limiting (forgot-password, reset-password):
+ *   const emailKey = getEmailKey(request, "forgot-password", email);
+ *   const result = limiter.check(emailKey);
  */
 
 interface RateLimitEntry {
@@ -67,11 +75,53 @@ export function rateLimit(config: RateLimitConfig) {
 }
 
 /**
- * Helper to extract a rate-limit key from a Request (IP + optional route prefix).
- * Falls back to a header-based approach for serverless/edge environments.
+ * Extract the client IP from trusted proxy headers.
+ * 
+ * Priority:
+ * 1. X-Real-IP (set by Nginx/Reverse proxy — most reliable)
+ * 2. X-Forwarded-For first entry (set by load balancers)
+ * 3. "unknown" fallback
+ * 
+ * NOTE: We do NOT trust raw client-supplied X-Forwarded-For for spoofing.
+ * In production behind a trusted proxy, the first entry is the client IP.
+ */
+function getTrustedClientIp(request: Request): string {
+  // X-Real-IP is typically set by Nginx/reverse proxy and is the most reliable
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  // X-Forwarded-For: first entry is the original client (behind trusted proxy)
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) {
+    const firstIp = forwarded.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+
+  return "unknown";
+}
+
+/**
+ * Generate a rate-limit key from a Request using trusted proxy headers.
+ * Format: `{prefix}:{clientIp}`
  */
 export function getRateLimitKey(request: Request, prefix: string): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const ip = forwarded?.split(",")[0]?.trim() || "unknown";
+  const ip = getTrustedClientIp(request);
   return `${prefix}:${ip}`;
+}
+
+/**
+ * Generate a rate-limit key that combines IP + email for per-account limiting.
+ * Use this for forgot-password and reset-password endpoints to prevent
+ * brute-force attacks against specific accounts.
+ * 
+ * Format: `{prefix}:email:{normalizedEmail}:ip:{clientIp}`
+ */
+export function getEmailKey(
+  request: Request,
+  prefix: string,
+  email: string
+): string {
+  const ip = getTrustedClientIp(request);
+  const normalizedEmail = email.toLowerCase().trim();
+  return `${prefix}:email:${normalizedEmail}:ip:${ip}`;
 }

@@ -2,17 +2,36 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Warm ivory & terracotta palette */
+  --bg-primary: #F5F1EA;
+  --bg-secondary: #EDE8DF;
+  --text-primary: #1F1F1F;
+  --text-secondary: #2D2D2D;
+  --text-muted: #B8AFA3;
+  --accent-primary: #C97B5C;
+  --accent-secondary: #8A9A83;
+  --border-color: #B8AFA3;
+  --footer-bg: #1F1F1F;
+  --footer-text: #F5F1EA;
+  --footer-link: #C97B5C;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-beige-50 text-beige-800 font-sans;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-jost), system-ui, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-serif text-beige-700;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
   }
 }
 
@@ -26,7 +45,7 @@
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-xl bg-beige-600 px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:bg-beige-700 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beige-400 focus-visible:ring-offset-2;
+    @apply inline-flex items-center justify-center rounded-xl bg-beige-600 px-6 py-3 text-sm font-medium text-white transition-all duration-300 hover:bg-[#B56A4D] hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-beige-400 focus-visible:ring-offset-2;
   }
 
   .btn-outline {

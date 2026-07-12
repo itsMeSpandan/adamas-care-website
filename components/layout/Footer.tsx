@@ -20,15 +20,15 @@ const serviceLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-beige-900 text-beige-200">
+    <footer style={{ backgroundColor: 'var(--footer-bg)' }}>
       <div className="section-container section-padding">
         <div className="grid grid-cols-1 gap-12 md:grid-cols-2 lg:grid-cols-4">
           {/* Column 1: Logo + tagline */}
           <div>
-            <span className="font-serif text-2xl font-semibold italic text-beige-100">
+            <span className="font-serif text-2xl font-semibold italic" style={{ color: 'var(--footer-text)' }}>
               {BRAND.name}
             </span>
-            <p className="mt-3 text-sm leading-relaxed text-beige-300">
+            <p className="mt-3 text-sm leading-relaxed" style={{ color: 'var(--footer-text)', opacity: 0.8 }}>
               Where luxury meets tranquility. Discover your most radiant self
               with our expert team of beauty professionals.
             </p>
@@ -36,7 +36,7 @@ export default function Footer() {
 
           {/* Column 2: Quick links */}
           <div>
-            <h4 className="mb-4 font-serif text-base font-semibold text-beige-100">
+            <h4 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
               Quick Links
             </h4>
             <ul className="space-y-2">
@@ -44,7 +44,8 @@ export default function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-beige-300 transition-colors hover:text-beige-100"
+                    className="text-sm transition-colors hover:opacity-80"
+                    style={{ color: 'var(--footer-link)' }}
                   >
                     {link.label}
                   </Link>
@@ -55,7 +56,7 @@ export default function Footer() {
 
           {/* Column 3: Services */}
           <div>
-            <h4 className="mb-4 font-serif text-base font-semibold text-beige-100">
+            <h4 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
               Services
             </h4>
             <ul className="space-y-2">
@@ -63,7 +64,8 @@ export default function Footer() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-beige-300 transition-colors hover:text-beige-100"
+                    className="text-sm transition-colors hover:opacity-80"
+                    style={{ color: 'var(--footer-link)' }}
                   >
                     {link.label}
                   </Link>
@@ -74,15 +76,16 @@ export default function Footer() {
 
           {/* Column 4: Contact */}
           <div>
-            <h4 className="mb-4 font-serif text-base font-semibold text-beige-100">
+            <h4 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
               Contact
             </h4>
-            <ul className="space-y-2 text-sm text-beige-300">
+            <ul className="space-y-2 text-sm" style={{ color: 'var(--footer-text)', opacity: 0.8 }}>
               <li className="whitespace-pre-line leading-relaxed">{BRAND.address}</li>
               <li className="pt-2">
                 <a
                   href="tel:+9238381831"
-                  className="transition-colors hover:text-beige-100"
+                  className="transition-colors hover:opacity-80"
+                  style={{ color: 'var(--footer-link)' }}
                 >
                   +91 9238381831
                 </a>
@@ -90,7 +93,8 @@ export default function Footer() {
               <li>
                 <a
                   href={`mailto:${BRAND.email}`}
-                  className="transition-colors hover:text-beige-100"
+                  className="transition-colors hover:opacity-80"
+                  style={{ color: 'var(--footer-link)' }}
                 >
                   {BRAND.email}
                 </a>
@@ -101,9 +105,9 @@ export default function Footer() {
       </div>
 
       {/* Map embed */}
-      <div className="border-t border-beige-800">
+      <div className="border-t" style={{ borderColor: 'rgba(245,241,234,0.2)' }}>
         <div className="section-container">
-          <div className="overflow-hidden rounded-xl border border-beige-800">
+          <div className="overflow-hidden rounded-xl border" style={{ borderColor: 'rgba(245,241,234,0.2)' }}>
             <iframe
               title={`Map of ${BRAND.name}`}
               src={`https://maps.google.com/maps?q=${encodeURIComponent(BRAND.address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
@@ -119,9 +123,9 @@ export default function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-beige-800">
+      <div className="border-t" style={{ borderColor: 'rgba(245,241,234,0.2)' }}>
         <div className="section-container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-6 md:flex-row md:px-8">
-          <p className="text-xs text-beige-400">
+          <p className="text-xs" style={{ color: 'var(--footer-text)', opacity: 0.6 }}>
             &copy; {new Date().getFullYear()} {BRAND.name}. All rights
             reserved.
           </p>
@@ -132,7 +136,8 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Instagram"
-              className="text-beige-400 transition-colors hover:text-beige-200"
+              className="transition-colors hover:opacity-80"
+              style={{ color: 'var(--footer-link)' }}
             >
               <svg
                 width="18"
@@ -155,7 +160,8 @@ export default function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Facebook"
-              className="text-beige-400 transition-colors hover:text-beige-200"
+              className="transition-colors hover:opacity-80"
+              style={{ color: 'var(--footer-link)' }}
             >
               <svg
                 width="18"

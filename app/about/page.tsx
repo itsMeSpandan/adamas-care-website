@@ -123,7 +123,7 @@ export default function AboutPage() {
               grown from a small studio into a full-service beauty sanctuary.
             </p>
             <p className="leading-relaxed text-beige-800">
-              Every detail of {BRAND.name} — from the warm beige tones of our
+              Every detail of {BRAND.name} — from the warm ivory tones of our
               interiors to the curated selection of products on our shelves —
               has been thoughtfully chosen to create an atmosphere of calm
               luxury. We believe that the experience of beauty should be as

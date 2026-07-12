@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { COOKIE_NAMES, TOKEN_EXPIRY } from "@/lib/constants";
 
 const envSecret = process.env.SESSION_SECRET;
 if (!envSecret) {
@@ -10,10 +11,6 @@ if (!envSecret) {
   );
 }
 const SESSION_SECRET = new TextEncoder().encode(envSecret);
-
-const COOKIE_NAME = "adamascare_session";
-const ACCESS_TOKEN_EXPIRY = "15m";
-const REFRESH_TOKEN_EXPIRY = "7d";
 
 export interface SessionPayload {
   userId: string;
@@ -61,12 +58,12 @@ export async function verifyToken(
 export async function setSessionCookies(
   payload: SessionPayload
 ): Promise<{ accessToken: string; refreshToken: string }> {
-  const accessToken = await signToken(payload, ACCESS_TOKEN_EXPIRY);
-  const refreshToken = await signToken(payload, REFRESH_TOKEN_EXPIRY);
+  const accessToken = await signToken(payload, TOKEN_EXPIRY.access);
+  const refreshToken = await signToken(payload, TOKEN_EXPIRY.refresh);
 
   const cookieStore = await cookies();
 
-  cookieStore.set(COOKIE_NAME, accessToken, {
+  cookieStore.set(COOKIE_NAMES.session, accessToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -74,7 +71,7 @@ export async function setSessionCookies(
     maxAge: 15 * 60, // 15 minutes
   });
 
-  cookieStore.set("adamascare_refresh", refreshToken, {
+  cookieStore.set(COOKIE_NAMES.refresh, refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -90,28 +87,8 @@ export async function setSessionCookies(
  */
 export async function clearSessionCookies(): Promise<void> {
   const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
-  cookieStore.delete("adamascare_refresh");
-}
-
-/**
- * Read the session from the request cookies and verify it.
- * Returns the session payload or null if invalid/expired.
- */
-export async function getSession(): Promise<Session | null> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-
-  if (!token) return null;
-
-  const payload = await verifyToken(token);
-  if (!payload) return null;
-
-  return {
-    userId: payload.userId,
-    role: payload.role,
-    email: payload.email,
-  };
+  cookieStore.delete(COOKIE_NAMES.session);
+  cookieStore.delete(COOKIE_NAMES.refresh);
 }
 
 /**
@@ -121,7 +98,7 @@ export async function getSessionFromRequest(
   request: Request
 ): Promise<Session | null> {
   const cookieHeader = request.headers.get("cookie") || "";
-  const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`));
+  const match = cookieHeader.match(new RegExp(`${COOKIE_NAMES.session}=([^;]+)`));
   if (!match) return null;
 
   const token = match[1];
@@ -134,4 +111,3 @@ export async function getSessionFromRequest(
     email: payload.email,
   };
 }
-

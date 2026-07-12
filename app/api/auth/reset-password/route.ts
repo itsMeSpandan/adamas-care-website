@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
+import { rateLimit, getRateLimitKey, getEmailKey } from "@/lib/rate-limit";
 
+// Stage 3.1: Per-email + per-IP rate limiting for reset-password
 const limiter = rateLimit({ windowMs: 60_000, max: 5 }); // 5 attempts per minute
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,15 @@ import bcrypt from "bcrypt";
 const BCRYPT_ROUNDS = 12;
 
 export async function POST(request: Request) {
-  const key = getRateLimitKey(request, "reset-password");
+  // Stage 3.1: Rate limit by email + IP (prevents brute-force against specific accounts)
+  // Clone request to read body for email before consuming it
+  let rateLimitEmail = "";
+  try {
+    const cloned = request.clone();
+    const body = await cloned.json();
+    rateLimitEmail = body.email || "";
+  } catch { /* will fail validation below */ }
+  const key = rateLimitEmail ? getEmailKey(request, "reset-password", rateLimitEmail) : getRateLimitKey(request, "reset-password");
   const result = limiter.check(key);
 
   if (!result.success) {

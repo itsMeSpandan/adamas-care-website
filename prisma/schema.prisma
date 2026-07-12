@@ -113,6 +113,10 @@ model Booking {
   service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   user     User?    @relation(fields: [userId], references: [id])
   employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId, date])
+  @@index([userId])
+  @@index([email])
 }
 
 model PasswordResetToken {
@@ -128,6 +132,7 @@ model PasswordResetToken {
   // Uniqueness is scoped per user so two different users can share a 6-digit OTP
   // without violating the constraint (prevents 500 on forgot-password).
   @@unique([userId, token])
+  @@index([userId])
 }
 
 model EmployeeAvailability {
@@ -143,6 +148,7 @@ model EmployeeAvailability {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, dayOfWeek, startTime])
+  @@index([employeeId])
 }
 
 model AvailabilityOverride {

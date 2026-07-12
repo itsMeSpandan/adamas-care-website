@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
+const BCRYPT_ROUNDS = 12;
 
 const servicesData = [
   {
@@ -466,9 +468,14 @@ async function main() {
   await prisma.testimonial.createMany({ data: testimonialsData });
   console.log(`✅ Seeded ${testimonialsData.length} testimonials`);
 
-  // Seed users
-  await prisma.user.createMany({ data: usersData });
-  console.log(`✅ Seeded ${usersData.length} users`);
+  // Seed users (hash passwords with bcrypt)
+  for (const user of usersData) {
+    const hashedPassword = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
+    await prisma.user.create({
+      data: { ...user, password: hashedPassword },
+    });
+  }
+  console.log(`✅ Seeded ${usersData.length} users (passwords bcrypt-hashed)`);
 
   // Seed employee availability (recurring weekly windows)
   const availabilityData = [

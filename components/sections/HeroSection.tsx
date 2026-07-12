@@ -1,155 +1,134 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { animate, createTimeline, stagger } from "animejs";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import LoginModal from "@/components/ui/LoginModal";
 
-/* ─── headline copy (two lines per spec) ─── */
-const headlineWords = [
-  "Relax into your best self".split(" "),
-  "Beauty & wellness, unhurried".split(" "),
-];
+/* ─── copy ─── */
+const headline = "Your Perfect Look Awaits";
 
 const subtext =
-  "Experience the art of beauty at Adamas Care. Our team of expert stylists and therapists deliver bespoke treatments that leave you feeling radiant, confident, and renewed.";
+  "Discover personalized beauty treatments crafted by our expert team. From rejuvenating facials to transformative lifts, we bring out your natural radiance.";
+
+const totalSlides = 3;
 
 export default function HeroSection() {
-  const headlineRef = useRef<HTMLHeadingElement>(null);
-  const subtextRef = useRef<HTMLParagraphElement>(null);
-  const ctaGroupRef = useRef<HTMLDivElement>(null);
-  const illustrationRef = useRef<HTMLDivElement>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [loginOpen, setLoginOpen] = useState(false);
 
-  /* Check prefers-reduced-motion once at mount (static — acceptable for one-shot load anim) */
-  const prefersReducedMotion =
-    typeof window !== "undefined"
-      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      : false;
-
-  useEffect(() => {
-    if (prefersReducedMotion) return;
-
-    const wordEls = headlineRef.current?.querySelectorAll(".hero-word");
-    if (!wordEls?.length) return;
-
-    /* Timeline: headline → subtext → CTAs */
-    const tl = createTimeline({ defaults: { ease: "outExpo" } });
-
-    // Headline words stagger in
-    tl.add(Array.from(wordEls), {
-      opacity: [0, 1],
-      translateY: [24, 0],
-      duration: 600,
-      delay: stagger(60),
-    });
-
-    // Subtext fades up after headline settles
-    tl.add(
-      subtextRef.current!,
-      {
-        opacity: [0, 1],
-        translateY: [16, 0],
-        duration: 500,
-      },
-      "-=200"
-    );
-
-    // CTAs fade/scale in last
-    tl.add(
-      ctaGroupRef.current!,
-      {
-        opacity: [0, 1],
-        translateY: [12, 0],
-        scale: [0.97, 1],
-        duration: 450,
-      },
-      "-=250"
-    );
-
-    /* Illustration — separate slower entrance, starts roughly parallel with headline */
-    const illustrationAnim = animate(illustrationRef.current!, {
-      opacity: [0, 1],
-      translateY: [32, 0],
-      duration: 800,
-      ease: "outExpo",
-      delay: 100,
-    });
-
-    /* Cleanup: pause all animations on unmount */
-    return () => {
-      tl.pause();
-      illustrationAnim.pause();
-    };
-  }, [prefersReducedMotion]);
+  const words = headline.split(" ");
+  const mid = Math.ceil(words.length / 2);
+  const line1 = words.slice(0, mid);
+  const line2 = words.slice(mid);
 
   return (
-    <section className="relative flex min-h-[90vh] items-center bg-beige-50 px-4 py-20 md:px-8 lg:px-16">
-      <div className="section-container mx-auto grid items-center gap-12 lg:grid-cols-2">
-        {/* ── Left: text + CTAs ── */}
+    <>
+      <section className="relative -mt-24 flex h-[calc(100vh+6rem)] w-full overflow-hidden">
+      {/* ── Left Panel: Warm Ivory background ── */}
+      <div className="relative z-10 flex w-full flex-col justify-center px-6 py-24 md:w-[55%] md:px-12 lg:w-[50%] lg:px-20" style={{ backgroundColor: 'var(--bg-primary)' }}>
         <div className="max-w-xl">
-          {/* Headline */}
-          <h1
-            ref={headlineRef}
-            className="font-serif text-5xl font-medium leading-tight text-beige-700 md:text-6xl lg:text-7xl"
-          >
-            {headlineWords.map((line, lineIdx) => (
-              <span key={lineIdx} className="block">
-                {line.map((word, wordIdx) => (
-                  <span
-                    key={`${lineIdx}-${wordIdx}`}
-                    className="hero-word inline-block"
-                    style={{ opacity: prefersReducedMotion ? 1 : 0 }}
-                  >
-                    {word}{" "}
-                  </span>
-                ))}
-              </span>
-            ))}
+          {/* Uppercase label */}
+          <span className="mb-4 inline-block rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)' }}>
+            Your Feel Fresh:
+          </span>
+
+          {/* Headline — two lines */}
+          <h1 className="mt-5 font-serif text-5xl font-bold leading-[1.1] tracking-tight md:text-6xl lg:text-7xl" style={{ color: 'var(--text-primary)' }}>
+            <span className="block">
+              {line1.map((word, idx) => (
+                <span key={`l1-${idx}`} className="inline-block">
+                  {word}{" "}
+                </span>
+              ))}
+            </span>
+            <span className="block">
+              {line2.map((word, idx) => (
+                <span key={`l2-${idx}`} className="inline-block">
+                  {word}{" "}
+                </span>
+              ))}
+            </span>
           </h1>
 
           {/* Subtext */}
-          <p
-            ref={subtextRef}
-            className="mt-6 max-w-[48ch] text-lg leading-relaxed text-beige-800"
-            style={{ opacity: prefersReducedMotion ? 1 : 0 }}
-          >
+          <p className="mt-6 max-w-md text-base leading-relaxed md:text-lg" style={{ color: 'var(--text-muted)' }}>
             {subtext}
           </p>
 
-          {/* CTAs */}
-          <div
-            ref={ctaGroupRef}
-            className="mt-8 flex flex-wrap gap-4"
-            style={{ opacity: prefersReducedMotion ? 1 : 0 }}
-          >
-            <Link href="/booking" className="btn-primary px-8 py-3.5 text-base">
-              Book appointment
-            </Link>
+          {/* CTA */}
+          <div className="mt-10 flex items-center gap-4">
             <Link
-              href="/services"
-              className="btn-outline px-8 py-3.5 text-base"
+              href="/booking"
+              className="inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+              style={{ backgroundColor: 'var(--accent-primary)' }}
             >
-              View services
+              Book Appointment
             </Link>
+            <button
+              onClick={() => setLoginOpen(true)}
+              className="inline-flex items-center justify-center rounded-full border px-8 py-3.5 text-sm font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+              style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)', backgroundColor: 'transparent' }}
+            >
+              Sign In
+            </button>
+          </div>
+
+          {/* Carousel dots — below CTA */}
+          <div className="mt-8 flex items-center gap-2">
+            {Array.from({ length: totalSlides }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveSlide(i)}
+                className="h-2.5 rounded-full transition-all duration-300"
+                style={{
+                  width: i === activeSlide ? '2rem' : '0.625rem',
+                  backgroundColor: i === activeSlide ? 'var(--text-primary)' : 'var(--border-color)',
+                }}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
           </div>
         </div>
-
-        {/* ── Right: illustration ── */}
-        <div
-          ref={illustrationRef}
-          className="relative mx-auto flex h-[480px] w-full max-w-[420px] items-center justify-center lg:h-[560px] lg:max-w-none"
-          style={{ opacity: prefersReducedMotion ? 1 : 0 }}
-        >
-          <Image
-            src="/images/hero-illustration.png"
-            alt="Relaxing spa day — woman in robe with cucumber face mask"
-            fill
-            className="object-contain"
-            sizes="(max-width: 1024px) 80vw, 420px"
-            priority
-          />
-        </div>
       </div>
-    </section>
+
+      {/* ── Right Panel: Hero image with fade gradient ── */}
+      <div className="relative hidden w-[45%] md:block lg:w-[50%]">
+        {/* Gradient overlay on left edge — blends into blush-pink */}
+        <div
+          className="absolute inset-y-0 left-0 z-20 w-32 md:w-48 lg:w-64"
+          style={{
+            background:
+              "linear-gradient(to right, var(--bg-primary) 0%, var(--bg-primary) 15%, rgba(245,241,234,0.8) 40%, rgba(245,241,234,0.3) 70%, transparent 100%)",
+          }}
+        />
+
+        {/* Hero image */}
+        <Image
+          src="/images/hero-beauty.png"
+          alt="Smiling woman with radiant skin — beauty treatment results"
+          fill
+          className="object-cover object-[center_20%]"
+          sizes="(max-width: 768px) 100vw, 50vw"
+          priority
+        />
+      </div>
+
+      {/* ── Mobile fallback: decorative background image ── */}
+      <div className="absolute inset-0 z-0 md:hidden">
+        <Image
+          src="/images/hero-beauty.png"
+          alt=""
+          aria-hidden="true"
+          fill
+          className="object-cover object-center opacity-20"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-beige-50/90 via-beige-50/80 to-beige-50" />
+      </div>
+      </section>
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+    </>
   );
 }

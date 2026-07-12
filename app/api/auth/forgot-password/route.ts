@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
+import { rateLimit, getEmailKey } from "@/lib/rate-limit";
 
+// Stage 3.1: Per-email + per-IP rate limiting for forgot-password
 const limiter = rateLimit({ windowMs: 60_000, max: 3 }); // 3 attempts per minute
 
 export const dynamic = "force-dynamic";
@@ -14,23 +15,6 @@ function generateOtp(): string {
 }
 
 export async function POST(request: Request) {
-  const key = getRateLimitKey(request, "forgot-password");
-  const result = limiter.check(key);
-
-  if (!result.success) {
-    return NextResponse.json(
-      { error: "Too many attempts. Please try again later." },
-      {
-        status: 429,
-        headers: {
-          "Retry-After": String(Math.ceil(result.retryAfterMs / 1000)),
-          "X-RateLimit-Limit": "3",
-          "X-RateLimit-Remaining": "0",
-        },
-      }
-    );
-  }
-
   try {
     const { email } = await request.json();
 
@@ -38,6 +22,24 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Email is required" },
         { status: 400 }
+      );
+    }
+
+    // Stage 3.1: Rate limit by email + IP (prevents brute-force against specific accounts)
+    const key = getEmailKey(request, "forgot-password", email);
+    const result = limiter.check(key);
+
+    if (!result.success) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(Math.ceil(result.retryAfterMs / 1000)),
+            "X-RateLimit-Limit": "3",
+            "X-RateLimit-Remaining": "0",
+          },
+        }
       );
     }
 
@@ -68,16 +70,17 @@ export async function POST(request: Request) {
       },
     });
 
+    // Stage 3.6: Never log OTP in production
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`🔑 OTP for ${user.email}: ${otp}`);
+    }
+
     // Send OTP via EmailJS
     if (isEmailJsConfigured()) {
       const emailResult = await sendOtpEmail(user.email, user.name, otp);
 
       if (!emailResult.success) {
         console.error("Failed to send OTP email:", emailResult.error);
-        // In development, log the OTP so it can be tested without EmailJS
-        if (process.env.NODE_ENV === "development") {
-          console.log(`\n🔑 OTP for ${user.email}: ${otp}\n`);
-        }
         return NextResponse.json(
           { error: "Failed to send OTP. Please try again or contact support." },
           { status: 500 }
@@ -85,16 +88,11 @@ export async function POST(request: Request) {
       }
 
       console.log(`📧 OTP sent to ${user.email}`);
-    } else {
-      // Fallback: log OTP to console (for development without EmailJS)
-      console.log(`\n🔑 OTP for ${user.email}: ${otp}\n`);
     }
 
     return NextResponse.json(
       {
         message: "If an account exists with this email, an OTP has been sent.",
-        // In development, include OTP in response for testing
-        ...(process.env.NODE_ENV === "development" ? { otp } : {}),
       },
       {
         headers: {

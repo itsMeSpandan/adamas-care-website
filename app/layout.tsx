@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Jost } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/components/ui/Toast";
+
 import { BRAND } from "@/lib/brand";
-import Navbar from "@/components/layout/Navbar";
+import PillNavWrapper from "@/components/layout/PillNavWrapper";
+
 import Footer from "@/components/layout/Footer";
 import "./globals.css";
 
@@ -34,11 +36,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${cormorant.variable} ${jost.variable}`}>
-      <body className="min-h-screen bg-beige-50 font-sans text-beige-800 antialiased">
+      <body className="min-h-screen font-sans antialiased">
         <AuthProvider>
           <ToastProvider>
-            <Navbar />
-            <main>{children}</main>
+            <PillNavWrapper />
+            <main className="pt-24">{children}</main>
             <Footer />
           </ToastProvider>
         </AuthProvider>

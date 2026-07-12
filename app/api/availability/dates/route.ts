@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { timeToMinutes, subtractTimeRange, mergeWindows } from "@/lib/slots";
 
 export const dynamic = "force-dynamic";
 
@@ -108,69 +109,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
-function subtractTimeRange(
-  windows: { start: string; end: string }[],
-  blockStart: string,
-  blockEnd: string
-): { start: string; end: string }[] {
-  const result: { start: string; end: string }[] = [];
-  const bs = timeToMinutes(blockStart);
-  const be = timeToMinutes(blockEnd);
-
-  for (const w of windows) {
-    const ws = timeToMinutes(w.start);
-    const we = timeToMinutes(w.end);
-
-    if (be <= ws || bs >= we) {
-      result.push(w);
-    } else {
-      if (bs > ws) {
-        result.push({ start: w.start, end: minutesToTime(Math.min(bs, we)) });
-      }
-      if (be < we) {
-        result.push({ start: minutesToTime(Math.max(be, ws)), end: w.end });
-      }
-    }
-  }
-
-  return result;
-}
-
-function mergeWindows(
-  windows: { start: string; end: string }[]
-): { start: string; end: string }[] {
-  if (windows.length === 0) return [];
-
-  const sorted = [...windows].sort(
-    (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
-  );
-
-  const merged: { start: string; end: string }[] = [sorted[0]];
-
-  for (let i = 1; i < sorted.length; i++) {
-    const last = merged[merged.length - 1];
-    if (timeToMinutes(sorted[i].start) <= timeToMinutes(last.end)) {
-      last.end =
-        timeToMinutes(sorted[i].end) > timeToMinutes(last.end)
-          ? sorted[i].end
-          : last.end;
-    } else {
-      merged.push(sorted[i]);
-    }
-  }
-
-  return merged;
 }

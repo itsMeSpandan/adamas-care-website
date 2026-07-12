@@ -22,9 +22,47 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   updateUser: (data: Partial<AuthUser>) => void;
   logout: () => void;
+  refreshSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+/**
+ * Attempt to refresh the access token using the httpOnly refresh cookie.
+ * Returns true if refresh succeeded, false otherwise.
+ */
+async function tryRefreshToken(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Wrapper around fetch that automatically retries with token refresh on 401.
+ * Use this for any authenticated API call that might fail due to expired access token.
+ */
+export async function authFetch(
+  url: string,
+  options?: RequestInit
+): Promise<Response> {
+  let res = await fetch(url, { ...options, credentials: "include" });
+
+  // If 401, try to refresh the token and retry once
+  if (res.status === 401) {
+    const refreshed = await tryRefreshToken();
+    if (refreshed) {
+      res = await fetch(url, { ...options, credentials: "include" });
+    }
+  }
+
+  return res;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -82,6 +120,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser((prev) => (prev ? { ...prev, ...data } : null));
   }, []);
 
+  // Stage 3.2: Refresh session by re-fetching /api/auth/me
+  // Called after a successful token refresh to update the UI state
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch("/api/auth/me", { credentials: "include" });
+      const data = await res.json();
+      if (data.user) {
+        setUser(data.user);
+        return true;
+      }
+      // No valid session after refresh — clear user
+      setUser(null);
+      return false;
+    } catch {
+      setUser(null);
+      return false;
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -93,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         updateUser,
         logout,
+        refreshSession,
       }}
     >
       {children}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BRAND } from "@/lib/brand";
 import { getBookings, getServices } from "@/lib/queries";
 import { formatPrice, formatBookingDate } from "@/lib/utils";
+import { statusColors } from "@/lib/constants";
 import { db } from "@/lib/db";
 import RevenueChart from "@/components/ui/RevenueChart";
 
@@ -85,12 +86,7 @@ export default async function AdminPage() {
       revenue: formatPrice(completedBookings.filter((b) => b.serviceId === s.id).reduce((sum, b) => sum + b.price, 0)),
     }));
 
-  const statusColors: Record<string, string> = {
-    confirmed: "bg-emerald-100 text-emerald-700",
-    pending: "bg-amber-100 text-amber-700",
-    cancelled: "bg-red-100 text-red-700",
-    completed: "bg-blue-100 text-blue-700",
-  };
+  
 
   // Aggregate revenue by month from completed bookings (last 12 months)
   const months: { label: string; shortLabel: string; revenue: number; prevRevenue: number }[] = [];

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { getAvailableSlotStrings } from "@/lib/availability";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/available-slots?employeeId=xxx&date=2024-06-15&serviceId=yyy
+ * GET /api/available-slots?employeeId=xxx&date=2024-06-15
  *
- * Returns available time slots for an employee on a given date,
- * based on their EmployeeAvailability windows minus overrides and existing bookings.
+ * DEPRECATED: Prefer /api/availability which returns richer data.
+ * This endpoint is kept for backward compatibility with existing client code.
+ * Returns 24h "HH:MM" slot strings.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -22,109 +23,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [year, month, day] = dateStr.split("-").map(Number);
-    if (isNaN(year) || isNaN(month) || isNaN(day)) {
-      return NextResponse.json({ error: "Invalid date" }, { status: 400 });
-    }
-
-    const date = new Date(Date.UTC(year, month - 1, day));
-    const jsDay = date.getUTCDay();
-    const dbDay = jsDay === 0 ? 6 : jsDay - 1;
-
-    // Fetch EmployeeAvailability for this day
-    const availability = await db.employeeAvailability.findMany({
-      where: {
-        employeeId,
-        dayOfWeek: dbDay,
-        isActive: true,
-      },
-      orderBy: { startTime: "asc" },
-    });
-
-    if (availability.length === 0) {
-      return NextResponse.json({ slots: [] });
-    }
-
-    // Build working windows
-    let workingWindows: { start: string; end: string }[] = availability.map((a) => ({
-      start: a.startTime,
-      end: a.endTime,
-    }));
-
-    // Apply overrides
-    const dayStart = new Date(Date.UTC(year, month - 1, day));
-    const overrides = await db.availabilityOverride.findMany({
-      where: { employeeId, overrideDate: dayStart },
-    });
-
-    for (const override of overrides) {
-      if (override.isBlocked) {
-        if (!override.startTime) {
-          workingWindows = [];
-          break;
-        }
-        workingWindows = subtractTimeRange(workingWindows, override.startTime, override.endTime || "23:59");
-      } else if (override.startTime && override.endTime) {
-        workingWindows.push({ start: override.startTime, end: override.endTime });
-      }
-    }
-
-    if (workingWindows.length === 0) {
-      return NextResponse.json({ slots: [] });
-    }
-
-    workingWindows = mergeWindows(workingWindows);
-
-    // Generate 30-minute slots
-    const potentialSlots: string[] = [];
-    for (const w of workingWindows) {
-      potentialSlots.push(...generateSlots(w.start, w.end));
-    }
-
-    const uniqueSlots = Array.from(new Set(potentialSlots)).sort();
-
-    // Fetch existing bookings
-    const dayEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-    const existingBookings = await db.booking.findMany({
-      where: {
-        employeeId,
-        date: { gte: dayStart, lte: dayEnd },
-        status: { notIn: ["cancelled"] },
-      },
-      select: { slotStart: true, slotEnd: true, timeSlot: true },
-    });
-
-    // Build set of booked minutes
-    const bookedMinutes = new Set<number>();
-    for (const b of existingBookings) {
-      if (b.slotStart && b.slotEnd) {
-        let t = timeToMinutes(b.slotStart);
-        const end = timeToMinutes(b.slotEnd);
-        while (t < end) {
-          bookedMinutes.add(t);
-          t += 30;
-        }
-      } else if (b.timeSlot) {
-        bookedMinutes.add(parseDisplayTime(b.timeSlot));
-      }
-    }
-
-    // Filter out booked slots
-    let availableSlots = uniqueSlots.filter((slot) => !bookedMinutes.has(parseDisplayTime(slot)));
-
-    // Filter past slots if today
-    const now = new Date();
-    const isToday =
-      date.getUTCFullYear() === now.getFullYear() &&
-      date.getUTCMonth() === now.getMonth() &&
-      date.getUTCDate() === now.getDate();
-
-    if (isToday) {
-      const nowMinutes = now.getHours() * 60 + now.getMinutes();
-      availableSlots = availableSlots.filter((slot) => parseDisplayTime(slot) > nowMinutes);
-    }
-
-    return NextResponse.json({ slots: availableSlots });
+    const slots = await getAvailableSlotStrings(employeeId, dateStr);
+    return NextResponse.json({ slots });
   } catch (error) {
     console.error("Failed to fetch available slots:", error);
     return NextResponse.json(
@@ -132,95 +32,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function minutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-  return `${displayHour}:${mins === 0 ? "00" : mins} ${period}`;
-}
-
-function parseDisplayTime(slot: string): number {
-  const match = slot.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-  if (!match) return timeToMinutes(slot);
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (period === "PM" && hours !== 12) hours += 12;
-  if (period === "AM" && hours === 12) hours = 0;
-  return hours * 60 + minutes;
-}
-
-function generateSlots(startTime: string, endTime: string): string[] {
-  const slots: string[] = [];
-  let totalMinutes = timeToMinutes(startTime);
-  const endMinutes = timeToMinutes(endTime);
-
-  while (totalMinutes + 30 <= endMinutes) {
-    slots.push(minutesToTime(totalMinutes));
-    totalMinutes += 30;
-  }
-
-  return slots;
-}
-
-function subtractTimeRange(
-  windows: { start: string; end: string }[],
-  blockStart: string,
-  blockEnd: string
-): { start: string; end: string }[] {
-  const result: { start: string; end: string }[] = [];
-  const bs = timeToMinutes(blockStart);
-  const be = timeToMinutes(blockEnd);
-
-  for (const w of windows) {
-    const ws = timeToMinutes(w.start);
-    const we = timeToMinutes(w.end);
-
-    if (be <= ws || bs >= we) {
-      result.push(w);
-    } else {
-      if (bs > ws) {
-        result.push({ start: w.start, end: minutesToTime(Math.min(bs, we)) });
-      }
-      if (be < we) {
-        result.push({ start: minutesToTime(Math.max(be, ws)), end: w.end });
-      }
-    }
-  }
-
-  return result;
-}
-
-function mergeWindows(
-  windows: { start: string; end: string }[]
-): { start: string; end: string }[] {
-  if (windows.length === 0) return [];
-
-  const sorted = [...windows].sort(
-    (a, b) => timeToMinutes(a.start) - timeToMinutes(b.start)
-  );
-
-  const merged: { start: string; end: string }[] = [sorted[0]];
-
-  for (let i = 1; i < sorted.length; i++) {
-    const last = merged[merged.length - 1];
-    if (timeToMinutes(sorted[i].start) <= timeToMinutes(last.end)) {
-      last.end =
-        timeToMinutes(sorted[i].end) > timeToMinutes(last.end)
-          ? sorted[i].end
-          : last.end;
-    } else {
-      merged.push(sorted[i]);
-    }
-  }
-
-  return merged;
 }
