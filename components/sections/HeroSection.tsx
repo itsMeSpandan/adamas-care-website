@@ -3,7 +3,11 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import LoginModal from "@/components/ui/LoginModal";
+import dynamic from "next/dynamic";
+
+const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
+  ssr: false,
+});
 
 /* ─── copy ─── */
 const headline = "Your Perfect Look Awaits";

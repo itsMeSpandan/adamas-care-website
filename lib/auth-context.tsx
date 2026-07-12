@@ -11,6 +11,8 @@ export interface AuthUser {
   role: UserRole;
   avatarUrl: string;
   employeeId?: string;
+  loyaltyPoints?: number;
+  createdAt?: string;
 }
 
 interface AuthContextType {

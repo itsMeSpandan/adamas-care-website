@@ -2,9 +2,14 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth-context";
-import WeeklyTimetable from "@/components/ui/WeeklyTimetable";
 import { parseDateKey } from "@/lib/utils";
+
+const WeeklyTimetable = dynamic(() => import("@/components/ui/WeeklyTimetable"), {
+  ssr: false,
+  loading: () => <div className="h-64 w-full animate-pulse rounded-card bg-beige-100" />,
+});
 
 interface EmployeeData {
   id: string;

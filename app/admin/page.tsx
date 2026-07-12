@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import nextDynamic from "next/dynamic";
 import { BRAND } from "@/lib/brand";
 import { getBookings, getServices } from "@/lib/queries";
 import { formatPrice, formatBookingDate } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
 import { db } from "@/lib/db";
-import RevenueChart from "@/components/ui/RevenueChart";
+
+const RevenueChart = nextDynamic(() => import("@/components/ui/RevenueChart"));
 
 export const metadata: Metadata = {
   title: `Admin Dashboard | ${BRAND.name}`,

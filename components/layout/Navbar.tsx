@@ -3,8 +3,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth-context";
-import LoginModal from "@/components/ui/LoginModal";
+
+const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
+  ssr: false,
+});
 import UserPanel from "@/components/ui/UserPanel";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/lib/brand";

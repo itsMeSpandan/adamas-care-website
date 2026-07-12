@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { gsap } from "gsap";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import LoginModal from "@/components/ui/LoginModal";
+
+const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
+  ssr: false,
+});
 import UserPanel from "@/components/ui/UserPanel";
 import "./PillNav.css";
 
@@ -23,6 +28,7 @@ interface PillNavProps {
   ease?: string;
   baseColor?: string;
   pillColor?: string;
+  pillHoverBg?: string;
   hoveredPillTextColor?: string;
   pillTextColor?: string;
   onMobileMenuClick?: () => void;
@@ -38,20 +44,20 @@ const PillNav = ({
   ease = "power3.easeOut",
   baseColor = "#fff",
   pillColor = "#120F17",
+  pillHoverBg = "#C9A86A",
   hoveredPillTextColor = "#120F17",
   pillTextColor,
   onMobileMenuClick,
   initialLoadAnimation = true,
 }: PillNavProps) => {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
+  const router = useRouter();
   const resolvedPillTextColor = pillTextColor ?? baseColor;
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const circleRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const tlRefs = useRef<(gsap.core.Timeline | null)[]>([]);
   const activeTweenRefs = useRef<(gsap.core.Tween | null)[]>([]);
-  const logoImgRef = useRef<HTMLImageElement | null>(null);
-  const logoTweenRef = useRef<gsap.core.Tween | null>(null);
   const hamburgerRef = useRef<HTMLButtonElement | null>(null);
   const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const navItemsRef = useRef<HTMLDivElement | null>(null);
@@ -161,19 +167,6 @@ const PillNav = ({
     });
   };
 
-  const handleLogoEnter = () => {
-    const img = logoImgRef.current;
-    if (!img) return;
-    logoTweenRef.current?.kill();
-    gsap.set(img, { rotate: 0 });
-    logoTweenRef.current = gsap.to(img, {
-      rotate: 360,
-      duration: 0.2,
-      ease,
-      overwrite: "auto",
-    });
-  };
-
   const toggleMobileMenu = () => {
     const newState = !isMobileMenuOpen;
     setIsMobileMenuOpen(newState);
@@ -228,6 +221,7 @@ const PillNav = ({
   const cssVars = {
     ["--base" as string]: baseColor,
     ["--pill-bg" as string]: pillColor,
+    ["--pill-hover-bg" as string]: pillHoverBg,
     ["--hover-text" as string]: hoveredPillTextColor,
     ["--pill-text" as string]: resolvedPillTextColor,
   };
@@ -236,15 +230,25 @@ const PillNav = ({
     <>
       <div className="pill-nav-container">
         <nav className={`pill-nav ${className}`} aria-label="Primary" style={cssVars}>
-          <Link
-            className="pill-logo"
-            href="/"
-            aria-label="Home"
-            onMouseEnter={handleLogoEnter}
-            ref={logoRef}
-          >
-            <img src={logo} alt={logoAlt} ref={logoImgRef} />
-          </Link>
+          {isAuthenticated && user?.avatarUrl ? (
+            <Link
+              className="pill-logo pill-logo--avatar"
+              href="/profile"
+              aria-label="My profile"
+              ref={logoRef}
+            >
+              <img src={user.avatarUrl} alt={user.name ?? "Profile"} loading="lazy" decoding="async" />
+            </Link>
+          ) : (
+            <Link
+              className="pill-logo"
+              href="/"
+              aria-label="Home"
+              ref={logoRef}
+            >
+              <img src={logo} alt={logoAlt} loading="lazy" decoding="async" />
+            </Link>
+          )}
 
           <div className="pill-nav-items desktop-only" ref={navItemsRef}>
             <ul className="pill-list" role="menubar">
@@ -287,6 +291,33 @@ const PillNav = ({
             <span className="hamburger-line" />
           </button>
         </nav>
+
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              router.push("/");
+            }}
+            aria-label="Log out"
+            className="pill-logout"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#DC2626"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" x2="9" y1="12" y2="12" />
+            </svg>
+          </button>
+        )}
 
         <div className="mobile-menu-popover mobile-only" ref={mobileMenuRef} style={cssVars}>
           <ul className="mobile-menu-list">

@@ -206,7 +206,7 @@ export default function AdminEmployeesPage() {
             >
               <div className="flex items-start gap-4">
                 <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-beige-200">
-                  <img src={emp.imageUrl} alt={emp.name} className="h-full w-full object-cover" />
+                  <img src={emp.imageUrl} alt={emp.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between">

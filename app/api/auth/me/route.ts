@@ -20,6 +20,8 @@ export async function GET(request: Request) {
         role: true,
         avatarUrl: true,
         employeeId: true,
+        loyaltyPoints: true,
+        createdAt: true,
       },
     });
 

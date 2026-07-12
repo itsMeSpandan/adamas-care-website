@@ -17,7 +17,6 @@ import { displayTime, cn } from "@/lib/utils";
 import ServiceCard from "@/components/cards/ServiceCard";
 import TeamCard from "@/components/cards/TeamCard";
 import Skeleton from "@/components/ui/Skeleton";
-import TestimonialsRow from "@/components/sections/TestimonialsRow";
 import BookingCTA from "@/components/sections/BookingCTA";
 
 /* ---------- types ---------- */
@@ -110,6 +109,15 @@ export default function LoggedInHome() {
   }, []);
   const greeting = hour !== null ? getGreetingData(hour) : { greeting: "Welcome", subline: "We're glad to see you." };
 
+  const memberSince = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      })
+    : "—";
+
+  const loyaltyPoints = user?.loyaltyPoints ?? 0;
+
   /* --- upcoming booking --- */
   const [nextBooking, setNextBooking] = useState<Booking | null>(null);
   const [bookingsLoading, setBookingsLoading] = useState(true);
@@ -184,26 +192,30 @@ export default function LoggedInHome() {
   return (
     <>
       {/* ===== 1. Personalised Greeting Hero ===== */}
-      <section className="relative flex min-h-[70vh] items-center overflow-hidden bg-beige-50 px-4 py-20 md:px-8 lg:px-16">
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-beige-50 px-4 py-20 md:px-8 lg:px-16">
         {/* Soft gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(200,168,130,0.15),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(140,106,72,0.08),transparent_60%)]" />
 
-        <div className="section-container relative z-10 mx-auto max-w-3xl text-center">
-          <motion.p
+        <div className="relative z-10 max-w-3xl text-left">
+          {/* Highlighted greeting eyebrow */}
+          <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="font-serif text-lg tracking-wide text-beige-500"
+            className="mb-4 flex items-center gap-3"
           >
-            {greeting.greeting},
-          </motion.p>
+            <span className="h-0.5 w-10 rounded-full bg-[#C9A86A]" />
+            <span className="font-serif text-sm font-semibold uppercase tracking-[0.25em] text-[#C9A86A]">
+              {greeting.greeting}
+            </span>
+          </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="mt-2 font-serif text-5xl font-semibold leading-tight text-beige-700 md:text-6xl lg:text-7xl"
+            className="font-serif text-5xl font-semibold leading-tight text-beige-700 md:text-6xl lg:text-7xl"
           >
             {user?.name ?? "there"}
           </motion.h1>
@@ -212,16 +224,40 @@ export default function LoggedInHome() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-6 text-lg leading-relaxed text-beige-800"
+            className="mt-6 max-w-xl text-lg leading-relaxed text-beige-800"
           >
             {greeting.subline}
           </motion.p>
 
+          {/* Member since + Loyalty points */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.35 }}
-            className="mt-8 flex justify-center"
+            transition={{ duration: 0.6, delay: 0.28 }}
+            className="mt-8 flex flex-wrap gap-x-12 gap-y-4"
+          >
+            <div className="flex flex-col">
+              <span className="text-xs font-medium uppercase tracking-[0.15em] text-beige-400">
+                Member since
+              </span>
+              <span className="mt-1 font-serif text-xl text-beige-700">{memberSince}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-medium uppercase tracking-[0.15em] text-beige-400">
+                Loyalty points
+              </span>
+              <span className="mt-1 font-serif text-xl text-beige-700">
+                {loyaltyPoints}
+                <span className="ml-1 text-sm font-sans font-normal text-beige-400">pts</span>
+              </span>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="mt-10 flex justify-start"
           >
             <Link href="/booking" className="btn-primary gap-2 px-8 py-3.5 text-base">
               <CalendarCheck className="h-5 w-5" />
@@ -479,8 +515,7 @@ export default function LoggedInHome() {
         </div>
       </section>
 
-      {/* ===== 6. Testimonials + CTA ===== */}
-      <TestimonialsRow />
+      {/* ===== 6. Booking CTA ===== */}
       <BookingCTA />
     </>
   );
