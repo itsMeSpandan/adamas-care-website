@@ -12,6 +12,7 @@ type AuthMode = "signin" | "signup";
 interface LoginModalProps {
   open: boolean;
   onClose: () => void;
+  initialMode?: AuthMode;
 }
 
 function validateEmail(email: string): string | null {
@@ -33,10 +34,10 @@ function validateName(name: string): string | null {
   return null;
 }
 
-export default function LoginModal({ open, onClose }: LoginModalProps) {
+export default function LoginModal({ open, onClose, initialMode = "signin" }: LoginModalProps) {
   const { login } = useAuth();
   const { showToast } = useToast();
-  const [mode, setMode] = useState<AuthMode>("signin");
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -46,6 +47,12 @@ export default function LoginModal({ open, onClose }: LoginModalProps) {
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const nameRef = useRef<HTMLInputElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setMode(initialMode);
+    }
+  }, [initialMode, open]);
 
   // Focus first field when mode changes
   useEffect(() => {

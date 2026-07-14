@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 
 const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
   ssr: false,
@@ -18,13 +19,26 @@ const subtext =
 const totalSlides = 3;
 
 export default function HeroSection() {
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
   const [activeSlide, setActiveSlide] = useState(0);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
   const words = headline.split(" ");
   const mid = Math.ceil(words.length / 2);
   const line1 = words.slice(0, mid);
   const line2 = words.slice(mid);
+
+  const handleBookClick = () => {
+    if (!isAuthenticated) {
+      setAuthMode("signup");
+      setLoginOpen(true);
+      return;
+    }
+
+    router.push("/booking");
+  };
 
   return (
     <>
@@ -62,15 +76,19 @@ export default function HeroSection() {
 
           {/* CTA */}
           <div className="mt-10 flex items-center gap-4">
-            <Link
-              href="/booking"
+            <button
+              type="button"
+              onClick={handleBookClick}
               className="inline-flex items-center justify-center rounded-full px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
               style={{ backgroundColor: 'var(--accent-primary)' }}
             >
               Book Appointment
-            </Link>
+            </button>
             <button
-              onClick={() => setLoginOpen(true)}
+              onClick={() => {
+                setAuthMode("signin");
+                setLoginOpen(true);
+              }}
               className="inline-flex items-center justify-center rounded-full border px-8 py-3.5 text-sm font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
               style={{ color: 'var(--text-primary)', borderColor: 'var(--border-color)', backgroundColor: 'transparent' }}
             >
@@ -132,7 +150,7 @@ export default function HeroSection() {
         <div className="absolute inset-0 bg-gradient-to-b from-beige-50/90 via-beige-50/80 to-beige-50" />
       </div>
       </section>
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} initialMode={authMode} />
     </>
   );
 }
