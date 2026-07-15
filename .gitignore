@@ -41,4 +41,12 @@ next-env.d.ts
 DATABASE_CONNECTION.md
 PROJECT_OVERVIEW.md
 
+/snapshots 
+AUDIT_REPORT.md
+FIX_MASTER_PROMPT.md
+SECURITY_AUDIT_REPORT.md
+STAGE1_2_REPORT.md
+/docs
+snapshot-pages.ts 
+
 nul

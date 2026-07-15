@@ -1,11 +1,12 @@
 {
   "name": "salon_spa_website",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --hostname 0.0.0.0",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:push": "npx prisma db push",
@@ -32,6 +33,7 @@
     "jose": "^6.2.3",
     "lucide-react": "^1.21.0",
     "next": "14.2.35",
+    "playwright": "^1.61.1",
     "react": "^18",
     "react-day-picker": "^10.0.1",
     "react-dom": "^18",
