@@ -50,8 +50,8 @@ export const POST = requireRole("admin", async (request: Request) => {
     const newStart = timeToMinutes(startTime);
     const newEnd = timeToMinutes(endTime);
 
-    const hasOverlap = existing.some((row) => {
-      const rowStart = timeToMinutes(row.startTime);
+  const hasOverlap = existing.some((row: { startTime: string; endTime: string }) => {
+    const rowStart = timeToMinutes(row.startTime);
       const rowEnd = timeToMinutes(row.endTime);
       return newStart < rowEnd && rowStart < newEnd;
     });

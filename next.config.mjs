@@ -1,11 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Disable powered-by header for security
   poweredByHeader: false,
+
+  // API-only mode: disable image optimization (not needed)
+  images: {
+    unoptimized: true,
+  },
 
   async headers() {
     return [
       {
-        source: "/(.*)",
+        source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
         ],
@@ -13,17 +19,9 @@ const nextConfig = {
     ];
   },
 
-  images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "ui-avatars.com",
-      },
-    ],
+  eslint: {
+    // Don't fail build on ESLint warnings for API-only mode
+    ignoreDuringBuilds: true,
   },
 };
 

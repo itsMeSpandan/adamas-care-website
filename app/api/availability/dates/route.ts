@@ -52,10 +52,10 @@ export async function GET(request: NextRequest) {
       if (availability.length === 0) continue;
 
       // Build working windows from availability
-      let workingWindows: { start: string; end: string }[] = availability.map((a) => ({
-        start: a.startTime,
-        end: a.endTime,
-      }));
+        let workingWindows: { start: string; end: string }[] = availability.map((a: { startTime: string; endTime: string }) => ({
+          start: a.startTime,
+          end: a.endTime,
+        }));
 
       // Check overrides
       const dayStart = new Date(Date.UTC(year, month - 1, day));

@@ -2,15 +2,18 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { COOKIE_NAMES, TOKEN_EXPIRY } from "@/lib/constants";
 
-const envSecret = process.env.SESSION_SECRET;
-if (!envSecret) {
-  // Fail closed: never sign JWTs with a known/committed fallback secret.
-  // SESSION_SECRET must be set in the deployment environment (and locally for dev).
-  throw new Error(
-    "SESSION_SECRET is not set. Refusing to start with an insecure JWT secret."
-  );
+// Lazily resolve SESSION_SECRET so the module can be imported at build time
+// without requiring the env var to be present (only needed at runtime).
+function getSessionSecret(): Uint8Array {
+  const envSecret = process.env.SESSION_SECRET;
+  if (!envSecret) {
+    throw new Error(
+      "SESSION_SECRET is not set. Refusing to sign/verify JWTs without an " +
+      "explicit secret. Set it in your .env or deployment environment."
+    );
+  }
+  return new TextEncoder().encode(envSecret);
 }
-const SESSION_SECRET = new TextEncoder().encode(envSecret);
 
 export interface SessionPayload {
   userId: string;
@@ -31,11 +34,12 @@ export async function signToken(
   payload: SessionPayload,
   expiresIn: string
 ): Promise<string> {
+  const secret = getSessionSecret();
   return new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
-    .sign(SESSION_SECRET);
+    .sign(secret);
 }
 
 /**
@@ -45,7 +49,8 @@ export async function verifyToken(
   token: string
 ): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, SESSION_SECRET);
+    const secret = getSessionSecret();
+    const { payload } = await jwtVerify(token, secret);
     return payload as unknown as SessionPayload;
   } catch {
     return null;

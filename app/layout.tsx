@@ -1,50 +1,21 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Jost } from "next/font/google";
-import { AuthProvider } from "@/lib/auth-context";
-import { ToastProvider } from "@/components/ui/Toast";
-
-import { BRAND } from "@/lib/brand";
-import PillNavWrapper from "@/components/layout/PillNavWrapper";
-
-import Footer from "@/components/layout/Footer";
-import "./globals.css";
-
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-cormorant",
-  display: "swap",
-});
-
-const jost = Jost({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
-  variable: "--font-jost",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
-  title: BRAND.title,
-  description:
-    `Experience luxury beauty treatments at ${BRAND.name}. Expert stylists, premium skincare, therapeutic massage, and bespoke bridal services.`,
+  title: "Adamas Care API",
+  description: "Backend API for Adamas Care salon management mobile app",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${jost.variable}`}>
-      <body className="min-h-screen font-sans antialiased">
-        <AuthProvider>
-          <ToastProvider>
-            <PillNavWrapper />
-            <main className="pt-24">{children}</main>
-            <Footer />
-          </ToastProvider>
-        </AuthProvider>
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }
+
+// Force dynamic rendering for all pages
+export const dynamic = "force-dynamic";

@@ -74,7 +74,7 @@ async function isSlotWithinAvailability(
   });
   if (availability.length === 0) return false;
 
-  let windows = availability.map((a) => ({
+  let windows = availability.map((a: { startTime: string; endTime: string }) => ({
     start: timeToMinutes(a.startTime),
     end: timeToMinutes(a.endTime),
   }));
@@ -267,80 +267,6 @@ export const POST = requireAuth(async (request: Request) => {
     console.error("Failed to create booking:", error);
     return NextResponse.json(
       { error: "Failed to create booking" },
-      { status: 500 }
-    );
-  }
-});
-
-// ------------------------- PATCH -----------------------
-
-export const PATCH = requireAuth(async (request: Request, context) => {
-  const { id } = await context!.params!;
-
-  const session = await getSessionFromRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
-
-  try {
-    const booking = await db.booking.findUnique({ where: { id } });
-    if (!booking) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    }
-
-    // Authorization: staff may modify any booking; a customer may only modify
-    // their own (matched by userId or email).
-    const isStaff = session.role === "admin" || session.role === "employee";
-    const isOwner =
-      (booking.userId != null && booking.userId === session.userId) ||
-      booking.email === session.email;
-    if (!isStaff && !isOwner) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { status, rating, review } = body;
-
-    // Handle status updates
-    if (status) {
-      if (!["pending", "confirmed", "completed", "cancelled"].includes(status)) {
-        return NextResponse.json(
-          { error: "Invalid status. Must be one of: pending, confirmed, completed, cancelled" },
-          { status: 400 }
-        );
-      }
-      const updated = await db.booking.update({ where: { id }, data: { status } });
-      return NextResponse.json({ booking: updated });
-    }
-
-    // Handle rating/review updates
-    if (rating !== undefined) {
-      const numRating = Number(rating);
-      if (isNaN(numRating) || numRating < 0 || numRating > 5) {
-        return NextResponse.json(
-          { error: "Invalid rating. Must be between 0 and 5" },
-          { status: 400 }
-        );
-      }
-
-      const updated = await db.booking.update({
-        where: { id },
-        data: {
-          rating: Math.round(numRating * 10) / 10,
-          review: review ?? null,
-        },
-      });
-      return NextResponse.json({ booking: updated });
-    }
-
-    return NextResponse.json(
-      { error: "Nothing to update. Provide status, rating, or review." },
-      { status: 400 }
-    );
-  } catch (error) {
-    console.error("Failed to update booking:", error);
-    return NextResponse.json(
-      { error: "Failed to update booking" },
       { status: 500 }
     );
   }

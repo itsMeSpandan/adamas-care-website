@@ -50,3 +50,5 @@ STAGE1_2_REPORT.md
 snapshot-pages.ts 
 
 nul
+
+.env.local
