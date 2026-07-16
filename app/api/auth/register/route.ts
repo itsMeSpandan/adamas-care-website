@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { setSessionCookies } from "@/lib/auth";
 
 const limiter = rateLimit({ windowMs: 60_000, max: 3 }); // 3 registrations per minute

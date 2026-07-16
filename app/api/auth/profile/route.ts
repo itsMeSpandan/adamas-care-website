@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateUser, findUserById, findUserByEmail } from "@/lib/queries";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 

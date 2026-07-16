@@ -7,7 +7,7 @@ const limiter = rateLimit({ windowMs: 60_000, max: 5 }); // 5 attempts per minut
 export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 
 const BCRYPT_ROUNDS = 12;
 
