@@ -14,7 +14,7 @@ export default function TestimonialsRow() {
     fetch("/api/testimonials")
       .then((res) => res.json())
       .then((data) => {
-        setTestimonials(data);
+        setTestimonials(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));

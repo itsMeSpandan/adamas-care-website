@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { getBookings } from "@/lib/queries";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
+import { applyRedemptionToBooking, linkRedemptionToBooking } from "@/lib/loyalty";
 
 export const dynamic = "force-dynamic";
 
@@ -157,6 +158,7 @@ export const POST = requireAuth(async (request: Request) => {
       email,
       phone,
       notes,
+      redemptionCode,
     } = body;
 
     if (
@@ -245,6 +247,56 @@ export const POST = requireAuth(async (request: Request) => {
       );
     }
 
+    const finalPrice = service.price;
+    const postSession = await getSessionFromRequest(request);
+    const sessionUserId = postSession?.userId ?? null;
+
+    if (redemptionCode && sessionUserId) {
+      // Everything inside one transaction: validate → create booking → link redemption
+      try {
+        const result = await db.$transaction(async (tx) => {
+          // 1. Validate redemption and calculate discount (throws if invalid)
+          const { discountedPrice, discountAmount: disc, redemptionId } = await applyRedemptionToBooking(
+            tx,
+            sessionUserId,
+            redemptionCode,
+            finalPrice
+          );
+          // 2. Create booking with discounted price
+          const booking = await tx.booking.create({
+            data: {
+              serviceId,
+              employeeId,
+              userId: userId || null,
+              date: bookingDate,
+              timeSlot: slotStart,
+              slotStart: slotStart || null,
+              slotEnd: slotEnd || null,
+              name,
+              email,
+              phone,
+              notes: notes || null,
+              price: discountedPrice,
+            },
+          });
+          // 3. Mark redemption as used and link to booking (single clean update)
+          if (redemptionId) {
+            await linkRedemptionToBooking(tx, redemptionId, booking.id);
+          }
+          return { booking, discountAmount: disc, redemptionId };
+        });
+
+        return NextResponse.json({
+          booking: result.booking,
+          discount: result.discountAmount > 0 ? { amount: result.discountAmount, redemptionId: result.redemptionId } : undefined,
+        }, { status: 201 });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to apply redemption";
+        return NextResponse.json({ error: message }, { status: 400 });
+      }
+    }
+
+    // No redemption code — create booking directly
     const booking = await db.booking.create({
       data: {
         serviceId,
@@ -258,7 +310,7 @@ export const POST = requireAuth(async (request: Request) => {
         email,
         phone,
         notes: notes || null,
-        price: service.price,
+        price: finalPrice,
       },
     });
 

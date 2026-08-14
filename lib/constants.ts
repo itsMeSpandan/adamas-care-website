@@ -33,3 +33,21 @@ export const TOKEN_EXPIRY = {
   access: "15m",
   refresh: "7d",
 } as const;
+
+// ─── Loyalty Points ───────────────────────────────────────────────────────────
+
+/**
+ * Points earned per currency unit spent.
+ * 0.1 means 1 point per ₹10 spent (e.g. ₹85 haircut → 8 points).
+ * Adjust this value to tune the earning rate.
+ */
+export const LOYALTY_POINTS_PER_CURRENCY_UNIT = 0.1;
+
+/** Maximum points balance a user can hold (prevents abuse). */
+export const LOYALTY_MAX_BALANCE = 100_000;
+
+/** Redemption code length (alphanumeric). */
+export const LOYALTY_REDEMPTION_CODE_LENGTH = 8;
+
+/** Default redemption expiry in days (null = no expiry). */
+export const LOYALTY_REDEMPTION_EXPIRY_DAYS = 90;

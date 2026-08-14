@@ -13,9 +13,7 @@
  */
 
 import { db } from "@/lib/db";
-import bcrypt from "bcrypt";
-
-const BCRYPT_ROUNDS = 12;
+import { hashPassword } from "@/lib/crypto";
 
 function isBcryptHash(password: string): boolean {
   return password.startsWith("$2a$") || password.startsWith("$2b$");
@@ -46,10 +44,11 @@ async function migratePasswords() {
 
   for (const user of plainTextUsers) {
     try {
-      const hashedPassword = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
+      const hashedPassword = await hashPassword(user.password);
 
       // Verify the hash round-trips correctly
-      const verified = await bcrypt.compare(user.password, hashedPassword);
+      const { comparePassword } = await import("@/lib/crypto");
+      const verified = await comparePassword(user.password, hashedPassword);
       if (!verified) {
         console.error(`❌ Hash verification failed for ${user.email} — skipping.`);
         failed++;

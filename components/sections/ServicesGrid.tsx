@@ -23,16 +23,18 @@ export default function ServicesGrid({ featured = false }: { featured?: boolean 
     fetch("/api/services")
       .then((res) => res.json())
       .then((data) => {
-        setServices(data);
+        setServices(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const displayedServices = services.filter((s) => {
-    const matchesCategory = activeCategory === "All" || s.category === activeCategory;
-    return featured ? s.featured && matchesCategory : matchesCategory;
-  });
+  const displayedServices = Array.isArray(services)
+    ? services.filter((s) => {
+        const matchesCategory = activeCategory === "All" || s.category === activeCategory;
+        return featured ? s.featured && matchesCategory : matchesCategory;
+      })
+    : [];
 
   if (loading) {
     return (

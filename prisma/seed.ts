@@ -1,8 +1,7 @@
 import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
+import { hashPassword } from "@/lib/crypto";
 
 const prisma = new PrismaClient();
-const BCRYPT_ROUNDS = 12;
 
 const servicesData = [
   {
@@ -470,7 +469,7 @@ async function main() {
 
   // Seed users (hash passwords with bcrypt)
   for (const user of usersData) {
-    const hashedPassword = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
+    const hashedPassword = await hashPassword(user.password);
     await prisma.user.create({
       data: { ...user, password: hashedPassword },
     });

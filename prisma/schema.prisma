@@ -22,19 +22,22 @@ enum BookingStatus {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
-  password      String
-  role          UserRole @default(user)
-  avatarUrl     String
-  employeeId    String?
-  loyaltyPoints Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                String   @id @default(cuid())
+  name              String
+  email             String   @unique
+  password          String
+  role              UserRole @default(user)
+  avatarUrl         String
+  employeeId        String?
+  loyaltyPoints     Int      @default(0)
+  mustChangePassword Boolean @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   bookings             Booking[]
   passwordResetTokens  PasswordResetToken[]
+  loyaltyTransactions  LoyaltyTransaction[]
+  redemptions          RewardRedemption[]
 }
 
 model Service {
@@ -50,6 +53,7 @@ model Service {
 
   employeeServices EmployeeService[]
   bookings         Booking[]
+  loyaltyRewards   LoyaltyReward[]
 }
 
 model Employee {
@@ -115,6 +119,9 @@ model Booking {
   user     User?    @relation(fields: [userId], references: [id])
   employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
+  loyaltyTransactions LoyaltyTransaction[]
+  rewardRedemptions  RewardRedemption[]
+
   @@index([employeeId, date])
   @@index([userId])
   @@index([email])
@@ -165,6 +172,95 @@ model AvailabilityOverride {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@unique([employeeId, overrideDate, startTime])
+}
+
+// ─── Loyalty & Rewards ─────────────────────────────────────────────────────────
+
+enum LoyaltyTransactionType {
+  earn
+  redeem
+  adjust
+  expire
+  refund_reversal
+}
+
+model LoyaltyTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        LoyaltyTransactionType
+  points      Int
+  balanceAfter Int
+  bookingId   String?
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  rewardRedemptionId String? @unique
+  redemption  RewardRedemption? @relation(fields: [rewardRedemptionId], references: [id], onDelete: SetNull)
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([bookingId])
+}
+
+model LoyaltyReward {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  pointsCost  Int
+  discountType String
+  discountValue Float
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  isActive    Boolean  @default(true)
+  stock       Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions RewardRedemption[]
+}
+
+enum RedemptionStatus {
+  active
+  used
+  expired
+  cancelled
+}
+
+model RewardRedemption {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardId    String
+  reward      LoyaltyReward @relation(fields: [rewardId], references: [id])
+  pointsSpent Int
+  status      RedemptionStatus @default(active)
+  code        String   @unique
+  bookingId   String?
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  usedAt      DateTime?
+  expiresAt   DateTime?
+
+  transaction LoyaltyTransaction?
+
+  @@index([userId, status])
+}
+
+// ─── Holidays ────────────────────────────────────────────────────────────────
+
+model Holiday {
+  id          String   @id @default(cuid())
+  name        String
+  date        DateTime
+  type        String   // "public" | "festive" | "custom"
+  isRecurring Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([date, name])
+  @@index([date])
+  @@index([type])
 }
 
 

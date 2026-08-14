@@ -2,6 +2,8 @@
 
 import RoleLayout from "@/components/layout/RoleLayout";
 import type { NavLink } from "@/components/layout/RoleLayout";
+import MustChangePasswordModal from "@/components/ui/MustChangePasswordModal";
+import { useAuth } from "@/lib/auth-context";
 
 const employeeLinks: NavLink[] = [
   {
@@ -16,14 +18,24 @@ const employeeLinks: NavLink[] = [
 ];
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+
+  const showPasswordModal = user?.mustChangePassword === true;
+
   return (
-    <RoleLayout
-      role="employee"
-      portalLabel="Employee Portal"
-      roleLabel="Employee"
-      links={employeeLinks}
-    >
-      {children}
-    </RoleLayout>
+    <>
+      <MustChangePasswordModal
+        open={showPasswordModal}
+        onComplete={() => {}}
+      />
+      <RoleLayout
+        role="employee"
+        portalLabel="Employee Portal"
+        roleLabel="Employee"
+        links={employeeLinks}
+      >
+        {children}
+      </RoleLayout>
+    </>
   );
 }

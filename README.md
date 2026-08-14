@@ -12,17 +12,17 @@ portal with their own schedule, reviews, and weekly bookings.
 
 ## ✨ Features
 
+> 📄 **Full feature documentation:** See [FEATURES.md](./FEATURES.md) for comprehensive details on all features including the Loyalty Points & Rewards system, Holidays, and API reference.
+
 - **Public site** — home, services catalog, team/specialists, about, contact.
 - **Booking flow** — 3-step wizard: pick service → pick specialist/date/time → confirm.
-  Slots are computed from each employee's weekly availability and one-off overrides, and
-  double-booking is prevented.
-- **Authentication** — JWT in httpOnly cookies (`jose`), bcrypt password hashing, sign up /
-  sign in / sign out, profile editing, and OTP-based password reset (EmailJS).
-- **Admin dashboard** — revenue & booking analytics, recent bookings, top services, and
-  management of bookings, services, employees, and weekly availability / overrides.
-- **Employee portal** — personal schedule, weekly timetable, this-week bookings, and reviews.
-- **Security headers** — HSTS, frame-options, nosniff, referrer-policy, permissions-policy
-  applied globally via `middleware.ts`.
+  Double-booking is prevented via atomic DB checks.
+- **Authentication** — JWT in httpOnly cookies, `hash-wasm` bcrypt, OTP password reset.
+- **Admin dashboard** — analytics, bookings, services, employees, schedule, holidays, loyalty management.
+- **Employee portal** — personal schedule, weekly timetable, bookings, reviews.
+- **Loyalty points & rewards** — earn points on completed bookings, redeem for discounts.
+- **Holidays** — Indian public/festive holidays + admin custom holidays on booking calendar.
+- **Security headers** — HSTS, frame-options, nosniff, referrer-policy, permissions-policy.
 
 ---
 
@@ -34,8 +34,8 @@ portal with their own schedule, reviews, and weekly bookings.
 | Language | TypeScript (strict) |
 | Styling | Tailwind CSS |
 | Database | PostgreSQL (Neon) via Prisma 6 |
-| Auth | `jose` JWT in httpOnly cookies, `bcrypt` password hashing |
-| Email | EmailJS (OTP) — Resend wired but legacy |
+| Auth | `jose` JWT in httpOnly cookies, `hash-wasm` bcrypt password hashing |
+| Email | EmailJS (OTP) |
 | Animation | Framer Motion, animejs |
 | Validation | Server-side checks (see Security) |
 
@@ -141,6 +141,9 @@ Passwords are `<email-prefix>123`. Use these to explore each role:
 | `npm run build` / `npm run start` | Production build / serve |
 | `npm run lint` | ESLint |
 | `npm run db:seed` | Seed services, team, demo accounts |
+| `npm run db:seed-holidays` | Seed Indian public & festive holidays |
+| `npm run db:seed-test-user` | Create test customer with loyalty data |
+| `npm run db:backfill-loyalty` | Award points for historical completed bookings |
 | `npx prisma generate` / `db push` / `db studio` | Prisma client, schema push, GUI |
 
 ---

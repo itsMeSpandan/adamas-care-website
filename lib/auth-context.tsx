@@ -12,6 +12,7 @@ export interface AuthUser {
   avatarUrl: string;
   employeeId?: string;
   loyaltyPoints?: number;
+  mustChangePassword?: boolean;
   createdAt?: string;
 }
 

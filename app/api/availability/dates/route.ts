@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
  *
  * Returns an array of date strings (YYYY-MM-DD) in the given month
  * that have at least one available slot for the specified employee.
+ * Excludes dates that fall on a holiday.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -29,11 +30,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid month" }, { status: 400 });
     }
 
+    // Fetch holidays for this month to exclude them
+    const monthStart = new Date(Date.UTC(year, month - 1, 1));
+    const monthEnd = new Date(Date.UTC(year, month - 1, new Date(year, month, 0).getDate(), 23, 59, 59, 999));
+    const holidays = await db.holiday.findMany({
+      where: { date: { gte: monthStart, lte: monthEnd } },
+      select: { date: true, name: true },
+    });
+    // Build a Set of holiday date strings for O(1) lookup
+    const holidayDates = new Set(holidays.map((h) => h.date.toISOString().split("T")[0]));
+
     const daysInMonth = new Date(year, month, 0).getDate();
     const availableDates: string[] = [];
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+      // Skip holidays — no bookings on public/festive/custom holidays
+      if (holidayDates.has(dateStr)) continue;
+
       const date = new Date(Date.UTC(year, month - 1, day));
 
       // Convert JS day (0=Sun) to DB day (0=Mon, 6=Sun)

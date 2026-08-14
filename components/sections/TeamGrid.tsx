@@ -13,13 +13,15 @@ export default function TeamGrid({ limit }: { limit?: number }) {
     fetch("/api/employees")
       .then((res) => res.json())
       .then((data) => {
-        setEmployees(data);
+        setEmployees(Array.isArray(data) ? data : []);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  const displayed = limit ? employees.slice(0, limit) : employees;
+  const displayed = Array.isArray(employees)
+    ? (limit ? employees.slice(0, limit) : employees)
+    : [];
 
   if (loading) {
     return (

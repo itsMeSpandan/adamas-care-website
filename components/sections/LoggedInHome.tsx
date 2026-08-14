@@ -9,6 +9,7 @@ import {
   Users,
   User,
   CalendarCheck,
+  Gift,
   ArrowRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -100,7 +101,7 @@ const cardChild = {
    ================================================================ */
 
 export default function LoggedInHome() {
-  const { user } = useAuth();
+  const { user, refreshSession } = useAuth();
 
   /* --- greeting hour (client-only to avoid hydration mismatch) --- */
   const [hour, setHour] = useState<number | null>(null);
@@ -117,6 +118,12 @@ export default function LoggedInHome() {
     : "—";
 
   const loyaltyPoints = user?.loyaltyPoints ?? 0;
+
+  /* --- refresh auth context on mount to get fresh loyalty points --- */
+  useEffect(() => {
+    refreshSession();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* --- upcoming booking --- */
   const [nextBooking, setNextBooking] = useState<Booking | null>(null);
@@ -259,10 +266,19 @@ export default function LoggedInHome() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="mt-10 flex justify-start"
           >
-            <Link href="/booking" className="btn-primary gap-2 px-8 py-3.5 text-base">
-              <CalendarCheck className="h-5 w-5" />
-              Book a Treatment
-            </Link>
+            <div className="flex flex-wrap items-center gap-4">
+              <Link href="/booking" className="btn-primary gap-2 px-8 py-3.5 text-base">
+                <CalendarCheck className="h-5 w-5" />
+                Book a Treatment
+              </Link>
+              <Link
+                href="/account/loyalty?tab=rewards"
+                className="btn-outline gap-2 px-6 py-3.5 text-base"
+              >
+                <Gift className="h-5 w-5" />
+                View Rewards
+              </Link>
+            </div>
           </motion.div>
         </div>
       </section>

@@ -6,7 +6,7 @@ const limiter = rateLimit({ windowMs: 60_000, max: 5 }); // 5 attempts per minut
 export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
-import bcrypt from "bcrypt";
+import { comparePassword } from "@/lib/crypto";
 import { setSessionCookies } from "@/lib/auth";
 
 export async function POST(request: Request) {
@@ -39,8 +39,7 @@ export async function POST(request: Request) {
 
     const user = await db.user.findUnique({ where: { email } });
 
-    // Use bcrypt.compare instead of plain-text comparison
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || !(await comparePassword(password, user.password))) {
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }

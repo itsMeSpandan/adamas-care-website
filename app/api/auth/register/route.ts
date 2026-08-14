@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
-import bcrypt from "bcrypt";
+import { hashPassword } from "@/lib/crypto";
 import { setSessionCookies } from "@/lib/auth";
 
 const limiter = rateLimit({ windowMs: 60_000, max: 3 }); // 3 registrations per minute
-const BCRYPT_ROUNDS = 12;
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +68,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash password with bcrypt before storing
-    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const hashedPassword = await hashPassword(password);
 
     const user = await db.user.create({
       data: {

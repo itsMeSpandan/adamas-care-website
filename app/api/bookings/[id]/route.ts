@@ -1,9 +1,29 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { updateBookingStatus } from "@/lib/queries";
 import { requireAuth } from "@/lib/require-auth";
+import { awardPointsForBooking, clawbackPointsForBooking } from "@/lib/loyalty";
 
 export const dynamic = "force-dynamic";
+
+// Helper function for retry with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  baseDelay = 500
+): Promise<T> {
+  let lastError: Error;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt === maxRetries) break;
+      const delay = baseDelay * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError!;
+}
 
 export const PATCH = requireAuth(async (request: Request, context) => {
   const { id } = await context!.params!;
@@ -19,7 +39,19 @@ export const PATCH = requireAuth(async (request: Request, context) => {
           { status: 400 }
         );
       }
-      const booking = await updateBookingStatus(id, status);
+      // Atomic: status update + loyalty in a single transaction to prevent desync
+      const booking = await db.$transaction(async (tx) => {
+        const updated = await tx.booking.update({ where: { id }, data: { status } });
+
+        if (status === "completed" && updated.userId) {
+          await retryWithBackoff(() => awardPointsForBooking(id, tx));
+        } else if (status === "cancelled") {
+          await retryWithBackoff(() => clawbackPointsForBooking(id, tx));
+        }
+
+        return updated;
+      });
+
       return NextResponse.json({ booking });
     }
 

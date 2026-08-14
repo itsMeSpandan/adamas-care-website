@@ -7,9 +7,7 @@ const limiter = rateLimit({ windowMs: 60_000, max: 5 }); // 5 attempts per minut
 export const dynamic = "force-dynamic";
 
 import { db } from "@/lib/db";
-import bcrypt from "bcrypt";
-
-const BCRYPT_ROUNDS = 12;
+import { hashPassword } from "@/lib/crypto";
 
 export async function POST(request: Request) {
   // Stage 3.1: Rate limit by email + IP (prevents brute-force against specific accounts)
@@ -87,8 +85,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash the new password before storing
-    const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
+    const hashedPassword = await hashPassword(password);
 
     await db.user.update({
       where: { id: user.id },

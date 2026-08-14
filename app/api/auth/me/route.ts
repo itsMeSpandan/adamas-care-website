@@ -21,6 +21,7 @@ export async function GET(request: Request) {
         avatarUrl: true,
         employeeId: true,
         loyaltyPoints: true,
+        mustChangePassword: true,
         createdAt: true,
       },
     });

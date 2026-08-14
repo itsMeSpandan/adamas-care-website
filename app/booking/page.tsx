@@ -12,6 +12,13 @@ import StarIcon from "@/components/ui/StarIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
 
+interface Holiday {
+  id: string;
+  name: string;
+  date: string;
+  type: string;
+}
+
 interface TimeSlot {
   start: string;
   end: string;
@@ -36,10 +43,10 @@ export default function BookingPage() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [datesLoading, setDatesLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   // Form fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -55,15 +62,18 @@ export default function BookingPage() {
     }
   }, [user]);
 
-  // Fetch services and employees
+  // Fetch services, employees, and holidays
   useEffect(() => {
+    const year = new Date().getFullYear();
     Promise.all([
       fetch("/api/services").then((res) => res.json()),
       fetch("/api/employees").then((res) => res.json()),
+      fetch(`/api/holidays?year=${year}`).then((res) => res.json()),
     ])
-      .then(([servicesData, employeesData]) => {
+      .then(([servicesData, employeesData, holidaysData]) => {
         setServices(servicesData);
         setEmployees(Array.isArray(employeesData) ? employeesData : employeesData.employees || []);
+        setHolidays(holidaysData.holidays || []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -456,9 +466,11 @@ export default function BookingPage() {
                       }}
                       modifiers={{
                         available: availableDates.map((d) => new Date(d + "T00:00:00")),
+                        holiday: holidays.map((h) => new Date(h.date + "T00:00:00")),
                       }}
                       modifiersStyles={{
                         available: { backgroundColor: "var(--color-beige-100, #f5f0eb)", fontWeight: 600 },
+                        holiday: { backgroundColor: "#fef2f2", color: "#dc2626", textDecoration: "line-through" },
                       }}
                       classNames={{
                         month_caption: "text-beige-700 font-serif font-semibold",
@@ -469,6 +481,28 @@ export default function BookingPage() {
                         today: "!font-bold !text-beige-600",
                       }}
                     />
+                    {/* Holiday legend */}
+                    {holidays.length > 0 && (
+                      <div className="mt-3 border-t border-beige-100 pt-3">
+                        <p className="text-xs font-medium text-beige-500 mb-2">Upcoming Holidays</p>
+                        <div className="flex flex-wrap gap-2">
+                          {holidays
+                            .filter((h) => new Date(h.date + "T00:00:00") >= new Date())
+                            .slice(0, 6)
+                            .map((h) => (
+                              <span
+                                key={h.id}
+                                className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs text-red-600"
+                              >
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                                </svg>
+                                {h.name} ({format(new Date(h.date + "T00:00:00"), "MMM d")})
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

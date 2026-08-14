@@ -50,3 +50,8 @@ STAGE1_2_REPORT.md
 snapshot-pages.ts 
 
 nul
+
+# MCP server configs (may contain API keys)
+.mcp.json
+.aidesigner/*
+!.aidesigner/.gitkeep

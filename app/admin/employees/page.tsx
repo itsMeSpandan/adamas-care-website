@@ -44,7 +44,8 @@ export default function AdminEmployeesPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [generatedEmail, setGeneratedEmail] = useState<string | null>(null);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; password: string } | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const fetchData = () => {
     Promise.all([
@@ -64,7 +65,7 @@ export default function AdminEmployeesPage() {
   const openAdd = () => {
     setEditingId(null);
     setForm(emptyForm);
-    setGeneratedEmail(null);
+    setGeneratedCredentials(null);
     setModalOpen(true);
   };
 
@@ -80,13 +81,13 @@ export default function AdminEmployeesPage() {
       instagramHandle: emp.instagramHandle || "",
       serviceIds: emp.serviceIds,
     });
-    setGeneratedEmail(null);
+    setGeneratedCredentials(null);
     setModalOpen(true);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    setGeneratedEmail(null);
+    setGeneratedCredentials(null);
     try {
       if (editingId) {
         await fetch(`/api/employees/${editingId}`, {
@@ -101,8 +102,8 @@ export default function AdminEmployeesPage() {
           body: JSON.stringify(form),
         });
         const data = await res.json();
-        if (data.email) {
-          setGeneratedEmail(data.email);
+        if (data.email && data.password) {
+          setGeneratedCredentials({ email: data.email, password: data.password });
         }
       }
       setModalOpen(false);
@@ -122,6 +123,24 @@ export default function AdminEmployeesPage() {
     }
   };
 
+  const copyToClipboard = async (text: string, field: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    }
+  };
+
   const toggleService = (svcId: string) => {
     setForm((prev) => ({
       ...prev,
@@ -131,8 +150,8 @@ export default function AdminEmployeesPage() {
     }));
   };
 
-  // Email is now fetched from the Employee record in the database
-  const displayEmail = form.email || "";
+  // Email is auto-generated from the name, shown in the form
+  const displayEmail = form.name ? form.name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, ".") + "@" + (BRAND.domain || "adamascare.com") : "";
 
   return (
     <div className="space-y-6">
@@ -150,28 +169,60 @@ export default function AdminEmployeesPage() {
         </button>
       </div>
 
-      {/* Generated email notification */}
+      {/* Generated credentials notification */}
       <AnimatePresence>
-        {generatedEmail && (
+        {generatedCredentials && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="rounded-card border border-emerald-200 bg-emerald-50 px-6 py-4"
+            className="rounded-card border border-amber-300 bg-amber-50 px-6 py-5"
           >
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
-                  <polyline points="20 6 9 17 4 12" />
+              <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-100">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" />
                 </svg>
               </div>
-              <div>
-                <p className="text-sm font-medium text-emerald-700">Employee created successfully!</p>
-                <p className="mt-1 text-sm text-emerald-600">
-                  Auto-generated email: <span className="font-mono font-semibold">{generatedEmail}</span>
-                </p>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-amber-800">Employee created! Save these credentials — they won&apos;t be shown again.</p>
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center gap-3 rounded-lg bg-white/60 px-4 py-2.5 border border-amber-200">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-amber-600 uppercase tracking-wider">Email</p>
+                      <p className="font-mono text-sm font-semibold text-beige-800 truncate">{generatedCredentials.email}</p>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(generatedCredentials.email, "email")}
+                      className="flex-shrink-0 rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 transition-all hover:bg-amber-100 active:scale-95"
+                    >
+                      {copiedField === "email" ? (
+                        <span className="flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg> Copied</span>
+                      ) : (
+                        <span className="flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg> Copy</span>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3 rounded-lg bg-white/60 px-4 py-2.5 border border-amber-200">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-amber-600 uppercase tracking-wider">Password</p>
+                      <p className="font-mono text-sm font-semibold text-beige-800">{generatedCredentials.password}</p>
+                    </div>
+                    <button
+                      onClick={() => copyToClipboard(generatedCredentials.password, "password")}
+                      className="flex-shrink-0 rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 transition-all hover:bg-amber-100 active:scale-95"
+                    >
+                      {copiedField === "password" ? (
+                        <span className="flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg> Copied</span>
+                      ) : (
+                        <span className="flex items-center gap-1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg> Copy</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-amber-600">The employee will be required to change this password on first login.</p>
               </div>
-              <button onClick={() => setGeneratedEmail(null)} className="ml-auto text-emerald-400 hover:text-emerald-600">
+              <button onClick={() => setGeneratedCredentials(null)} className="flex-shrink-0 text-amber-400 hover:text-amber-600">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" x2="6" y1="6" y2="18" /><line x1="6" x2="18" y1="6" y2="18" />
                 </svg>
@@ -338,17 +389,25 @@ export default function AdminEmployeesPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-beige-700">Email *</label>
-                    <input
-                      type="email"
-                      value={form.email}
-                      onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      placeholder={`employee@${BRAND.domain}`}
-                      className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
-                    />
-                    {displayEmail && !editingId && (
-                      <p className="mt-1.5 text-xs text-beige-500">
-                        Employee email: <span className="font-mono font-medium text-beige-700">{displayEmail}</span>
+                    <label className="mb-1 block text-sm font-medium text-beige-700">Login Email (auto-generated)</label>
+                    {editingId ? (
+                      <input
+                        type="email"
+                        value={form.email}
+                        disabled
+                        className="w-full rounded-xl border border-beige-200 bg-beige-100 px-4 py-3 text-sm text-beige-500 cursor-not-allowed"
+                      />
+                    ) : (
+                      <div className="rounded-xl border border-beige-200 bg-beige-100 px-4 py-3">
+                        <p className="font-mono text-sm font-medium text-beige-700">{displayEmail || "Enter a name to preview email"}</p>
+                      </div>
+                    )}
+                    {!editingId && (
+                      <p className="mt-1.5 text-xs text-amber-600">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline -mt-0.5 mr-1">
+                          <circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" />
+                        </svg>
+                        Auto-generated from employee name. Default password: <span className="font-mono font-semibold">password123</span>
                       </p>
                     )}
                   </div>

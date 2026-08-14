@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { updateUser, findUserById, findUserByEmail } from "@/lib/queries";
-import bcrypt from "bcrypt";
+import { hashPassword, comparePassword } from "@/lib/crypto";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 
-const BCRYPT_ROUNDS = 12;
+
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +41,7 @@ export const PUT = requireAuth(async (request: Request) => {
 
     // If changing password, verify current with bcrypt
     if (newPassword) {
-      if (!currentPassword || !(await bcrypt.compare(currentPassword, user.password))) {
+      if (!currentPassword || !(await comparePassword(currentPassword, user.password))) {
         return NextResponse.json(
           { error: "Current password is incorrect" },
           { status: 401 }
@@ -54,12 +54,16 @@ export const PUT = requireAuth(async (request: Request) => {
       email?: string;
       avatarUrl?: string;
       password?: string;
+      mustChangePassword?: boolean;
     } = {};
 
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
-    if (newPassword) updateData.password = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    if (newPassword) {
+      updateData.password = await hashPassword(newPassword);
+      updateData.mustChangePassword = false;
+    }
 
     const updated = await updateUser(session.userId, updateData);
 

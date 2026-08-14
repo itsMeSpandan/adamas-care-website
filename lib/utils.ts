@@ -44,4 +44,12 @@ export function formatBookingDate(iso: string): string {
   });
 }
 
+/** Format a loyalty reward discount for display. */
+export function formatDiscount(type: string, value: number): string {
+  if (type === "percent") return `${value}% off`;
+  if (type === "fixed") return `\u20B9${value} off`;
+  if (type === "free_service") return "Free service";
+  return `${value} off`;
+}
+
 

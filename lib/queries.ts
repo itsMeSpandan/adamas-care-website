@@ -254,6 +254,7 @@ export async function updateUser(
     email?: string;
     avatarUrl?: string;
     password?: string;
+    mustChangePassword?: boolean;
   }
 ) {
   return db.user.update({ where: { id }, data });
