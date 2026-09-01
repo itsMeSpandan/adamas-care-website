@@ -144,7 +144,7 @@ Passwords are `<email-prefix>123`. Use these to explore each role:
 | `npm run db:seed-holidays` | Seed Indian public & festive holidays |
 | `npm run db:seed-test-user` | Create test customer with loyalty data |
 | `npm run db:backfill-loyalty` | Award points for historical completed bookings |
-| `npx prisma generate` / `db push` / `db studio` | Prisma client, schema push, GUI |
+| `npx prisma generate` / `db push` / `db studio` | Prisma client, schema push, gui|
 
 ---
 
