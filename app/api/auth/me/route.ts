@@ -18,6 +18,7 @@ export async function GET(request: Request) {
         name: true,
         email: true,
         role: true,
+        gender: true,
         avatarUrl: true,
         employeeId: true,
         loyaltyPoints: true,

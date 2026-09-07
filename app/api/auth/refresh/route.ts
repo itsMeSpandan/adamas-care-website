@@ -4,8 +4,8 @@ import { verifyToken, signToken } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 const ACCESS_TOKEN_EXPIRY = "15m";
-const REFRESH_COOKIE_NAME = "adamascare_refresh";
-const SESSION_COOKIE_NAME = "adamascare_session";
+const REFRESH_COOKIE_NAME = "gracesalon_refresh";
+const SESSION_COOKIE_NAME = "gracesalon_session";
 
 /**
  * POST /api/auth/refresh

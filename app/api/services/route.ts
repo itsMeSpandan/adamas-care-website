@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServices, createService } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
+import { logAudit, getClientIp } from "@/lib/audit";
+import { getSessionFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +30,8 @@ export const POST = requireRole("admin", async (request: Request) => {
 
     const id = `svc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 
+    const session = await getSessionFromRequest(request);
+
     const service = await createService({
       id,
       name,
@@ -39,6 +43,16 @@ export const POST = requireRole("admin", async (request: Request) => {
       imageUrl: imageUrl || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80",
       featured: featured ?? false,
       employeeIds: employeeIds || [],
+    });
+
+    logAudit({
+      action: "service_create",
+      entityType: "service",
+      entityId: id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Created service: ${name}`,
+      ip: getClientIp(request),
     });
 
     return NextResponse.json({ service }, { status: 201 });

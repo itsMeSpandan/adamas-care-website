@@ -1,5 +1,5 @@
 /**
- * Seed script: Give the demo user (demo@adamascare.com) loyalty data
+ * Seed script: Give the demo user (demo@gracesalon.com) loyalty data
  *
  * Usage: npx tsx scripts/seed-demo-user-loyalty.ts
  *
@@ -15,7 +15,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-const DEMO_EMAIL = "demo@adamascare.com";
+const DEMO_EMAIL = "demo@gracesalon.com";
 
 // Loyalty: 1 point per 10 currency units
 function calculatePoints(price: number): number {

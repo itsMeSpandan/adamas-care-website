@@ -1,5 +1,7 @@
 export type ServiceCategory = 'Hair' | 'Skin' | 'Nails' | 'Body' | 'Bridal';
 
+export type Gender = 'male' | 'female' | 'other';
+
 export interface Service {
   id: string;
   name: string;
@@ -18,6 +20,7 @@ export interface Employee {
   name: string;
   email: string;
   role: string;
+  gender?: Gender;
   bio: string;
   imageUrl: string;
   serviceIds: string[];

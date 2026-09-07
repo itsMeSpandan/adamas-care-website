@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServiceById, updateService, deleteService } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
+import { logAudit, getClientIp } from "@/lib/audit";
+import { getSessionFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,18 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
     }
 
     const service = await updateService(id, body);
+
+    const session = await getSessionFromRequest(request);
+    logAudit({
+      action: "service_update",
+      entityType: "service",
+      entityId: id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Updated service: ${existing.name}`,
+      ip: getClientIp(request),
+    });
+
     return NextResponse.json({ service });
   } catch (error) {
     console.error("Failed to update service:", error);
@@ -47,6 +61,18 @@ export const DELETE = requireRole("admin", async (request: Request, context) => 
     }
 
     await deleteService(id);
+
+    const session = await getSessionFromRequest(request);
+    logAudit({
+      action: "service_delete",
+      entityType: "service",
+      entityId: id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Deleted service: ${existing.name}`,
+      ip: getClientIp(request),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete service:", error);

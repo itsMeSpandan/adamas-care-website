@@ -4,6 +4,7 @@ import { getBookings } from "@/lib/queries";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { applyRedemptionToBooking, linkRedemptionToBooking } from "@/lib/loyalty";
+import { logAudit, getClientIp } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -362,6 +363,20 @@ export const PATCH = requireAuth(async (request: Request, context) => {
         );
       }
       const updated = await db.booking.update({ where: { id }, data: { status } });
+
+      // Audit log for admin status changes
+      if (session.role === "admin" || session.role === "employee") {
+        logAudit({
+          action: `booking_${status}`,
+          entityType: "booking",
+          entityId: id,
+          adminId: session.userId,
+          adminName: session.email,
+          details: `Booking status changed to ${status}`,
+          ip: getClientIp(request),
+        });
+      }
+
       return NextResponse.json({ booking: updated });
     }
 

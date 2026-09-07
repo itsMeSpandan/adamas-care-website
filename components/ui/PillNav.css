@@ -1,4 +1,10 @@
-.pill-nav-container {
+/* ═══════════════════════════════════════════════════════════════
+   PillNav.css — Desktop pill nav + mobile StaggeredMenu
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Desktop pill navigation ── */
+
+.desktop-pill-nav {
   --nav-total-h: 74px;
   position: absolute;
   top: 0;
@@ -7,13 +13,6 @@
   z-index: 99;
   padding: 1.5rem 0;
   background: transparent;
-}
-
-@media (max-width: 768px) {
-  .pill-nav-container {
-    width: 100%;
-    left: 0;
-  }
 }
 
 .pill-nav {
@@ -27,16 +26,38 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 1.5rem;
   box-sizing: border-box;
   padding: 0 1.5rem;
+  position: relative;
 }
 
-@media (max-width: 768px) {
-  .pill-nav {
-    justify-content: space-between;
-    padding: 0 1rem;
-  }
+/* ── Brand: logo + name on the left (absolute so pill bar stays centered) ── */
+
+.pill-brand {
+  position: absolute;
+  left: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.pill-brand-logo {
+  height: 36px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.pill-brand-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1F1F1F;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .pill-nav-items {
@@ -46,39 +67,6 @@
   height: var(--nav-h);
   background: var(--pill-bg, #120F17);
   border-radius: 9999px;
-}
-
-.pill-logo {
-  width: var(--nav-h);
-  height: var(--nav-h);
-  border-radius: 50%;
-  background: var(--pill-bg, #120F17);
-  padding: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  text-decoration: none;
-  flex-shrink: 0;
-}
-
-.pill-logo img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* When the logo slot shows the logged-in user's avatar, let the
-   image fill the whole circle (no inset padding) and give it a
-   subtle light ring so it reads as a proper circular avatar. */
-.pill-logo--avatar {
-  padding: 0;
-  box-shadow: 0 0 0 2px rgba(245, 241, 234, 0.85);
-}
-
-.pill-logo--avatar img {
-  object-position: center;
 }
 
 .pill-list {
@@ -168,13 +156,8 @@
   z-index: 4;
 }
 
-.desktop-only {
-  display: block;
-}
-
 .pill-logout {
   position: absolute;
-  top: 1.5rem;
   right: 1.5rem;
   height: 2rem;
   width: 2rem;
@@ -197,98 +180,70 @@
   opacity: 0.8;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   Responsive: hide desktop nav on mobile, show StaggeredMenu
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Hide desktop pill nav on mobile */
 @media (max-width: 768px) {
-  .pill-logout {
-    display: none;
+  .desktop-pill-nav {
+    display: none !important;
   }
 }
 
-.mobile-only {
+/* ── Mobile: brand bar + StaggeredMenu ── */
+
+.mobile-staggered-menu {
   display: none;
 }
 
 @media (max-width: 768px) {
-  .desktop-only {
-    display: none;
+  .mobile-staggered-menu {
+    display: block;
+    position: relative;
+    z-index: 9999;
   }
 
-  .mobile-only {
+  .mobile-brand-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9998;
+    padding: 1.25rem 1.25rem;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+  }
+
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+    pointer-events: auto;
+  }
+
+  .mobile-brand-logo {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
     display: block;
   }
-}
 
-.mobile-menu-button {
-  width: var(--nav-h);
-  height: var(--nav-h);
-  border-radius: 50%;
-  background: var(--pill-bg, #120F17);
-  border: none;
-  display: none;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  cursor: pointer;
-  padding: 0;
-  position: relative;
-  flex-shrink: 0;
-}
+  .mobile-brand-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1F1F1F;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
 
-@media (max-width: 768px) {
-  .mobile-menu-button {
-    display: flex;
+  .mobile-staggered-menu .staggered-menu-wrapper {
+    pointer-events: auto;
+  }
+
+  .mobile-staggered-menu .staggered-menu-header {
+    padding: 1.5rem 1rem;
   }
 }
-
-.hamburger-line {
-  width: 16px;
-  height: 2px;
-  background: var(--pill-bg, #fff);
-  border-radius: 1px;
-  transition: all 0.01s ease;
-  transform-origin: center;
-}
-
-.mobile-menu-popover {
-  position: fixed;
-  top: var(--nav-total-h, 74px);
-  left: 1rem;
-  right: 1rem;
-  background: var(--base, #f0f0f0);
-  border-radius: 27px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  z-index: 998;
-  opacity: 0;
-  transform-origin: top center;
-  visibility: hidden;
-}
-
-.mobile-menu-list {
-  list-style: none;
-  margin: 0;
-  padding: 3px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.mobile-menu-popover .mobile-menu-link {
-  display: block;
-  padding: 12px 16px;
-  color: var(--pill-text, #fff);
-  background-color: var(--pill-bg, #fff);
-  text-decoration: none;
-  font-size: 16px;
-  font-weight: 500;
-  border-radius: 50px;
-  transition: all 0.2s ease;
-}
-
-.mobile-menu-popover .mobile-menu-link:hover {
-  cursor: pointer;
-  background-color: var(--base);
-  color: var(--hover-text, #fff);
-}
-
-
-

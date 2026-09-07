@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/require-auth";
 import { getHolidaysForYear } from "@/lib/holidays";
+import { logAudit, getClientIp } from "@/lib/audit";
+import { getSessionFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +68,17 @@ export const POST = requireRole("admin", async (request: Request) => {
       },
     });
 
+    const session = await getSessionFromRequest(request);
+    logAudit({
+      action: "holiday_create",
+      entityType: "holiday",
+      entityId: holiday.id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Added holiday: ${name} (${type || "custom"}) on ${date}`,
+      ip: getClientIp(request),
+    });
+
     return NextResponse.json({ holiday }, { status: 201 });
   } catch (error) {
     console.error("Failed to create holiday:", error);
@@ -82,7 +95,20 @@ export const DELETE = requireRole("admin", async (request: Request) => {
   }
 
   try {
+    const existing = await db.holiday.findUnique({ where: { id }, select: { name: true, date: true, type: true } });
     await db.holiday.delete({ where: { id } });
+
+    const session = await getSessionFromRequest(request);
+    logAudit({
+      action: "holiday_delete",
+      entityType: "holiday",
+      entityId: id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Deleted holiday: ${existing?.name || id}`,
+      ip: getClientIp(request),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete holiday:", error);
@@ -126,6 +152,18 @@ export const PUT = requireRole("admin", async (request: Request) => {
           },
         });
         created++;
+      }
+
+      const session = await getSessionFromRequest(request);
+      if (created > 0) {
+        logAudit({
+          action: "holiday_seed",
+          entityType: "holiday",
+          adminId: session?.userId,
+          adminName: session?.email,
+          details: `Seeded ${created} holidays for ${year} (${skipped} already existed)`,
+          ip: getClientIp(request),
+        });
       }
 
       return NextResponse.json({

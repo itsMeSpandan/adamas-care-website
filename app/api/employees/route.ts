@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getEmployees, createEmployee, generateUniqueEmployeeEmail, createUser } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
 import { hashPassword } from "@/lib/crypto";
+import { logAudit, getClientIp } from "@/lib/audit";
+import { getSessionFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,7 @@ export async function GET() {
 export const POST = requireRole("admin", async (request: Request) => {
   try {
     const body = await request.json();
-    const { name, role, bio, imageUrl, yearsExperience, instagramHandle, serviceIds } = body;
+    const { name, role, gender, bio, imageUrl, yearsExperience, instagramHandle, serviceIds } = body;
 
     if (!name || !role) {
       return NextResponse.json(
@@ -45,6 +47,7 @@ export const POST = requireRole("admin", async (request: Request) => {
       name,
       email: employeeEmail,
       role,
+      gender: gender || null,
       bio: bio || "",
       imageUrl: imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e8ddd3&color=7c6e5a&size=200`,
       yearsExperience: yearsExperience || 0,
@@ -69,6 +72,17 @@ export const POST = requireRole("admin", async (request: Request) => {
         employeeId: id,
         mustChangePassword: true,
       },
+    });
+
+    const session = await getSessionFromRequest(request);
+    logAudit({
+      action: "employee_create",
+      entityType: "employee",
+      entityId: id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Created employee: ${name} (${role})`,
+      ip: getClientIp(request),
     });
 
     return NextResponse.json(

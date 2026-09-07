@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/auth-context";
 const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
   ssr: false,
 });
-import UserPanel from "@/components/ui/UserPanel";
+import { StaggeredMenu } from "@/components/ui/StaggeredMenu";
 import "./PillNav.css";
 
 interface PillNavItem {
@@ -31,13 +31,12 @@ interface PillNavProps {
   pillHoverBg?: string;
   hoveredPillTextColor?: string;
   pillTextColor?: string;
-  onMobileMenuClick?: () => void;
   initialLoadAnimation?: boolean;
 }
 
 const PillNav = ({
   logo = "/logo.svg",
-  logoAlt = "Adamas Care",
+  logoAlt = "Grace Salon",
   items,
   activeHref,
   className = "",
@@ -47,19 +46,15 @@ const PillNav = ({
   pillHoverBg = "#C9A86A",
   hoveredPillTextColor = "#120F17",
   pillTextColor,
-  onMobileMenuClick,
   initialLoadAnimation = true,
 }: PillNavProps) => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const resolvedPillTextColor = pillTextColor ?? baseColor;
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
   const circleRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const tlRefs = useRef<(gsap.core.Timeline | null)[]>([]);
   const activeTweenRefs = useRef<(gsap.core.Tween | null)[]>([]);
-  const hamburgerRef = useRef<HTMLButtonElement | null>(null);
-  const mobileMenuRef = useRef<HTMLDivElement | null>(null);
   const navItemsRef = useRef<HTMLDivElement | null>(null);
   const logoRef = useRef<HTMLAnchorElement | null>(null);
 
@@ -122,23 +117,18 @@ const PillNav = ({
       document.fonts.ready.then(layout).catch(() => {});
     }
 
-    const menu = mobileMenuRef.current;
-    if (menu) {
-      gsap.set(menu, { visibility: "hidden", opacity: 0, scaleY: 1 });
-    }
-
     if (initialLoadAnimation) {
       const logo = logoRef.current;
       const navItems = navItemsRef.current;
 
       if (logo) {
-        gsap.set(logo, { scale: 0 });
+        gsap.set(logo, { scale: 0, transformOrigin: "left center" });
         gsap.to(logo, { scale: 1, duration: 0.6, ease });
       }
 
       if (navItems) {
-        gsap.set(navItems, { width: 0, overflow: "hidden" });
-        gsap.to(navItems, { width: "auto", duration: 0.6, ease });
+        gsap.set(navItems, { opacity: 0, x: 20 });
+        gsap.to(navItems, { opacity: 1, x: 0, duration: 0.5, ease, delay: 0.15 });
       }
     }
 
@@ -167,57 +157,6 @@ const PillNav = ({
     });
   };
 
-  const toggleMobileMenu = () => {
-    const newState = !isMobileMenuOpen;
-    setIsMobileMenuOpen(newState);
-
-    const hamburger = hamburgerRef.current;
-    const menu = mobileMenuRef.current;
-
-    if (hamburger) {
-      const lines = hamburger.querySelectorAll(".hamburger-line");
-      if (newState) {
-        gsap.to(lines[0], { rotation: 45, y: 3, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: -45, y: -3, duration: 0.3, ease });
-      } else {
-        gsap.to(lines[0], { rotation: 0, y: 0, duration: 0.3, ease });
-        gsap.to(lines[1], { rotation: 0, y: 0, duration: 0.3, ease });
-      }
-    }
-
-    if (menu) {
-      if (newState) {
-        gsap.set(menu, { visibility: "visible" });
-        gsap.fromTo(
-          menu,
-          { opacity: 0, y: 10, scaleY: 1 },
-          {
-            opacity: 1,
-            y: 0,
-            scaleY: 1,
-            duration: 0.3,
-            ease,
-            transformOrigin: "top center",
-          }
-        );
-      } else {
-        gsap.to(menu, {
-          opacity: 0,
-          y: 10,
-          scaleY: 1,
-          duration: 0.2,
-          ease,
-          transformOrigin: "top center",
-          onComplete: () => {
-            gsap.set(menu, { visibility: "hidden" });
-          },
-        });
-      }
-    }
-
-    onMobileMenuClick?.();
-  };
-
   const cssVars = {
     ["--base" as string]: baseColor,
     ["--pill-bg" as string]: pillColor,
@@ -228,29 +167,21 @@ const PillNav = ({
 
   return (
     <>
-      <div className="pill-nav-container">
+      {/* ── Desktop: Pill navigation (hidden on mobile via CSS) ── */}
+      <div className="pill-nav-container desktop-pill-nav">
         <nav className={`pill-nav ${className}`} aria-label="Primary" style={cssVars}>
-          {isAuthenticated && user?.avatarUrl ? (
-            <Link
-              className="pill-logo pill-logo--avatar"
-              href="/profile"
-              aria-label="My profile"
-              ref={logoRef}
-            >
-              <img src={user.avatarUrl} alt={user.name ?? "Profile"} loading="lazy" decoding="async" />
-            </Link>
-          ) : (
-            <Link
-              className="pill-logo"
-              href="/"
-              aria-label="Home"
-              ref={logoRef}
-            >
-              <img src={logo} alt={logoAlt} loading="lazy" decoding="async" />
-            </Link>
-          )}
+          {/* Brand: logo + name on the left */}
+          <Link
+            className="pill-brand"
+            href="/"
+            aria-label="Home"
+            ref={logoRef}
+          >
+            <img src={logo} alt={logoAlt} className="pill-brand-logo" loading="lazy" decoding="async" />
+            <span className="pill-brand-name">{logoAlt}</span>
+          </Link>
 
-          <div className="pill-nav-items desktop-only" ref={navItemsRef}>
+          <div className="pill-nav-items" ref={navItemsRef}>
             <ul className="pill-list" role="menubar">
               {items.map((item, i) => (
                 <li key={item.href || `item-${i}`} role="none">
@@ -281,77 +212,65 @@ const PillNav = ({
             </ul>
           </div>
 
-          <button
-            className="mobile-menu-button mobile-only"
-            onClick={toggleMobileMenu}
-            aria-label="Toggle menu"
-            ref={hamburgerRef}
-          >
-            <span className="hamburger-line" />
-            <span className="hamburger-line" />
-          </button>
-        </nav>
-
-        {isAuthenticated && (
-          <button
-            type="button"
-            onClick={() => {
-              logout();
-              router.push("/");
-            }}
-            aria-label="Log out"
-            className="pill-logout"
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#DC2626"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => {
+                logout();
+                router.push("/");
+              }}
+              aria-label="Log out"
+              className="pill-logout"
             >
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" x2="9" y1="12" y2="12" />
-            </svg>
-          </button>
-        )}
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#DC2626"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" x2="9" y1="12" y2="12" />
+              </svg>
+            </button>
+          )}
+        </nav>
+      </div>
 
-        <div className="mobile-menu-popover mobile-only" ref={mobileMenuRef} style={cssVars}>
-          <ul className="mobile-menu-list">
-            {items.map((item, i) => (
-              <li key={item.href || `mobile-item-${i}`}>
-                <Link
-                  href={item.href}
-                  className={`mobile-menu-link${activeHref === item.href ? " is-active" : ""}`}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-            <li>
-              {isAuthenticated ? (
-                <div className="mobile-menu-link">
-                  <UserPanel />
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setLoginOpen(true);
-                  }}
-                  className="mobile-menu-link"
-                  style={{ width: "100%", textAlign: "center", border: "none", cursor: "pointer" }}
-                >
-                  Sign In
-                </button>
-              )}
-            </li>
-          </ul>
+      {/* ── Mobile: brand + StaggeredMenu (hidden on desktop via CSS) ── */}
+      <div className="mobile-staggered-menu">
+        <div className="mobile-brand-bar">
+          <Link className="mobile-brand" href="/" aria-label="Home">
+            <img src={logo} alt={logoAlt} className="mobile-brand-logo" loading="lazy" decoding="async" />
+            <span className="mobile-brand-name">{logoAlt}</span>
+          </Link>
         </div>
+        <StaggeredMenu
+          position="right"
+          renderHeader={false}
+          items={items.map((item) => ({
+            label: item.label,
+            ariaLabel: item.ariaLabel || item.label,
+            link: item.href,
+          }))}
+          socialItems={[
+            { label: "Instagram", link: "https://instagram.com" },
+            { label: "Facebook", link: "https://facebook.com" },
+          ]}
+          displaySocials={true}
+          displayItemNumbering={true}
+          menuButtonColor="#1F1F1F"
+          openMenuButtonColor="#1F1F1F"
+          changeMenuColorOnOpen={false}
+          colors={["#e8ddd3", "#c9b8a8"]}
+          accentColor="#C97B5C"
+          isFixed={true}
+          logoUrl={logo}
+        />
       </div>
 
       <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />

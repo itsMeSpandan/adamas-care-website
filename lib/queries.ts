@@ -120,6 +120,7 @@ export async function getEmployees(): Promise<Employee[]> {
     name: e.name,
     email: e.email,
     role: e.role,
+    gender: (e.gender as Employee["gender"]) ?? undefined,
     bio: e.bio,
     imageUrl: e.imageUrl,
     rating: e.rating,
@@ -141,6 +142,7 @@ export async function getEmployeeById(id: string): Promise<Employee | null> {
     name: e.name,
     email: e.email,
     role: e.role,
+    gender: (e.gender as Employee["gender"]) ?? undefined,
     bio: e.bio,
     imageUrl: e.imageUrl,
     rating: e.rating,
@@ -156,6 +158,7 @@ export async function createEmployee(data: {
   name: string;
   email?: string;
   role: string;
+  gender?: "male" | "female" | "other" | null;
   bio: string;
   imageUrl: string;
   yearsExperience: number;
@@ -167,6 +170,7 @@ export async function createEmployee(data: {
     data: {
       ...employeeData,
       email: employeeData.email || "",
+      gender: employeeData.gender || null,
       instagramHandle: employeeData.instagramHandle || null,
       employeeServices: serviceIds?.length
         ? {
@@ -186,6 +190,7 @@ export async function updateEmployee(
     name?: string;
     email?: string;
     role?: string;
+    gender?: "male" | "female" | "other" | null;
     bio?: string;
     imageUrl?: string;
     yearsExperience?: number;
@@ -207,7 +212,7 @@ export async function updateEmployee(
   }
   return db.employee.update({
     where: { id },
-    data: { ...employeeData, instagramHandle: employeeData.instagramHandle || null },
+    data: { ...employeeData, instagramHandle: employeeData.instagramHandle || null, gender: employeeData.gender ?? undefined },
     include: { employeeServices: { select: { serviceId: true } } },
   });
 }
@@ -243,6 +248,8 @@ export async function createUser(data: {
   password: string;
   role?: "user" | "admin" | "employee";
   avatarUrl: string;
+  gender?: "male" | "female" | "other" | null;
+  whatsappNumber?: string | null;
 }) {
   return db.user.create({ data });
 }

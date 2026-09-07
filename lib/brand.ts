@@ -3,11 +3,11 @@
  * Change the brand name here and it updates everywhere.
  */
 export const BRAND = {
-  name: "Adamas Care",
+  name: "Grace Salon",
   tagline: "Luxury Beauty & Wellness",
-  domain: "adamascare.com",
-  baseUrl: "https://adamascare.com",
-  email: "hello@adamascare.in",
+  domain: "gracesalon.com",
+  baseUrl: "https://gracesalon.com",
+  email: "hello@gracesalon.com",
   address: "Barasat-Barrackpore Road, Barbaria, P.O Jagannathpur, District-24 Parganas (North), Kolkata-700 126, West Bengal, India",
   get title() {
     return `${this.name} | ${this.tagline}`;

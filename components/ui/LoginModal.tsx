@@ -41,6 +41,8 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [gender, setGender] = useState<"" | "male" | "female" | "other">("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -132,7 +134,13 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        gender: gender || null,
+        whatsappNumber: whatsappNumber.trim() || null,
+      }),
       });
 
       const data = await res.json();
@@ -164,6 +172,8 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
     setName("");
     setEmail("");
     setPassword("");
+    setGender("");
+    setWhatsappNumber("");
     setShowPassword(false);
     setFieldErrors({});
     setTouched({});
@@ -245,7 +255,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                 {mode === "signup" && (
                   <div>
                     <label htmlFor="auth-name" className="mb-1 block text-sm font-medium text-beige-700">
-                      Full Name
+                      Full Name *
                     </label>
                     <input
                       ref={nameRef}
@@ -269,9 +279,46 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                   </div>
                 )}
 
+                {mode === "signup" && (
+                  <>
+                    <div>
+                      <label htmlFor="auth-gender" className="mb-1 block text-sm font-medium text-beige-700">
+                        Gender *
+                      </label>
+                      <select
+                        id="auth-gender"
+                        required
+                        value={gender}
+                        onChange={(e) => setGender(e.target.value as "" | "male" | "female" | "other")}
+                        className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
+                      >
+                        <option value="">Select gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="auth-whatsapp" className="mb-1 block text-sm font-medium text-beige-700">
+                        WhatsApp Number
+                      </label>
+                      <input
+                        id="auth-whatsapp"
+                        type="tel"
+                        autoComplete="tel"
+                        value={whatsappNumber}
+                        onChange={(e) => setWhatsappNumber(e.target.value)}
+                        placeholder="e.g. +91 98765 43210"
+                        className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div>
                   <label htmlFor="auth-email" className="mb-1 block text-sm font-medium text-beige-700">
-                    Email
+                    Email *
                   </label>
                   <input
                     ref={emailRef}
@@ -327,7 +374,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (mode === "signup" && !gender)}
                 className="btn-primary mt-6 w-full py-3"
               >
                 {loading ? (

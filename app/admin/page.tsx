@@ -7,6 +7,7 @@ import { statusColors } from "@/lib/constants";
 import { db } from "@/lib/db";
 
 const RevenueChart = nextDynamic(() => import("@/components/ui/RevenueChart"));
+const EmployeeEarningsSection = nextDynamic(() => import("@/components/ui/EmployeeEarningsSection"));
 
 export const metadata: Metadata = {
   title: `Admin Dashboard | ${BRAND.name}`,
@@ -117,6 +118,19 @@ export default async function AdminPage() {
     months.push({ label, shortLabel, revenue, prevRevenue });
   }
 
+  // Completed bookings data passed to the earnings section for month navigation
+  const completedBookingsData = completedBookings.map((b) => ({
+    id: b.id,
+    price: b.price,
+    date: b.date.toISOString(),
+    status: b.status,
+    employee: b.employee ? {
+      id: b.employee.id,
+      name: b.employee.name,
+      gender: (b.employee as { gender?: string } | null)?.gender ?? undefined,
+    } : null,
+  }));
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -150,7 +164,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Real revenue chart */}
+        {/* Revenue chart */}
         <div className="rounded-card border border-beige-200 bg-white p-6 shadow-card lg:col-span-2">
           <h2 className="mb-4 font-serif text-lg font-semibold text-beige-700">
             Revenue Overview
@@ -182,6 +196,9 @@ export default async function AdminPage() {
           </div>
         </div>
       </div>
+
+      {/* Per-employee earnings with month navigation */}
+      <EmployeeEarningsSection completedBookings={completedBookingsData} />
 
       {/* Recent bookings */}
       <div className="rounded-card border border-beige-200 bg-white shadow-card">

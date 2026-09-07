@@ -130,7 +130,7 @@ const employeesData = [
   {
     id: "priya-sharma",
     name: "Priya Sharma",
-    email: "priya@adamascare.com",
+    email: "priya@gracesalon.com",
     role: "Lead Stylist & Creative Director",
     bio: "With over 15 years of experience in high-fashion editorial and salon work, Priya brings an artist's eye to every cut and style. Trained globally, she specializes in precision cutting and transformative color.",
     imageUrl: "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=600&q=80",
@@ -143,7 +143,7 @@ const employeesData = [
   {
     id: "anjali-desai",
     name: "Anjali Desai",
-    email: "anjali@adamascare.com",
+    email: "anjali@gracesalon.com",
     role: "Senior Colorist",
     bio: "Anjali is a color virtuoso known for creating natural-looking dimension and bespoke shades. Her techniques blend balayage, foiling, and color melting for results that catch light beautifully.",
     imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80",
@@ -156,7 +156,7 @@ const employeesData = [
   {
     id: "kavya-iyer",
     name: "Kavya Iyer",
-    email: "kavya@adamascare.com",
+    email: "kavya@gracesalon.com",
     role: "Master Aesthetician",
     bio: "Kavya's holistic approach to skincare combines advanced clinical treatments with mindful wellness practices. Certified in chemical peels, microcurrent therapy, and LED treatments.",
     imageUrl: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80",
@@ -169,7 +169,7 @@ const employeesData = [
   {
     id: "rahul-verma",
     name: "Rahul Verma",
-    email: "rahul@adamascare.com",
+    email: "rahul@gracesalon.com",
     role: "Hair Stylist",
     bio: "Rahul brings a fresh, modern perspective to hairstyling with a focus on textured cuts and lived-in color. His background in fashion week styling gives him versatility.",
     imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80",
@@ -181,7 +181,7 @@ const employeesData = [
   {
     id: "neha-gupta",
     name: "Neha Gupta",
-    email: "neha@adamascare.com",
+    email: "neha@gracesalon.com",
     role: "Nail Artist",
     bio: "Neha is a creative nail artist whose work ranges from minimalist elegance to bold artistic expression. Trained internationally, she brings intricate precision and modern innovation.",
     imageUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80",
@@ -194,7 +194,7 @@ const employeesData = [
   {
     id: "sneha-reddy",
     name: "Sneha Reddy",
-    email: "sneha@adamascare.com",
+    email: "sneha@gracesalon.com",
     role: "Nail Artist & Body Therapist",
     bio: "Sneha brings a unique blend of nail artistry and body therapy to her work. Trained in both Ayurvedic and modern beauty traditions, she creates stunning nail designs while also specializing in relaxing body treatments.",
     imageUrl: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=600&q=80",
@@ -206,7 +206,7 @@ const employeesData = [
   {
     id: "aarti-patel",
     name: "Aarti Patel",
-    email: "aarti@adamascare.com",
+    email: "aarti@gracesalon.com",
     role: "Massage Therapist",
     bio: "Aarti combines her deep knowledge of anatomy with intuitive touch to deliver deeply therapeutic massage experiences. Certified in Swedish, deep tissue, and classical massage techniques.",
     imageUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=600&q=80",
@@ -250,7 +250,7 @@ const testimonialsData = [
     authorName: "Aditi Rao",
     avatarUrl: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&q=80",
     rating: 5,
-    text: "I've been to many nail salons but Neha's work is on another level. The attention to detail in her nail art is extraordinary. Every time I get compliments on my nails, I proudly tell them about Adamas Care.",
+    text: "I've been to many nail salons but Neha's work is on another level. The attention to detail in her nail art is extraordinary. Every time I get compliments on my nails, I proudly tell them about Grace Salon.",
     service: "Nail Art Design",
     date: "2024-12-10",
   },
@@ -277,7 +277,7 @@ const testimonialsData = [
 const usersData = [
   {
     name: "Riya Kapoor",
-    email: "demo@adamascare.com",
+    email: "demo@gracesalon.com",
     password: "demo123",
     role: "user" as const,
     avatarUrl: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&q=80",
@@ -285,7 +285,7 @@ const usersData = [
   },
   {
     name: "Isha Malhotra",
-    email: "admin@adamascare.com",
+    email: "admin@gracesalon.com",
     password: "admin123",
     role: "admin" as const,
     avatarUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80",
@@ -293,7 +293,7 @@ const usersData = [
   },
   {
     name: "Priya Sharma",
-    email: "priya@adamascare.com",
+    email: "priya@gracesalon.com",
     password: "priya123",
     role: "employee" as const,
     avatarUrl: "https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=100&q=80",
@@ -301,7 +301,7 @@ const usersData = [
   },
   {
     name: "Anjali Desai",
-    email: "anjali@adamascare.com",
+    email: "anjali@gracesalon.com",
     password: "anjali123",
     role: "employee" as const,
     avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&q=80",
@@ -309,7 +309,7 @@ const usersData = [
   },
   {
     name: "Kavya Iyer",
-    email: "kavya@adamascare.com",
+    email: "kavya@gracesalon.com",
     password: "kavya123",
     role: "employee" as const,
     avatarUrl: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&q=80",
@@ -317,7 +317,7 @@ const usersData = [
   },
   {
     name: "Rahul Verma",
-    email: "rahul@adamascare.com",
+    email: "rahul@gracesalon.com",
     password: "rahul123",
     role: "employee" as const,
     avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&q=80",
@@ -325,7 +325,7 @@ const usersData = [
   },
   {
     name: "Neha Gupta",
-    email: "neha@adamascare.com",
+    email: "neha@gracesalon.com",
     password: "neha123",
     role: "employee" as const,
     avatarUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80",
@@ -333,7 +333,7 @@ const usersData = [
   },
   {
     name: "Sneha Reddy",
-    email: "sneha@adamascare.com",
+    email: "sneha@gracesalon.com",
     password: "sneha123",
     role: "employee" as const,
     avatarUrl: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?w=100&q=80",
@@ -341,7 +341,7 @@ const usersData = [
   },
   {
     name: "Aarti Patel",
-    email: "aarti@adamascare.com",
+    email: "aarti@gracesalon.com",
     password: "aarti123",
     role: "employee" as const,
     avatarUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&q=80",

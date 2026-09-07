@@ -34,7 +34,7 @@ export async function sendOtpEmail(
       to_email: toEmail,
       to_name: userName,
       otp,
-      app_name: "Adamas Care",
+      app_name: "Grace Salon",
     });
 
     if (response.status === 200) {

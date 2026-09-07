@@ -4,11 +4,14 @@ import { createContext, useContext, useState, useCallback, useEffect, ReactNode 
 
 export type UserRole = "guest" | "user" | "employee" | "admin";
 
+export type Gender = "male" | "female" | "other" | null;
+
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  gender?: Gender;
   avatarUrl: string;
   employeeId?: string;
   loyaltyPoints?: number;

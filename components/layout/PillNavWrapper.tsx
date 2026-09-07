@@ -56,7 +56,7 @@ export default function PillNavWrapper() {
   return (
     <PillNav
       logo="/logo.svg"
-      logoAlt="Adamas Care"
+      logoAlt="Grace Salon"
       items={items}
       activeHref={pathname}
       ease="power2.easeOut"

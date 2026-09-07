@@ -127,7 +127,10 @@ export default function Footer() {
         <div className="section-container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-6 md:flex-row md:px-8">
           <p className="text-xs" style={{ color: 'var(--footer-text)', opacity: 0.6 }}>
             &copy; {new Date().getFullYear()} {BRAND.name}. All rights
-            reserved.
+            reserved. ·
+            <Link href="/privacy" className="ml-1 transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Privacy</Link>
+            {' · '}
+            <Link href="/terms" className="transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Terms</Link>
           </p>
           <div className="flex items-center gap-4">
             {/* Instagram */}

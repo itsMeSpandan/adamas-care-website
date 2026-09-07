@@ -25,8 +25,8 @@ export const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
 // ─── Cookie & Auth Constants ───────────────────────────────────────────────────
 
 export const COOKIE_NAMES = {
-  session: "adamascare_session",
-  refresh: "adamascare_refresh",
+  session: "gracesalon_session",
+  refresh: "gracesalon_refresh",
 } as const;
 
 export const TOKEN_EXPIRY = {

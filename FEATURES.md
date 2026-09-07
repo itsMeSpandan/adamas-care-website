@@ -10,7 +10,7 @@ Comprehensive feature reference for the Adamas Care salon & spa booking platform
 - **Services Catalog** — Browsable list of all services with pricing, duration, and descriptions.
 - **Team / Specialists** — Employee profiles with specialties, availability, and ratings.
 - **About** — Company info, mission, and values.
-- **Contact** — Contact form and business details.
+- **Contact** — Contact form and bbusiness details.
 
 ---
 
@@ -18,12 +18,14 @@ Comprehensive feature reference for the Adamas Care salon & spa booking platform
 
 | Feature | Details |
 |---------|---------|
-| Sign Up | Email + password registration with role assignment |
+| Sign Up | Email + password registration with gender, WhatsApp number, and role assignment |
 | Sign In | JWT in httpOnly cookies (`adamascare_session`, 15-min access + 7-day refresh) |
 | Sign Out | Cookie clearing + session invalidation |
 | Password Reset | 6-digit OTP via EmailJS, cryptographically random, scoped per user |
 | Profile Editing | Name, email, phone, password change |
+| Registration Fields | Gender (male/female/other), WhatsApp number (optional) at signup |
 | Roles | `user` (customer), `employee`, `admin` |
+| Gender | `male`, `female`, `other` — used for specialist matching |
 | Route Protection | `requireAuth` and `requireRole("admin")` wrappers in `lib/require-auth.ts` |
 
 ---
@@ -33,7 +35,7 @@ Comprehensive feature reference for the Adamas Care salon & spa booking platform
 3-step wizard:
 
 1. **Pick Service** — Browse and select from available services
-2. **Pick Specialist / Date / Time** — Choose an employee, then a date, then an available time slot. Slots are computed from each employee's weekly availability and one-off overrides. Double-booking is prevented via atomic DB checks.
+2. **Pick Specialist / Date / Time** — Choose an employee, then a date, then an available time slot. Slots are computed from each employee's weekly availability and one-off overrides. Double-booking is prevented via atomic DB checks. **Gender-based matching**: When "Any Available" is selected, specialists of the same gender as the logged-in user are prioritized.
 3. **Confirm** — Review summary and submit. Price is computed **server-side** from the selected service; client-supplied prices are ignored.
 
 **Booking Statuses:** `pending` → `confirmed` → `completed` | `cancelled`
@@ -43,7 +45,8 @@ Comprehensive feature reference for the Adamas Care salon & spa booking platform
 ## 4. Admin Dashboard
 
 ### 4.1 Analytics
-- Revenue & booking analytics with charts
+- Revenue & booking analytics with interactive bar charts (powered by Recharts)
+- Per-employee earnings breakdown by month with gender-coded visualization
 - Recent bookings list
 - Top services by bookings/revenue
 
@@ -58,6 +61,7 @@ Comprehensive feature reference for the Adamas Care salon & spa booking platform
 
 ### 4.4 Employees Management
 - Add/edit/remove employees
+- Gender field for gender-based specialist matching
 - Assign services to employees
 - Set weekly availability schedules
 - Manage one-off availability overrides
@@ -239,12 +243,44 @@ Holidays are displayed on the booking calendar, preventing bookings on holiday d
 | Auth | `jose` JWT in httpOnly cookies, `hash-wasm` bcrypt |
 | Email | EmailJS (OTP) |
 | Animation | Framer Motion, animejs |
-| Validation | Server-side checks |
+| Validation | Client-side + server-side checks |
+| Spam Protection | Honeypot fields, rate limiting, client-side rate limiting |
 | Hosting | Vercel |
 
 ---
 
-## 10. Scripts Reference
+## 10. Legal & Compliance
+
+- **Privacy Policy** — `/privacy` page with comprehensive data collection, usage, and rights documentation
+- **Terms & Conditions** — `/terms` page covering bookings, cancellations, loyalty program, and liability
+- **Cookie Consent** — Banner with accept/decline options, persisted in localStorage
+- **Footer Links** — Privacy and Terms links in the footer
+
+---
+
+## 11. Security Enhancements
+
+- **Force HTTPS** — Middleware redirects all HTTP to HTTPS in production
+- **HSTS** — `Strict-Transport-Security` header with 2-year max-age and preload
+- **Honeypot Fields** — Hidden fields in contact form to catch automated bots
+- **Rate Limiting** — Server-side (5 per 5 min) + client-side rate limiting on contact form
+- **Content Security Policy** — Strict CSP headers restricting script, style, and frame sources
+- **Security Headers** — X-Frame-Options, X-Content-Type-Options, Referrer-Policy, X-XSS-Protection
+
+---
+
+## 12. Admin Audit Logs
+
+- **Audit Log Model** — Database model tracking all admin actions with entity type, action, IP, and timestamp
+- **Auto-logged Actions** — Service CRUD, employee CRUD, booking status changes, contact form submissions
+- **Admin Dashboard** — `/admin/logs` page with searchable, filterable log viewer
+- **Stats Overview** — Total, today, services, employees, bookings, contacts counts
+- **Action Filtering** — Filter by entity type (services, employees, bookings, contacts)
+- **Search** — Full-text search across actions, details, emails, and IPs
+
+---
+
+## 13. Scripts Reference
 
 | Script | Command | Purpose |
 |--------|---------|---------|

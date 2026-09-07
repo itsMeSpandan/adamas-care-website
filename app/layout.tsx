@@ -7,6 +7,7 @@ import { BRAND } from "@/lib/brand";
 import PillNavWrapper from "@/components/layout/PillNavWrapper";
 
 import Footer from "@/components/layout/Footer";
+import CookieConsent from "@/components/ui/CookieConsent";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -42,6 +43,7 @@ export default function RootLayout({
             <PillNavWrapper />
             <main className="pt-24">{children}</main>
             <Footer />
+            <CookieConsent />
           </ToastProvider>
         </AuthProvider>
       </body>

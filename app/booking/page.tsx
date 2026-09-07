@@ -103,9 +103,16 @@ export default function BookingPage() {
         .finally(() => setDatesLoading(false));
     } else {
       // "Any" — fetch for all employees who offer this service
-      const empIds = employees
+      // Prefer same-gender specialists if the user has a gender set
+      let empIds = employees
         .filter((e) => e.serviceIds.includes(selectedService.id))
         .map((e) => e.id);
+      if (user?.gender) {
+        const sameGender = employees
+          .filter((e) => e.serviceIds.includes(selectedService.id) && e.gender === user.gender)
+          .map((e) => e.id);
+        if (sameGender.length > 0) empIds = sameGender;
+      }
 
       Promise.all(
         empIds.map((eid) =>
@@ -149,9 +156,16 @@ export default function BookingPage() {
         .finally(() => setSlotsLoading(false));
     } else {
       // "Any" — union slots from all employees who offer this service
-      const empIds = employees
+      // Prefer same-gender specialists if the user has a gender set
+      let empIds = employees
         .filter((e) => e.serviceIds.includes(selectedService.id))
         .map((e) => e.id);
+      if (user?.gender) {
+        const sameGender = employees
+          .filter((e) => e.serviceIds.includes(selectedService.id) && e.gender === user.gender)
+          .map((e) => e.id);
+        if (sameGender.length > 0) empIds = sameGender;
+      }
 
       Promise.all(
         empIds.map((eid) =>
@@ -179,7 +193,18 @@ export default function BookingPage() {
   }, [selectedDate, selectedService, selectedEmployee, employees]);
 
   const availableEmployees = selectedService
-    ? employees.filter((e) => e.serviceIds.includes(selectedService.id))
+    ? (() => {
+        const filtered = employees.filter((e) => e.serviceIds.includes(selectedService.id));
+        // If the logged-in user has a gender, sort by gender match (same gender first)
+        if (user?.gender && (user.gender === "male" || user.gender === "female" || user.gender === "other")) {
+          const userGender = user.gender;
+          return [
+            ...filtered.filter((e) => e.gender === userGender),
+            ...filtered.filter((e) => e.gender !== userGender),
+          ];
+        }
+        return filtered;
+      })()
     : [];
 
   const handleBooking = async () => {
@@ -219,10 +244,16 @@ export default function BookingPage() {
           const d = await r.json();
           setAvailableSlots(d.slots || []);
         } else {
-          // Re-fetch union for all employees
-          const empIds = employees
+          // Re-fetch union for all employees (prefer same gender)
+          let empIds = employees
             .filter((e) => e.serviceIds.includes(selectedService.id))
             .map((e) => e.id);
+          if (user?.gender) {
+            const sameGender = employees
+              .filter((e) => e.serviceIds.includes(selectedService.id) && e.gender === user.gender)
+              .map((e) => e.id);
+            if (sameGender.length > 0) empIds = sameGender;
+          }
           const results = await Promise.all(
             empIds.map((eid) =>
               fetch(`/api/availability?employeeId=${eid}&date=${dateStr}&serviceDuration=${selectedService.durationMinutes}`).then((res) => res.json())
@@ -414,7 +445,20 @@ export default function BookingPage() {
                             <Image src={emp.imageUrl} alt={emp.name} fill className="object-cover" sizes="48px" />
                           </div>
                           <div>
-                            <span className="font-serif text-base font-semibold text-beige-700">{emp.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-serif text-base font-semibold text-beige-700">{emp.name}</span>
+                              {emp.gender && (
+                                <span className={`inline-block rounded-full px-1.5 py-0.5 text-[9px] font-medium capitalize ${
+                                  emp.gender === "male"
+                                    ? "bg-blue-50 text-blue-600"
+                                    : emp.gender === "female"
+                                    ? "bg-amber-50 text-amber-600"
+                                    : "bg-green-50 text-green-600"
+                                }`}>
+                                  {emp.gender}
+                                </span>
+                              )}
+                            </div>
                             <span className="block text-xs text-beige-500">{emp.role}</span>
                             <span className="block text-xs text-beige-500">
                               {emp.rating}

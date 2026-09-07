@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getEmployeeById, updateEmployee, deleteEmployee } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
+import { logAudit, getClientIp } from "@/lib/audit";
+import { getSessionFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,18 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
     }
 
     const employee = await updateEmployee(id, body);
+
+    const session = await getSessionFromRequest(request);
+    logAudit({
+      action: "employee_update",
+      entityType: "employee",
+      entityId: id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Updated employee: ${existing.name}`,
+      ip: getClientIp(request),
+    });
+
     return NextResponse.json({ employee });
   } catch (error) {
     console.error("Failed to update employee:", error);
@@ -62,6 +76,18 @@ export const DELETE = requireRole("admin", async (request: Request, context) => 
     }
 
     await deleteEmployee(id);
+
+    const session = await getSessionFromRequest(request);
+    logAudit({
+      action: "employee_delete",
+      entityType: "employee",
+      entityId: id,
+      adminId: session?.userId,
+      adminName: session?.email,
+      details: `Deleted employee: ${existing.name}`,
+      ip: getClientIp(request),
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete employee:", error);

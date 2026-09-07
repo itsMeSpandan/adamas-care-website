@@ -4,7 +4,7 @@
  * Usage: npx tsx scripts/seed-test-user.ts
  *
  * Creates:
- *   - A test user (test@adamascare.com / testpassword123)
+ *   - A test user (test@gracesalon.com / testpassword123)
  *   - 6 bookings with various statuses (completed, confirmed, pending, cancelled)
  *   - Loyalty transactions for completed bookings
  *   - Loyalty rewards for redemption testing
@@ -36,7 +36,7 @@ async function hashPassword(password: string): Promise<string> {
 
 const TEST_USER = {
   name: "Test Customer",
-  email: "test@adamascare.com",
+  email: "test@gracesalon.com",
   password: "testpassword123",
   role: "user" as const,
   avatarUrl: "/avatars/test-customer.jpg",

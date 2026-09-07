@@ -27,11 +27,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { name, email, password } = await request.json();
+    const { name, email, password, gender, whatsappNumber } = await request.json();
 
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: "Name, email, and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate gender if provided
+    if (gender && !["male", "female", "other"].includes(gender)) {
+      return NextResponse.json(
+        { error: "Invalid gender value. Must be male, female, or other" },
         { status: 400 }
       );
     }
@@ -76,6 +84,8 @@ export async function POST(request: Request) {
         email: email.trim().toLowerCase(),
         password: hashedPassword,
         role: "user",
+        gender: gender || null,
+        whatsappNumber: whatsappNumber || null,
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e8ddd3&color=7c6e5a`,
       },
     });

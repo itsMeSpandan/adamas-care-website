@@ -9,6 +9,7 @@ interface Employee {
   name: string;
   email: string;
   role: string;
+  gender?: string;
   bio: string;
   imageUrl: string;
   yearsExperience: number;
@@ -28,6 +29,7 @@ const emptyForm = {
   name: "",
   email: "",
   role: "",
+  gender: "" as string,
   bio: "",
   imageUrl: "",
   yearsExperience: 0,
@@ -75,6 +77,7 @@ export default function AdminEmployeesPage() {
       name: emp.name,
       email: emp.email || "",
       role: emp.role,
+      gender: emp.gender || "",
       bio: emp.bio,
       imageUrl: emp.imageUrl,
       yearsExperience: emp.yearsExperience,
@@ -151,7 +154,7 @@ export default function AdminEmployeesPage() {
   };
 
   // Email is auto-generated from the name, shown in the form
-  const displayEmail = form.name ? form.name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, ".") + "@" + (BRAND.domain || "adamascare.com") : "";
+  const displayEmail = form.name ? form.name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, ".") + "@" + (BRAND.domain || "gracesalon.com") : "";
 
   return (
     <div className="space-y-6">
@@ -410,6 +413,20 @@ export default function AdminEmployeesPage() {
                         Auto-generated from employee name. Default password: <span className="font-mono font-semibold">password123</span>
                       </p>
                     )}
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-beige-700">Gender</label>
+                    <select
+                      value={form.gender}
+                      onChange={(e) => setForm({ ...form, gender: e.target.value })}
+                      className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
+                    >
+                      <option value="">Select gender</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                    </select>
                   </div>
 
                   <div>
