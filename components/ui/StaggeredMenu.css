@@ -138,7 +138,7 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: clamp(260px, 38vw, 420px);
+  width: clamp(300px, 42vw, 520px);
   height: 100%;
   background: white;
   backdrop-filter: blur(12px);
@@ -178,7 +178,7 @@
   top: 0;
   right: 0;
   bottom: 0;
-  width: clamp(260px, 38vw, 420px);
+  width: clamp(300px, 42vw, 520px);
   pointer-events: none;
   z-index: 5;
   opacity: 0;

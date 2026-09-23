@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { BRAND } from "@/lib/brand";
 import { getServices } from "@/lib/queries";
 import ServiceCard from "@/components/cards/ServiceCard";
 
 export const metadata: Metadata = {
-  title: `Services | ${BRAND.name}`,
+  title: "Services",
   description:
     "Explore our full range of premium hair, skin, nail, body, and bridal services.",
 };

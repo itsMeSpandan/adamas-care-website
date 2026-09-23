@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // POST — Manual point adjustment for a user
 export const POST = requireRole("admin", async (request: Request) => {
   const key = getRateLimitKey(request, "loyalty-adjust");
-  const result = limiter.check(key);
+  const result = await limiter.checkAsync(key);
 
   if (!result.success) {
     return NextResponse.json(

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { getServiceById, getEmployees } from "@/lib/queries";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import StarIcon from "@/components/ui/StarIcon";
-import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,7 @@ export async function generateMetadata({ params }: Props) {
   const service = await getServiceById(id);
   if (!service) return { title: "Service Not Found" };
   return {
-    title: `${service.name} | ${BRAND.name}`,
+    title: service.name,
     description: service.description,
   };
 }

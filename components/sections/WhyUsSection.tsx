@@ -1,13 +1,12 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { BRAND } from "@/lib/brand";
+
 
 const features = [
   {
-    title: "Certified Specialists",
+    title: "Every Specialist, Every Service",
     description:
-      "Every member of our team holds advanced certifications and undergoes continuous training to deliver exceptional results.",
+      "All four of our specialists are trained across hair, skin, nails, and body treatments — so you get the same quality no matter what you book.",
     icon: (
       <svg
         width="40"
@@ -26,9 +25,9 @@ const features = [
     ),
   },
   {
-    title: "Premium Products Only",
+    title: "Products We'd Use Ourselves",
     description:
-      "We exclusively use professional-grade, ethically sourced products that are gentle on you and kind to the environment.",
+      "No filler ingredients, no generic brands. We stock what actually works — ammonia-free colour, medical-grade skincare, and nail products that last three weeks.",
     icon: (
       <svg
         width="40"
@@ -47,9 +46,9 @@ const features = [
     ),
   },
   {
-    title: "Hygiene First",
+    title: "Your Time Respected",
     description:
-      "Our rigorous sterilization protocols and single-use practices exceed industry standards for your complete safety and peace of mind.",
+      "We run on schedule, not fashionably late. 5-minute buffers between clients mean your 60-minute service actually starts at 10:00, not 10:15.",
     icon: (
       <svg
         width="40"
@@ -71,35 +70,23 @@ const features = [
 
 export default function WhyUsSection() {
   return (
-    <section className="section-padding bg-beige-50">
+    <section className="section-padding bg-sage-50">
       <div className="section-container mx-auto text-center">
-        <motion.h2
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5 }}
+        <h2
           className="mb-4 font-serif text-3xl font-semibold text-beige-700 md:text-4xl"
         >
-          Why Choose {BRAND.name}
-        </motion.h2>
-        <motion.p
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5, delay: 0.1 }}
+          Why Clients Come Back
+        </h2>
+        <p
           className="mb-16 text-beige-800"
         >
-          The details that set us apart
-        </motion.p>
+          Not just a salon — a team that actually cares about the result
+        </p>
 
         <div className="grid gap-12 md:grid-cols-3">
-          {features.map((feature, i) => (
-            <motion.div
+          {features.map((feature) => (
+            <div
               key={feature.title}
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.5, delay: i * 0.15 }}
               className="flex flex-col items-center text-center"
             >
               <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-beige-100">
@@ -111,7 +98,7 @@ export default function WhyUsSection() {
               <p className="max-w-xs text-sm leading-relaxed text-beige-800">
                 {feature.description}
               </p>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

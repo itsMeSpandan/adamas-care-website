@@ -25,9 +25,20 @@ const jost = Jost({
 });
 
 export const metadata: Metadata = {
-  title: BRAND.title,
+  title: {
+    default: BRAND.title,
+    template: `%s | ${BRAND.name}`,
+  },
   description:
-    `Experience luxury beauty treatments at ${BRAND.name}. Expert stylists, premium skincare, therapeutic massage, and bespoke bridal services.`,
+    `${BRAND.name} — premium hair, skin, nail, body, and bridal services in Kolkata. Expert specialists, online booking, and a loyalty rewards program.`,
+  metadataBase: new URL(BRAND.baseUrl),
+  openGraph: {
+    title: BRAND.title,
+    description: `${BRAND.name} — premium hair, skin, nail, body, and bridal services in Kolkata.`,
+    siteName: BRAND.name,
+    type: "website",
+    locale: "en_IN",
+  },
 };
 
 export default function RootLayout({

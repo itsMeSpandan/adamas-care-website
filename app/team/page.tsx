@@ -5,7 +5,7 @@ import TeamCard from "@/components/cards/TeamCard";
 import BookingCTA from "@/components/sections/BookingCTA";
 
 export const metadata: Metadata = {
-  title: `Our Team | ${BRAND.name}`,
+  title: "Our Team",
   description:
     "Meet our talented team of certified beauty professionals, from expert hairstylists to master aestheticians.",
 };

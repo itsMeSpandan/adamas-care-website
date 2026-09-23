@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export const POST = requireAuth(async (request: Request) => {
   const key = getRateLimitKey(request, "loyalty-redeem");
-  const result = limiter.check(key);
+  const result = await limiter.checkAsync(key);
 
   if (!result.success) {
     return NextResponse.json(

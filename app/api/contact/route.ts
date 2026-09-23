@@ -8,7 +8,7 @@ const limiter = rateLimit({ windowMs: 300_000, max: 5 }); // 5 per 5 minutes
 
 export async function POST(request: Request) {
   const key = getRateLimitKey(request, "contact");
-  const result = limiter.check(key);
+  const result = await limiter.checkAsync(key);
 
   if (!result.success) {
     return NextResponse.json(

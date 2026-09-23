@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: `Terms & Conditions | ${BRAND.name}`,
+  title: "Terms & Conditions",
   description: `Terms and Conditions for ${BRAND.name} — booking policies, cancellations, and service terms.`,
 };
 

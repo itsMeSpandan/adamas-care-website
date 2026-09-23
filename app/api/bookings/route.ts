@@ -150,6 +150,7 @@ export const POST = requireAuth(async (request: Request) => {
 
     const {
       serviceId,
+      serviceIds,
       employeeId,
       userId,
       date,
@@ -162,8 +163,15 @@ export const POST = requireAuth(async (request: Request) => {
       redemptionCode,
     } = body;
 
+    // Support both single serviceId (legacy) and serviceIds array (multi-service)
+    const resolvedServiceIds: string[] = serviceIds
+      ? (Array.isArray(serviceIds) ? serviceIds : [serviceIds])
+      : serviceId
+        ? [serviceId]
+        : [];
+
     if (
-      !serviceId ||
+      resolvedServiceIds.length === 0 ||
       !employeeId ||
       !date ||
       !slotStart ||
@@ -178,21 +186,74 @@ export const POST = requireAuth(async (request: Request) => {
       );
     }
 
-    // Server-side price: never trust the client-supplied price.
-    const service = await db.service.findUnique({ where: { id: serviceId } });
-    if (!service) {
-      return NextResponse.json({ error: "Invalid service" }, { status: 400 });
+    // Server-side validation: all services must exist and employee must offer each
+    const services = await db.service.findMany({
+      where: { id: { in: resolvedServiceIds } },
+    });
+    if (services.length !== resolvedServiceIds.length) {
+      return NextResponse.json({ error: "One or more invalid service IDs" }, { status: 400 });
     }
 
-    // The employee must actually offer this service.
-    const assignment = await db.employeeService.findFirst({
-      where: { serviceId, employeeId },
+    const assignments = await db.employeeService.findMany({
+      where: { serviceId: { in: resolvedServiceIds }, employeeId },
     });
-    if (!assignment) {
+    const assignedServiceIds = new Set(assignments.map((a) => a.serviceId));
+    const missing = resolvedServiceIds.filter((sid) => !assignedServiceIds.has(sid));
+    if (missing.length > 0) {
       return NextResponse.json(
-        { error: "Selected specialist does not offer this service" },
+        { error: `Selected specialist does not offer service(s): ${missing.join(", ")}` },
         { status: 400 }
       );
+    }
+
+    // WhatsApp verification check: unverified users cannot book
+    const sessionUserId = (await getSessionFromRequest(request))?.userId;
+    if (sessionUserId) {
+      const bookingUser = await db.user.findUnique({
+        where: { id: sessionUserId },
+        select: { gender: true, emailVerified: true, role: true, whatsappNumber: true },
+      });
+
+      // Admins and employees can book regardless of verification status
+      if (bookingUser && bookingUser.role === "user" && !bookingUser.emailVerified) {
+        return NextResponse.json(
+          { error: "Please verify your WhatsApp number before booking. Check your WhatsApp for the verification code." },
+          { status: 403 }
+        );
+      }
+      if (bookingUser?.gender) {
+        const employee = await db.employee.findUnique({
+          where: { id: employeeId },
+          select: { gender: true },
+        });
+        if (employee && employee.gender && employee.gender !== bookingUser.gender) {
+          return NextResponse.json(
+            { error: "This specialist is not available for your booking" },
+            { status: 403 }
+          );
+        }
+      }
+
+      // EDGE-02: Enforce restriction for same-day bookings.
+      // Users with repeated no-shows have restrictedUntil set; they must
+      // book at least 24 hours in advance — same-day bookings are blocked.
+      const reliability = await db.userReliability.findUnique({
+        where: { userId: sessionUserId },
+      });
+      if (reliability?.restrictedUntil && reliability.restrictedUntil > new Date()) {
+        // Parse requested date and compare to today (UTC)
+        const [reqYear, reqMonth, reqDay] = date.split("-").map(Number);
+        const now = new Date();
+        const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const requestedDateUTC = new Date(Date.UTC(reqYear, reqMonth - 1, reqDay));
+        const isSameDay = requestedDateUTC.getTime() === todayUTC.getTime();
+        if (isSameDay) {
+          return NextResponse.json(
+            { error: "Same-day booking temporarily restricted. Please book at least 24 hours ahead." },
+            { status: 403 }
+          );
+        }
+      }
     }
 
     // Reject past dates (compare as YYYY-MM-DD strings).
@@ -216,106 +277,124 @@ export const POST = requireAuth(async (request: Request) => {
 
     const bookingDate = new Date(date);
 
-    // Conflict check: same employee + date + overlapping slot.
-    const dayStart = new Date(bookingDate);
-    dayStart.setUTCHours(0, 0, 0, 0);
-    const dayEnd = new Date(bookingDate);
-    dayEnd.setUTCHours(23, 59, 59, 999);
-
-    const existingBookings = await db.booking.findMany({
-      where: {
-        employeeId,
-        date: { gte: dayStart, lte: dayEnd },
-        status: { notIn: ["cancelled"] },
-        slotStart: { not: null },
-        slotEnd: { not: null },
-      },
-      select: { slotStart: true, slotEnd: true },
-    });
-
-    const hasConflict = existingBookings.some((b) => {
-      if (!b.slotStart || !b.slotEnd) return false;
-      return (
-        timeToMinutes(slotStart) < timeToMinutes(b.slotEnd) &&
-        timeToMinutes(b.slotStart) < timeToMinutes(slotEnd)
-      );
-    });
-
-    if (hasConflict) {
-      return NextResponse.json(
-        { error: "This slot was just taken. Please pick another." },
-        { status: 409 }
-      );
-    }
-
-    const finalPrice = service.price;
+    // Server-side price: compute total from all services (never trust client)
+    const finalPrice = services.reduce((sum, s) => sum + s.price, 0);
     const postSession = await getSessionFromRequest(request);
-    const sessionUserId = postSession?.userId ?? null;
+    const postSessionUserId = postSession?.userId ?? null;
 
-    if (redemptionCode && sessionUserId) {
-      // Everything inside one transaction: validate → create booking → link redemption
-      try {
-        const result = await db.$transaction(async (tx) => {
-          // 1. Validate redemption and calculate discount (throws if invalid)
-          const { discountedPrice, discountAmount: disc, redemptionId } = await applyRedemptionToBooking(
-            tx,
-            sessionUserId,
-            redemptionCode,
-            finalPrice
-          );
-          // 2. Create booking with discounted price
-          const booking = await tx.booking.create({
-            data: {
-              serviceId,
-              employeeId,
-              userId: userId || null,
-              date: bookingDate,
-              timeSlot: slotStart,
-              slotStart: slotStart || null,
-              slotEnd: slotEnd || null,
-              name,
-              email,
-              phone,
-              notes: notes || null,
-              price: discountedPrice,
-            },
-          });
-          // 3. Mark redemption as used and link to booking (single clean update)
-          if (redemptionId) {
-            await linkRedemptionToBooking(tx, redemptionId, booking.id);
-          }
-          return { booking, discountAmount: disc, redemptionId };
+    // ─── EDGE-01: Race-condition-safe booking creation ───────────────────
+    // Wrap conflict check + creation in a transaction with a Postgres
+    // advisory lock keyed by employeeId. This serializes all booking
+    // attempts for the same employee so two concurrent requests cannot
+    // both pass the overlap check and create duplicate bookings.
+    //
+    // The partial unique index on (employeeId, slotStart) WHERE status IN
+    // ('confirmed', 'pending') acts as a hard backstop if the lock is ever
+    // bypassed — P2002 is caught below and translated to a clean 409.
+    try {
+      const result = await db.$transaction(async (tx) => {
+        // Lock scoped to this employee — serializes all booking attempts
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${employeeId}))`;
+
+        // Re-check for overlap inside the lock
+        const dayStart = new Date(bookingDate);
+        dayStart.setUTCHours(0, 0, 0, 0);
+        const dayEnd = new Date(bookingDate);
+        dayEnd.setUTCHours(23, 59, 59, 999);
+
+        const overlapping = await tx.booking.findFirst({
+          where: {
+            employeeId,
+            date: { gte: dayStart, lte: dayEnd },
+            status: { in: ["confirmed", "pending"] },
+            slotStart: { not: null },
+            slotEnd: { not: null },
+          },
         });
 
-        return NextResponse.json({
-          booking: result.booking,
-          discount: result.discountAmount > 0 ? { amount: result.discountAmount, redemptionId: result.redemptionId } : undefined,
-        }, { status: 201 });
-      } catch (err) {
+        if (overlapping && overlapping.slotStart && overlapping.slotEnd) {
+          if (
+            timeToMinutes(slotStart) < timeToMinutes(overlapping.slotEnd) &&
+            timeToMinutes(overlapping.slotStart) < timeToMinutes(slotEnd)
+          ) {
+            throw new Error("CONFLICT");
+          }
+        }
+
+        let bookingPrice = finalPrice;
+        let discountInfo: { amount: number; redemptionId: string } | undefined;
+
+        // Handle redemption inside the same locked transaction
+        if (redemptionCode && postSessionUserId) {
+          const { discountedPrice, discountAmount: disc, redemptionId } =
+            await applyRedemptionToBooking(tx, postSessionUserId, redemptionCode, finalPrice);
+          bookingPrice = discountedPrice;
+          if (disc > 0 && redemptionId) {
+            discountInfo = { amount: disc, redemptionId };
+          }
+        }
+
+        const booking = await tx.booking.create({
+          data: {
+            serviceId: resolvedServiceIds[0] || null,
+            employeeId,
+            userId: userId || null,
+            date: bookingDate,
+            timeSlot: slotStart,
+            slotStart: slotStart || null,
+            slotEnd: slotEnd || null,
+            name,
+            email,
+            phone,
+            notes: notes || null,
+            price: bookingPrice,
+          },
+        });
+
+        // Create BookingService junction rows for multi-service bookings
+        if (resolvedServiceIds.length > 1) {
+          for (let i = 0; i < resolvedServiceIds.length; i++) {
+            await tx.bookingService.create({
+              data: { bookingId: booking.id, serviceId: resolvedServiceIds[i], position: i },
+            });
+          }
+        }
+
+        // Link redemption to booking if applicable
+        if (redemptionCode && postSessionUserId && discountInfo) {
+          await linkRedemptionToBooking(tx, discountInfo.redemptionId, booking.id);
+        }
+
+        return { booking, discount: discountInfo };
+      });
+
+      return NextResponse.json({
+        booking: result.booking,
+        discount: result.discount,
+      }, { status: 201 });
+    } catch (err) {
+      // Translate advisory-lock conflict into clean 409
+      if (err instanceof Error && err.message === "CONFLICT") {
+        return NextResponse.json(
+          { error: "This slot was just taken. Please pick another." },
+          { status: 409 }
+        );
+      }
+      // Translate partial-unique-index violation (P2002) into clean 409
+      const prismaErr = err as { code?: string; meta?: { target?: string[] } };
+      if (prismaErr.code === "P2002") {
+        return NextResponse.json(
+          { error: "This slot was just taken. Please pick another." },
+          { status: 409 }
+        );
+      }
+      // Handle redemption-specific errors
+      if (redemptionCode) {
         const message = err instanceof Error ? err.message : "Failed to apply redemption";
         return NextResponse.json({ error: message }, { status: 400 });
       }
+      throw err;
     }
-
-    // No redemption code — create booking directly
-    const booking = await db.booking.create({
-      data: {
-        serviceId,
-        employeeId,
-        userId: userId || null,
-        date: bookingDate,
-        timeSlot: slotStart,
-        slotStart: slotStart || null,
-        slotEnd: slotEnd || null,
-        name,
-        email,
-        phone,
-        notes: notes || null,
-        price: finalPrice,
-      },
-    });
-
-    return NextResponse.json({ booking }, { status: 201 });
   } catch (error) {
     console.error("Failed to create booking:", error);
     return NextResponse.json(

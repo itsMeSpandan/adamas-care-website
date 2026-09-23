@@ -11,39 +11,34 @@ export default function TeamCard({ employee }: TeamCardProps) {
   return (
     <Link
       href={`/team/${employee.id}`}
-      className="group relative block overflow-hidden rounded-card border border-beige-200 bg-white shadow-card transition-all duration-300 hover:shadow-card-hover"
+      className="group block"
     >
-      {/* Image */}
-      <div className="relative aspect-square overflow-hidden">
+      {/* Image — full bleed, no border or shadow */}
+      <div className="relative aspect-[3/4] overflow-hidden rounded-2xl">
         <Image
           src={employee.imageUrl}
           alt={employee.name}
           fill
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        {/* Hover overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-beige-600/0 transition-all duration-300 group-hover:bg-beige-600/80">
-          <span className="translate-y-4 text-sm font-medium text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-            View Profile
-          </span>
-        </div>
-      </div>
+        {/* Gradient overlay at bottom for text legibility */}
+        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-      {/* Content */}
-      <div className="p-5">
-        <h3 className="font-serif text-xl font-semibold text-beige-700">
-          {employee.name}
-        </h3>
-        <p className="mt-0.5 text-sm text-beige-500">{employee.role}</p>
-        {/* Star rating */}
-        <div className="mt-3 flex items-center gap-1">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <StarIcon key={i} filled={i < Math.round(employee.rating)} />
-          ))}
-          <span className="ml-1 text-xs text-beige-500">
-            {employee.rating} ({employee.reviewCount})
-          </span>
+        {/* Text overlaid on image */}
+        <div className="absolute inset-x-0 bottom-0 p-5">
+          <h3 className="font-serif text-xl font-semibold text-white drop-shadow-sm">
+            {employee.name}
+          </h3>
+          <p className="mt-0.5 text-sm text-white/80">{employee.role}</p>
+          <div className="mt-2 flex items-center gap-1">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <StarIcon key={i} filled={i < Math.round(employee.rating)} />
+            ))}
+            <span className="ml-1 text-xs text-white/70">
+              {employee.rating} ({employee.reviewCount})
+            </span>
+          </div>
         </div>
       </div>
     </Link>

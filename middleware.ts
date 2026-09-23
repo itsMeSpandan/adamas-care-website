@@ -16,9 +16,8 @@ export function middleware(request: NextRequest) {
 
   // Security headers
   response.headers.set("X-Frame-Options", "DENY");
-  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set(    "X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.headers.set("X-XSS-Protection", "1; mode=block");
   response.headers.set(
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(), interest-cohort=()"
@@ -35,7 +34,7 @@ export function middleware(request: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    "img-src 'self' https://images.unsplash.com https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com data: blob:",
+    "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com data: blob:",
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://www.gstatic.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",

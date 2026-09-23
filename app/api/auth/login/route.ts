@@ -11,7 +11,7 @@ import { setSessionCookies } from "@/lib/auth";
 
 export async function POST(request: Request) {
   const key = getRateLimitKey(request, "login");
-  const result = limiter.check(key);
+  const result = await limiter.checkAsync(key);
 
   if (!result.success) {
     return NextResponse.json(

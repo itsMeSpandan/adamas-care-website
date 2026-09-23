@@ -1,33 +1,25 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
-/.pnp
-.pnp.js
-.yarn/install-state.gz
-
-# testing
-/coverage
+node_modules/
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
 # production
-/build
+build/
+dist/
 
-# misc
-.DS_Store
-*.pem
+# env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
-# debug
+# debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-
-# local env files
-.env*.local
-.env
 
 # vercel
 .vercel
@@ -36,22 +28,23 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-/lib/generated/prisma
+# os files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
 
-DATABASE_CONNECTION.md
-PROJECT_OVERVIEW.md
+# editor
+.vscode/
+.idea/
 
-/snapshots 
-AUDIT_REPORT.md
-FIX_MASTER_PROMPT.md
-SECURITY_AUDIT_REPORT.md
-STAGE1_2_REPORT.md
-/docs
-snapshot-pages.ts 
+# testing
+coverage/
 
-nul
+# sentry
+.sentryclirc
 
-# MCP server configs (may contain API keys)
-.mcp.json
-.aidesigner/*
-!.aidesigner/.gitkeep
+# misc
+*.pem
+*.cache

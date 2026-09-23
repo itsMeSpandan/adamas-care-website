@@ -16,6 +16,7 @@ export interface AuthUser {
   employeeId?: string;
   loyaltyPoints?: number;
   mustChangePassword?: boolean;
+  whatsappNumber?: string | null;
   createdAt?: string;
 }
 

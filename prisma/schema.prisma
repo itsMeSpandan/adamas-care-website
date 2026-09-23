@@ -27,6 +27,13 @@ enum BookingStatus {
   completed
 }
 
+enum WaitlistStatus {
+  waiting
+  notified
+  claimed
+  expired
+}
+
 model User {
   id                String   @id @default(cuid())
   name              String
@@ -39,6 +46,7 @@ model User {
   employeeId        String?
   loyaltyPoints     Int      @default(0)
   mustChangePassword Boolean @default(false)
+  emailVerified     Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -46,6 +54,9 @@ model User {
   passwordResetTokens  PasswordResetToken[]
   loyaltyTransactions  LoyaltyTransaction[]
   redemptions          RewardRedemption[]
+  waitlistEntries      Waitlist[]
+  reliability          UserReliability?
+  refreshTokens        RefreshToken[]
 }
 
 model Service {
@@ -62,6 +73,7 @@ model Service {
   employeeServices EmployeeService[]
   bookings         Booking[]
   loyaltyRewards   LoyaltyReward[]
+  bookingServices  BookingService[]
 }
 
 model Employee {
@@ -81,6 +93,7 @@ model Employee {
   bookings              Booking[]
   weeklyAvailability    EmployeeAvailability[]
   availabilityOverrides AvailabilityOverride[]
+  waitlistEntries       Waitlist[]
 }
 
 model EmployeeService {
@@ -128,12 +141,31 @@ model Booking {
   user     User?    @relation(fields: [userId], references: [id])
   employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
+  totalDurationMinutes Int?
+  reminder24hSentAt    DateTime?
+  reminder2hSentAt     DateTime?
+
   loyaltyTransactions LoyaltyTransaction[]
   rewardRedemptions  RewardRedemption[]
+  bookingServices     BookingService[]
 
   @@index([employeeId, date])
   @@index([userId])
   @@index([email])
+}
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  userId      String
+  tokenHash   String   @unique
+  jti         String   @unique
+  revoked     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
 }
 
 model PasswordResetToken {
@@ -290,6 +322,92 @@ model Holiday {
   @@unique([date, name])
   @@index([date])
   @@index([type])
+}
+
+// ─── Waitlist ────────────────────────────────────────────────────────────────
+
+model Waitlist {
+  id          String         @id @default(cuid())
+  userId      String
+  employeeId  String
+  slotStart   String         // "HH:MM" format
+  slotEnd     String         // "HH:MM" format
+  slotDate    DateTime?      // The date of the slot (YYYY-MM-DD), used for claim booking
+  serviceId   String?        // single service for now; multi-service uses BookingService
+  status      WaitlistStatus @default(waiting)
+  createdAt   DateTime       @default(now())
+  notifiedAt  DateTime?
+  claimExpiresAt DateTime?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, slotStart, status])
+  @@index([userId])
+  @@index([status])
+}
+
+// ─── User Reliability ────────────────────────────────────────────────────────
+
+model UserReliability {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  cancelCount     Int       @default(0)
+  lateCancelCount Int       @default(0) // cancels within 2 hours of slot
+  noShowCount     Int       @default(0)
+  restrictedUntil DateTime?
+  updatedAt       DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── WhatsApp Message Logs ────────────────────────────────────────────────────
+
+model WhatsAppMessageLog {
+  id            String   @id @default(cuid())
+  phoneNumber   String   // Recipient E.164
+  messageType   String   // "otp" | "booking_confirmation" | "slot_available" | "text"
+  templateName  String?  // Template used (for template messages)
+  status        String   @default("sent") // "sent" | "delivered" | "read" | "failed"
+  errorMessage  String?  // API error if failed
+  requestBody   String?  // Truncated request payload (for debugging)
+  responseBody  String?  // Truncated API response
+  responseCode  Int?     // HTTP status code from WhatsApp API
+  durationMs    Int?     // Round-trip time in milliseconds
+  createdAt     DateTime @default(now())
+
+  @@index([phoneNumber])
+  @@index([messageType])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─── System Settings ─────────────────────────────────────────────────────────
+// Key-value store for admin-editable configuration.
+// Env vars are the source of truth for secrets; this table stores
+// non-sensitive operational settings that admins can change at runtime.
+
+model SystemSetting {
+  key         String   @id
+  value       String   // JSON-stringified value or plain string
+  description String?  // Human-readable description for the admin UI
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  // Admin userId who last changed this setting
+}
+
+// ─── Multi-service junction ──────────────────────────────────────────────────
+
+model BookingService {
+  id        String  @id @default(cuid())
+  bookingId String
+  serviceId String
+  position  Int     @default(0) // ordering within the booking
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, serviceId])
+  @@index([bookingId])
 }
 
 

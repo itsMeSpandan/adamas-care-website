@@ -23,6 +23,7 @@ export async function GET(request: Request) {
         employeeId: true,
         loyaltyPoints: true,
         mustChangePassword: true,
+        whatsappNumber: true,
         createdAt: true,
       },
     });

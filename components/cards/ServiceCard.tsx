@@ -5,11 +5,11 @@ import { formatPrice, formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const categoryColors: Record<string, string> = {
-  Hair: "bg-amber-100 text-amber-800",
-  Skin: "bg-rose-100 text-rose-800",
-  Nails: "bg-pink-100 text-pink-800",
-  Body: "bg-emerald-100 text-emerald-800",
-  Bridal: "bg-purple-100 text-purple-800",
+  Hair: "bg-sage-50 text-sage-600",
+  Skin: "bg-amber-50 text-amber-800",
+  Nails: "bg-orange-50 text-orange-800",
+  Body: "bg-emerald-50 text-emerald-800",
+  Bridal: "bg-rose-50 text-rose-800",
 };
 
 interface ServiceCardProps {

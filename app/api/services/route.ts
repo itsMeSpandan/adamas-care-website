@@ -40,7 +40,7 @@ export const POST = requireRole("admin", async (request: Request) => {
       longDescription: longDescription || description,
       durationMinutes,
       price,
-      imageUrl: imageUrl || "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80",
+      imageUrl: imageUrl || "/images/photo-1560066984-138dadb4c035",
       featured: featured ?? false,
       employeeIds: employeeIds || [],
     });

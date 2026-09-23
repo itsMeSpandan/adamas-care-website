@@ -4,7 +4,6 @@ import Link from "next/link";
 import { getEmployeeById, getServices } from "@/lib/queries";
 import { formatDuration } from "@/lib/utils";
 import StarIcon from "@/components/ui/StarIcon";
-import { BRAND } from "@/lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +16,7 @@ export async function generateMetadata({ params }: Props) {
   const employee = await getEmployeeById(id);
   if (!employee) return { title: "Stylist Not Found" };
   return {
-    title: `${employee.name} | ${BRAND.name}`,
+    title: employee.name,
     description: employee.bio,
   };
 }

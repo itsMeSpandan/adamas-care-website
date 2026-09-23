@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
@@ -11,10 +12,10 @@ const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
 });
 
 /* ─── copy ─── */
-const headline = "Your Perfect Look Awaits";
+const headline = "Hair That Moves. Skin That Glows.";
 
 const subtext =
-  "Discover personalized beauty treatments crafted by our expert team. From rejuvenating facials to transformative lifts, we bring out your natural radiance.";
+  "Precision cuts, colour that lasts, and facials that actually change your skin — done by specialists who remember your name and your last appointment.";
 
 const totalSlides = 3;
 
@@ -57,40 +58,78 @@ export default function HeroSection() {
                 color: "var(--accent-primary)",
               }}
             >
-              Your Feel Fresh:
+              Grace Salon
             </span>
 
-            {/* Headline — two lines */}
+            {/* Headline — staggered word reveal */}
             <h1
               className="mt-5 font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
               style={{ color: "var(--text-primary)" }}
             >
               <span className="block">
                 {line1.map((word, idx) => (
-                  <span key={`l1-${idx}`} className="inline-block">
-                    {word}{" "}
-                  </span>
+                  <motion.span
+                    key={`l1-${idx}`}
+                    className="inline-block overflow-hidden"
+                  >
+                    <motion.span
+                      className="inline-block"
+                      initial={{ y: "110%" }}
+                      animate={{ y: 0 }}
+                      transition={{
+                        duration: 0.7,
+                        delay: 0.3 + idx * 0.12,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                    >
+                      {word}
+                    </motion.span>
+                    <span className="inline-block w-[0.3em]">&nbsp;</span>
+                  </motion.span>
                 ))}
               </span>
               <span className="block">
                 {line2.map((word, idx) => (
-                  <span key={`l2-${idx}`} className="inline-block">
-                    {word}{" "}
-                  </span>
+                  <motion.span
+                    key={`l2-${idx}`}
+                    className="inline-block overflow-hidden"
+                  >
+                    <motion.span
+                      className="inline-block"
+                      initial={{ y: "110%" }}
+                      animate={{ y: 0 }}
+                      transition={{
+                        duration: 0.7,
+                        delay: 0.6 + idx * 0.12,
+                        ease: [0.22, 1, 0.36, 1],
+                      }}
+                    >
+                      {word}
+                    </motion.span>
+                    <span className="inline-block w-[0.3em]">&nbsp;</span>
+                  </motion.span>
                 ))}
               </span>
             </h1>
 
-            {/* Subtext */}
-            <p
+            {/* Subtext — delayed fade in */}
+            <motion.p
               className="mt-6 max-w-md text-sm leading-relaxed sm:text-base md:text-lg"
               style={{ color: "var(--text-muted)" }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 1.0, ease: "easeOut" }}
             >
               {subtext}
-            </p>
+            </motion.p>
 
-            {/* CTA */}
-            <div className="mt-10 flex items-center gap-4">
+            {/* CTA — delayed fade in */}
+            <motion.div
+              className="mt-10 flex items-center gap-4"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 1.2, ease: "easeOut" }}
+            >
               <button
                 type="button"
                 onClick={handleBookClick}
@@ -113,7 +152,7 @@ export default function HeroSection() {
               >
                 Sign In
               </button>
-            </div>
+            </motion.div>
 
             {/* Carousel dots — below CTA */}
             <div className="mt-8 flex items-center gap-2">
@@ -147,15 +186,22 @@ export default function HeroSection() {
             }}
           />
 
-          {/* Hero image */}
-          <Image
-            src="/images/hero-beauty.png"
-            alt="Smiling woman with radiant skin — beauty treatment results"
-            fill
-            className="object-cover object-[center_20%]"
-            sizes="(max-width: 768px) 100vw, 50vw"
-            priority
-          />
+          {/* Hero image — slide in from right */}
+          <motion.div
+            className="absolute inset-0"
+            initial={{ x: 60, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 1.0, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Image
+              src="/images/hero-beauty.png"
+              alt="Smiling woman with radiant skin — beauty treatment results"
+              fill
+              className="object-cover object-[center_20%]"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority
+            />
+          </motion.div>
         </div>
 
         {/* ── Mobile: Hero image below text ── */}

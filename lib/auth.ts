@@ -1,15 +1,38 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { COOKIE_NAMES, TOKEN_EXPIRY } from "@/lib/constants";
+import { createRefreshToken, revokeRefreshToken } from "@/lib/refresh-tokens";
 
 const envSecret = process.env.SESSION_SECRET;
 if (!envSecret) {
-  // Fail closed: never sign JWTs with a known/committed fallback secret.
-  // SESSION_SECRET must be set in the deployment environment (and locally for dev).
   throw new Error(
     "SESSION_SECRET is not set. Refusing to start with an insecure JWT secret."
   );
 }
+
+// Reject weak secrets: too short, common values, or low entropy
+const WEAK_SECRETS = new Set([
+  "secret", "password", "changeme", "default", "test",
+  "supersecret", "mysecret", "jwt-secret", "keyboard cat",
+]);
+if (envSecret.length < 32) {
+  throw new Error(
+    `SESSION_SECRET is too short (${envSecret.length} chars). Must be at least 32 characters.`
+  );
+}
+if (WEAK_SECRETS.has(envSecret.toLowerCase().trim())) {
+  throw new Error(
+    "SESSION_SECRET is a known weak value. Use a cryptographically random string."
+  );
+}
+// Basic entropy check: at least 4 unique characters
+const uniqueChars = new Set(envSecret).size;
+if (uniqueChars < 4) {
+  throw new Error(
+    `SESSION_SECRET has very low entropy (${uniqueChars} unique characters). Use a random string.`
+  );
+}
+
 const SESSION_SECRET = new TextEncoder().encode(envSecret);
 
 export interface SessionPayload {
@@ -61,6 +84,9 @@ export async function setSessionCookies(
   const accessToken = await signToken(payload, TOKEN_EXPIRY.access);
   const refreshToken = await signToken(payload, TOKEN_EXPIRY.refresh);
 
+  // Persist refresh token in DB for rotation and revocation
+  await createRefreshToken(payload.userId, refreshToken);
+
   const cookieStore = await cookies();
 
   cookieStore.set(COOKIE_NAMES.session, accessToken, {
@@ -85,7 +111,12 @@ export async function setSessionCookies(
 /**
  * Clear session cookies (logout).
  */
-export async function clearSessionCookies(): Promise<void> {
+export async function clearSessionCookies(rawRefreshToken?: string): Promise<void> {
+  // Revoke the refresh token server-side if provided
+  if (rawRefreshToken) {
+    await revokeRefreshToken(rawRefreshToken);
+  }
+
   const cookieStore = await cookies();
   cookieStore.delete(COOKIE_NAMES.session);
   cookieStore.delete(COOKIE_NAMES.refresh);

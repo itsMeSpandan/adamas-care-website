@@ -18,7 +18,7 @@ export const PUT = requireAuth(async (request: Request) => {
     const body = await request.json();
     // IMPORTANT: the target user is always derived from the authenticated session,
     // never from a client-supplied `userId` (prevents IDOR / account takeover).
-    const { name, email, avatarUrl, currentPassword, newPassword } = body;
+    const { name, email, avatarUrl, whatsappNumber, currentPassword, newPassword } = body;
 
     const user = await findUserById(session.userId);
     if (!user) {
@@ -49,17 +49,37 @@ export const PUT = requireAuth(async (request: Request) => {
       }
     }
 
-    const updateData: {
-      name?: string;
-      email?: string;
-      avatarUrl?: string;
-      password?: string;
-      mustChangePassword?: boolean;
-    } = {};
+    const updateData: Record<string, unknown> = {};
 
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
+    if (whatsappNumber !== undefined) {
+      // Validate WhatsApp number format
+      if (whatsappNumber && whatsappNumber.trim().length > 0) {
+        const cleanPhone = whatsappNumber.replace(/[^0-9+]/g, "");
+        if (!cleanPhone.match(/^\+?[0-9]{10,15}$/)) {
+          return NextResponse.json(
+            { error: "Please enter a valid WhatsApp number" },
+            { status: 400 }
+          );
+        }
+        // Check if another user already has this number
+        const { db } = await import("@/lib/db");
+        const existingPhone = await db.user.findFirst({
+          where: { whatsappNumber: cleanPhone, id: { not: session.userId } },
+        });
+        if (existingPhone) {
+          return NextResponse.json(
+            { error: "This WhatsApp number is already associated with another account" },
+            { status: 409 }
+          );
+        }
+        updateData.whatsappNumber = cleanPhone;
+      } else {
+        updateData.whatsappNumber = null;
+      }
+    }
     if (newPassword) {
       updateData.password = await hashPassword(newPassword);
       updateData.mustChangePassword = false;

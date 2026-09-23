@@ -63,13 +63,12 @@ export default function ContactPage() {
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-beige-700">Phone</p>
-                    <a
-                      href="tel:+13105551234"
-                      className="text-sm text-beige-600 transition-colors hover:text-beige-700"
-                    >
-                      (310) 555-1234
-                    </a>
+                    <p className="font-medium text-beige-700">Phone</p>                      <a
+                        href="tel:+919238381831"
+                        className="text-sm text-beige-600 transition-colors hover:text-beige-700"
+                      >
+                        +91 9238381831
+                      </a>
                   </div>
                 </div>
 

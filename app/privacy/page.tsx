@@ -3,7 +3,7 @@ import Link from "next/link";
 import { BRAND } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: `Privacy Policy | ${BRAND.name}`,
+  title: "Privacy Policy",
   description: `Privacy Policy for ${BRAND.name} — how we collect, use, and protect your personal information.`,
 };
 

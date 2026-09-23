@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 import { BRAND } from "@/lib/brand";
 
 interface Employee {
@@ -260,7 +261,7 @@ export default function AdminEmployeesPage() {
             >
               <div className="flex items-start gap-4">
                 <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border-2 border-beige-200">
-                  <img src={emp.imageUrl} alt={emp.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
+                  <Image src={emp.imageUrl} alt={emp.name} className="h-full w-full object-cover" fill sizes="64px" />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between">

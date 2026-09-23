@@ -2,6 +2,7 @@
 
 import React, { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
+import Image from "next/image";
 import "./StaggeredMenu.css";
 
 interface StaggeredMenuItem {
@@ -472,7 +473,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
           aria-label="Main navigation header"
         >
           <div className="sm-logo" aria-label="Logo">
-            <img
+            <Image
               src={logoUrl}
               alt="Logo"
               className="sm-logo-img"

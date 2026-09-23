@@ -138,7 +138,7 @@ export default function AboutPage() {
             className="relative aspect-[4/3] overflow-hidden rounded-card"
           >
             <Image
-              src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=800&q=80"
+              src="/images/photo-1521590832167-7bcbfaa6381f"
               alt={`${BRAND.name} salon interior`}
               fill
               className="object-cover"

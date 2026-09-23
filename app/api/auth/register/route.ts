@@ -3,14 +3,20 @@ import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/crypto";
 import { setSessionCookies } from "@/lib/auth";
+import { sendWhatsAppOtp } from "@/lib/whatsapp";
+import crypto from "crypto";
 
 const limiter = rateLimit({ windowMs: 60_000, max: 3 }); // 3 registrations per minute
 
 export const dynamic = "force-dynamic";
 
+function generateOtp(): string {
+  return crypto.randomInt(100000, 1000000).toString();
+}
+
 export async function POST(request: Request) {
   const key = getRateLimitKey(request, "register");
-  const result = limiter.check(key);
+  const result = await limiter.checkAsync(key);
 
   if (!result.success) {
     return NextResponse.json(
@@ -32,6 +38,23 @@ export async function POST(request: Request) {
     if (!name || !email || !password) {
       return NextResponse.json(
         { error: "Name, email, and password are required" },
+        { status: 400 }
+      );
+    }
+
+    // WhatsApp number is required for OTP verification
+    if (!whatsappNumber || whatsappNumber.trim().length === 0) {
+      return NextResponse.json(
+        { error: "WhatsApp number is required for verification" },
+        { status: 400 }
+      );
+    }
+
+    // Validate WhatsApp number format (basic E.164 check)
+    const cleanPhone = whatsappNumber.replace(/[^0-9+]/g, "");
+    if (!cleanPhone.match(/^\+?[0-9]{10,15}$/)) {
+      return NextResponse.json(
+        { error: "Please enter a valid WhatsApp number (e.g., +91 98765 43210)" },
         { status: 400 }
       );
     }
@@ -76,6 +99,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check if WhatsApp number is already used
+    const existingWhatsapp = await db.user.findFirst({
+      where: { whatsappNumber: cleanPhone },
+    });
+    if (existingWhatsapp) {
+      return NextResponse.json(
+        { error: "An account with this WhatsApp number already exists" },
+        { status: 409 }
+      );
+    }
+
     const hashedPassword = await hashPassword(password);
 
     const user = await db.user.create({
@@ -85,7 +119,7 @@ export async function POST(request: Request) {
         password: hashedPassword,
         role: "user",
         gender: gender || null,
-        whatsappNumber: whatsappNumber || null,
+        whatsappNumber: cleanPhone,
         avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e8ddd3&color=7c6e5a`,
       },
     });
@@ -97,17 +131,46 @@ export async function POST(request: Request) {
       email: user.email,
     });
 
+    // ─── Auto-send WhatsApp OTP after signup ───
+    let otpSent = false;
+    const otp = generateOtp();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    try {
+      await db.passwordResetToken.create({
+        data: { token: otp, userId: user.id, expiresAt },
+      });
+
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`🔑 WhatsApp verification OTP for ${cleanPhone}: ${otp}`);
+      }
+
+      otpSent = await sendWhatsAppOtp(cleanPhone, otp);
+    } catch (err) {
+      console.error("[Register] Failed to send OTP:", err);
+      // Don't block registration — OTP can be resent from verify page
+    }
+
     // Return user without password
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _, ...userWithoutPassword } = user;
 
-    return NextResponse.json({ user: userWithoutPassword }, {
-      status: 201,
-      headers: {
-        "X-RateLimit-Limit": "3",
-        "X-RateLimit-Remaining": String(result.remaining),
+    return NextResponse.json(
+      {
+        user: userWithoutPassword,
+        otpSent,
+        message: otpSent
+          ? "Account created! Check your WhatsApp for the verification code."
+          : "Account created! Please verify your WhatsApp number from your profile.",
       },
-    });
+      {
+        status: 201,
+        headers: {
+          "X-RateLimit-Limit": "3",
+          "X-RateLimit-Remaining": String(result.remaining),
+        },
+      }
+    );
   } catch (error) {
     console.error("Registration failed:", error);
     return NextResponse.json(

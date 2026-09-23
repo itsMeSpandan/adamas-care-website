@@ -1,103 +1,96 @@
-import { NextResponse } from "next/server";
-import { getEmployees, createEmployee, generateUniqueEmployeeEmail, createUser } from "@/lib/queries";
-import { requireRole } from "@/lib/require-auth";
-import { hashPassword } from "@/lib/crypto";
-import { logAudit, getClientIp } from "@/lib/audit";
+import { NextRequest, NextResponse } from "next/server";
+import { getEligibleEmployees } from "@/lib/scoring-engine";
 import { getSessionFromRequest } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+/**
+ * GET /api/employees?serviceIds=haircut,color
+ *
+ * Returns employees who offer the requested services, filtered by
+ * the logged-in user's gender preference:
+ *   - MALE user → only male employees
+ *   - FEMALE user → only female employees
+ *   - null/other/unspecified → ALL eligible employees (no filter)
+ *
+ * Requires authentication to determine gender.
+ */
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const serviceIdsParam = searchParams.get("serviceIds");
+
+  // No serviceIds → return ALL employees (admin dashboard, schedule, etc.)
+  if (!serviceIdsParam) {
+    const { db } = await import("@/lib/db");
+    const employees = await db.employee.findMany({
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        gender: true,
+        bio: true,
+        imageUrl: true,
+        yearsExperience: true,
+        instagramHandle: true,
+        rating: true,
+        reviewCount: true,
+        employeeServices: { select: { serviceId: true } },
+      },
+      orderBy: { name: "asc" },
+    });
+    const shaped = employees.map((e) => ({
+      id: e.id,
+      name: e.name,
+      email: e.email,
+      role: e.role,
+      gender: e.gender,
+      bio: e.bio,
+      imageUrl: e.imageUrl,
+      yearsExperience: e.yearsExperience,
+      instagramHandle: e.instagramHandle,
+      rating: e.rating,
+      reviewCount: e.reviewCount,
+      serviceIds: e.employeeServices.map((s) => s.serviceId),
+    }));
+    return NextResponse.json(shaped);
+  }
+
+  const serviceIds = serviceIdsParam.split(",").filter(Boolean);
+  if (serviceIds.length === 0) {
+    return NextResponse.json([]);
+  }
+
   try {
-    const employees = await getEmployees();
-    return NextResponse.json(employees);
+    // Get session to determine userId for gender filter
+    const session = await getSessionFromRequest(request);
+
+    if (!session?.userId) {
+      // Unauthenticated: return all eligible employees (no gender filter)
+      const { db } = await import("@/lib/db");
+      const employeeServices = await db.employeeService.findMany({
+        where: { serviceId: { in: serviceIds } },
+        select: { employeeId: true },
+      });
+      const employeeIds = Array.from(
+        new Set(employeeServices.map((es) => es.employeeId))
+      );
+      const employees = await db.employee.findMany({
+        where: { id: { in: employeeIds } },
+        select: { id: true, name: true, gender: true, rating: true, imageUrl: true },
+      });
+      return NextResponse.json({ employees });
+    }
+
+    // Authenticated: apply gender filter
+    const employees = await getEligibleEmployees(session.userId, serviceIds);
+
+    return NextResponse.json({ employees });
   } catch (error) {
-    console.error("Failed to fetch employees:", error);
+    console.error("Failed to fetch eligible employees:", error);
     return NextResponse.json(
-      { error: "Failed to fetch employees" },
+      { error: "Failed to fetch eligible employees" },
       { status: 500 }
     );
   }
 }
-
-export const POST = requireRole("admin", async (request: Request) => {
-  try {
-    const body = await request.json();
-    const { name, role, gender, bio, imageUrl, yearsExperience, instagramHandle, serviceIds } = body;
-
-    if (!name || !role) {
-      return NextResponse.json(
-        { error: "Missing required fields: name, role" },
-        { status: 400 }
-      );
-    }
-
-    // Always auto-generate email from name (ignore any client-supplied email)
-    const employeeEmail = await generateUniqueEmployeeEmail(name);
-
-    // Default password for new employees — they must change it on first login
-    const defaultPassword = "password123";
-    const hashedPassword = await hashPassword(defaultPassword);
-
-    // Generate a unique ID
-    const id = `emp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-    const employee = await createEmployee({
-      id,
-      name,
-      email: employeeEmail,
-      role,
-      gender: gender || null,
-      bio: bio || "",
-      imageUrl: imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e8ddd3&color=7c6e5a&size=200`,
-      yearsExperience: yearsExperience || 0,
-      instagramHandle: instagramHandle || undefined,
-      serviceIds: serviceIds || [],
-    });
-
-    // Create a User account so the employee can log in
-    await createUser({
-      name,
-      email: employeeEmail,
-      password: hashedPassword,
-      role: "employee",
-      avatarUrl: employee.imageUrl,
-    });
-
-    // Link the user account to the employee record
-    const { db } = await import("@/lib/db");
-    await db.user.updateMany({
-      where: { email: employeeEmail },
-      data: {
-        employeeId: id,
-        mustChangePassword: true,
-      },
-    });
-
-    const session = await getSessionFromRequest(request);
-    logAudit({
-      action: "employee_create",
-      entityType: "employee",
-      entityId: id,
-      adminId: session?.userId,
-      adminName: session?.email,
-      details: `Created employee: ${name} (${role})`,
-      ip: getClientIp(request),
-    });
-
-    return NextResponse.json(
-      {
-        employee,
-        email: employeeEmail,
-        password: defaultPassword,
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Failed to create employee:", error);
-    return NextResponse.json(
-      { error: "Failed to create employee" },
-      { status: 500 }
-    );
-  }
-});

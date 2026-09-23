@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     // Stage 3.1: Rate limit by email + IP (prevents brute-force against specific accounts)
     const key = getEmailKey(request, "forgot-password", email);
-    const result = limiter.check(key);
+    const result = await limiter.checkAsync(key);
 
     if (!result.success) {
       return NextResponse.json(
