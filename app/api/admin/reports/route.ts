@@ -149,7 +149,9 @@ export const GET = requireRole("admin", async (request: Request) => {
       );
     }
 
-    const csv = rows.join("\n");
+    // Prepend UTF-8 BOM so Excel correctly detects UTF-8 and renders ₹ properly
+    const BOM = "\uFEFF";
+    const csv = BOM + rows.join("\n");
     const filename = `revenue-report-${year}-${String(month + 1).padStart(2, "0")}.csv`;
 
     return new NextResponse(csv, {

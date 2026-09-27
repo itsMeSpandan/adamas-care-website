@@ -37,21 +37,22 @@ export default function RoleLayout({
   links,
   children,
 }: RoleLayoutProps) {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [authorized, setAuthorized] = useState(false);
 
-  // Route guard: redirect unauthorized users
+  // Route guard: redirect unauthorized users only after auth has loaded
   useEffect(() => {
+    if (isLoading) return; // wait for session check to complete
     const hasAccess = user?.role === role;
     if (!hasAccess) {
       router.replace("/");
     } else {
       setAuthorized(true);
     }
-  }, [user, role, router]);
+  }, [user, role, router, isLoading]);
 
   // Show loading state while checking auth
   if (!authorized) {
