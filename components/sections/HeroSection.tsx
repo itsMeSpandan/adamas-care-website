@@ -4,8 +4,6 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth-context";
 
 const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
   ssr: false,
@@ -20,11 +18,9 @@ const subtext =
 const totalSlides = 3;
 
 export default function HeroSection() {
-  const { isAuthenticated } = useAuth();
-  const router = useRouter();
   const [activeSlide, setActiveSlide] = useState(0);
   const [loginOpen, setLoginOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const [loginMode, setLoginMode] = useState<"signin" | "signup">("signup");
 
   const words = headline.split(" ");
   const mid = Math.ceil(words.length / 2);
@@ -32,13 +28,8 @@ export default function HeroSection() {
   const line2 = words.slice(mid);
 
   const handleBookClick = () => {
-    if (!isAuthenticated) {
-      setAuthMode("signup");
-      setLoginOpen(true);
-      return;
-    }
-
-    router.push("/booking");
+    setLoginMode("signup");
+    setLoginOpen(true);
   };
 
   return (
@@ -139,10 +130,7 @@ export default function HeroSection() {
                 Book Appointment
               </button>
               <button
-                onClick={() => {
-                  setAuthMode("signin");
-                  setLoginOpen(true);
-                }}
+                onClick={() => { setLoginMode("signin"); setLoginOpen(true); }}
                 className="inline-flex items-center justify-center rounded-full border px-6 py-3 text-sm font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-3.5"
                 style={{
                   color: "var(--text-primary)",
@@ -226,11 +214,7 @@ export default function HeroSection() {
           />
         </div>
       </section>
-      <LoginModal
-        open={loginOpen}
-        onClose={() => setLoginOpen(false)}
-        initialMode={authMode}
-      />
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} initialMode={loginMode} />
     </>
   );
 }

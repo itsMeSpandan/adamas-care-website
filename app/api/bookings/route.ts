@@ -177,8 +177,7 @@ export const POST = requireAuth(async (request: Request) => {
       !slotStart ||
       !slotEnd ||
       !name ||
-      !email ||
-      !phone
+      !email
     ) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -214,13 +213,14 @@ export const POST = requireAuth(async (request: Request) => {
         select: { gender: true, emailVerified: true, role: true, whatsappNumber: true },
       });
 
-      // Admins and employees can book regardless of verification status
-      if (bookingUser && bookingUser.role === "user" && !bookingUser.emailVerified) {
-        return NextResponse.json(
-          { error: "Please verify your WhatsApp number before booking. Check your WhatsApp for the verification code." },
-          { status: 403 }
-        );
-      }
+      // WhatsApp/email verification requirement temporarily suspended.
+      // Admins and employees can book regardless of verification status.
+      // if (bookingUser && bookingUser.role === "user" && !bookingUser.emailVerified) {
+      //   return NextResponse.json(
+      //     { error: "Please verify your WhatsApp number before booking. Check your WhatsApp for the verification code." },
+      //     { status: 403 }
+      //   );
+      // }
       if (bookingUser?.gender) {
         const employee = await db.employee.findUnique({
           where: { id: employeeId },

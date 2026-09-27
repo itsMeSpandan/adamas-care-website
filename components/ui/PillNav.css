@@ -54,6 +54,8 @@
   pointer-events: auto;
   display: flex;
   align-items: center;
+  gap: 0.75rem;
+  padding-right: 4.5rem; /* clear the fixed Menu+ toggle button */
   position: relative;
   z-index: 10000;
 }
@@ -70,7 +72,6 @@
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-  margin-right: 4.5rem;
 }
 
 .global-brand-signin:hover {
