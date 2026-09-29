@@ -16,4 +16,4 @@
   # which was tripping Netlify's secrets scanner even though no real values
   # are committed. Omitting by key (not disabling scanning entirely) keeps
   # the scanner active for everything else.
-  SECRETS_SCAN_OMIT_KEYS = "CRON_SECRET,DATABASE_URL,EMAILJS_OTP_TEMPLATE_ID"
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_BASE_URL,FIREBASE_PROJECT_ID,EMAIL_FROM"
