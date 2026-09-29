@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getSessionFromRequest } from "@/lib/auth";
-import { sendWhatsAppOtp, isWhatsAppConfigured } from "@/lib/whatsapp";
+import { sendVerificationOtpEmail } from "@/lib/email";
 import crypto from "crypto";
+
+function sha256(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +15,11 @@ function generateOtp(): string {
 }
 
 /**
- * POST /api/auth/verify-email (now WhatsApp verification)
+ * POST /api/auth/verify-email
  *
  * Two modes via `action` field:
- *   - "send": Generate and send a 6-digit OTP to the user's WhatsApp number
- *   - "verify": Validate the OTP and mark emailVerified = true (used for both email and WhatsApp)
+ *   - "send": Generate and send a 6-digit OTP to the user's email address
+ *   - "verify": Validate the OTP and mark emailVerified = true
  */
 export async function POST(request: Request) {
   const session = await getSessionFromRequest(request);
@@ -34,43 +38,39 @@ export async function POST(request: Request) {
       if (user.emailVerified) {
         return NextResponse.json({ message: "Account already verified" });
       }
-      if (!user.whatsappNumber) {
-        return NextResponse.json(
-          { error: "No WhatsApp number on file. Please update your profile first." },
-          { status: 400 }
-        );
-      }
 
       // Invalidate any existing verification tokens
-      await db.passwordResetToken.updateMany({
-        where: { userId: user.id, used: false },
-        data: { used: true },
+      await db.emailVerificationToken.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() },
       });
 
       const newOtp = generateOtp();
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-      await db.passwordResetToken.create({
-        data: { token: newOtp, userId: user.id, expiresAt },
+      await db.emailVerificationToken.create({
+        data: { otpHash: sha256(newOtp), userId: user.id, expiresAt },
       });
 
       if (process.env.NODE_ENV !== "production") {
-        console.log(`🔑 WhatsApp verification OTP for ${user.whatsappNumber}: ${newOtp}`);
+        console.log(`🔑 Email verification OTP for ${user.email}: ${newOtp}`);
       }
 
-      // Send OTP via WhatsApp
-      if (isWhatsAppConfigured()) {
-        const sent = await sendWhatsAppOtp(user.whatsappNumber, newOtp);
-        if (!sent) {
-          console.error("Failed to send WhatsApp OTP");
-          return NextResponse.json(
-            { error: "Failed to send verification code. Please try again." },
-            { status: 500 }
-          );
-        }
+      // Send OTP via email
+      const sent = await sendVerificationOtpEmail({
+        email: user.email,
+        name: user.name,
+        otp: newOtp,
+      });
+      if (!sent) {
+        console.error("Failed to send verification OTP email");
+        return NextResponse.json(
+          { error: "Failed to send verification code. Please try again." },
+          { status: 500 }
+        );
       }
 
-      return NextResponse.json({ message: "Verification code sent to your WhatsApp" });
+      return NextResponse.json({ message: "Verification code sent to your email" });
     }
 
     if (action === "verify") {
@@ -78,11 +78,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "OTP is required" }, { status: 400 });
       }
 
-      const resetToken = await db.passwordResetToken.findFirst({
+      const resetToken = await db.emailVerificationToken.findFirst({
         where: {
           userId: session.userId,
-          token: otp,
-          used: false,
+          otpHash: sha256(otp),
+          usedAt: null,
         },
         orderBy: { createdAt: "desc" },
       });
@@ -108,9 +108,9 @@ export async function POST(request: Request) {
       });
 
       // Mark OTP as used
-      await db.passwordResetToken.update({
+      await db.emailVerificationToken.update({
         where: { id: resetToken.id },
-        data: { used: true },
+        data: { usedAt: new Date() },
       });
 
       return NextResponse.json({ message: "Account verified successfully" });

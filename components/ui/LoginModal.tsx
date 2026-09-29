@@ -35,9 +35,9 @@ function validateName(name: string): string | null {
 }
 
 function validateWhatsappNumber(number: string): string | null {
-  if (!number.trim()) return "WhatsApp number is required";
+  if (!number.trim()) return null; // optional — verification goes by email
   const clean = number.replace(/[^0-9+]/g, "");
-  if (!clean.match(/^\+?[0-9]{10,15}$/)) return "Please enter a valid WhatsApp number";
+  if (!clean.match(/^\+?[0-9]{10,15}$/)) return "Please enter a valid phone number";
   return null;
 }
 
@@ -225,7 +225,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
             <div className="border-b border-beige-100 px-6 pt-4">
               <div className="flex items-center justify-between">
                 <h2 className="font-serif text-xl font-semibold text-beige-700">
-                  {signupSuccess ? "Verify Your Number" : mode === "signin" ? "Welcome Back" : `Join ${BRAND.name}`}
+                  {signupSuccess ? "Verify Your Email" : mode === "signin" ? "Welcome Back" : `Join ${BRAND.name}`}
                 </h2>
                 <button
                   onClick={handleClose}
@@ -277,8 +277,8 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                   Account Created!
                 </h3>
                 <p className="mb-2 text-sm text-beige-600">
-                  We&apos;ve sent a 6-digit verification code to your WhatsApp number
-                  <span className="font-medium text-beige-700"> {whatsappNumber}</span>.
+                  We&apos;ve sent a 6-digit verification code to your email address
+                  <span className="font-medium text-beige-700"> {email}</span>.
                 </p>
                 <p className="mb-6 text-xs text-beige-400">
                   Please enter the code to verify your account before booking.
@@ -294,7 +294,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                     }}
                     className="btn-primary w-full py-3 text-center"
                   >
-                    Verify WhatsApp Number →
+                    Verify Email →
                   </a>
                   <button
                     onClick={handleClose}
@@ -376,13 +376,12 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
 
                       <div>
                         <label htmlFor="auth-whatsapp" className="mb-1 block text-sm font-medium text-beige-700">
-                          WhatsApp Number *
+                          Phone Number (optional)
                         </label>
                         <input
                           id="auth-whatsapp"
                           type="tel"
                           autoComplete="tel"
-                          required
                           value={whatsappNumber}
                           onChange={(e) => { setWhatsappNumber(e.target.value); handleFieldChange("whatsappNumber"); }}
                           onBlur={() => handleBlur("whatsappNumber", whatsappNumber)}
@@ -397,7 +396,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                           <p className="mt-1.5 text-xs text-red-500">{fieldErrors.whatsappNumber}</p>
                         )}
                         <p className="mt-1 text-xs text-beige-400">
-                          We&apos;ll send a verification code to this number
+                          Optional — used for booking updates
                         </p>
                       </div>
                     </>
@@ -461,7 +460,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
 
                 <button
                   type="submit"
-                  disabled={loading || (mode === "signup" && (!gender || !whatsappNumber))}
+                  disabled={loading || (mode === "signup" && !gender)}
                   className="btn-primary mt-6 w-full py-3"
                 >
                   {loading ? (

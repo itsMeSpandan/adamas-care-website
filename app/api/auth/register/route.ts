@@ -3,8 +3,12 @@ import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/crypto";
 import { setSessionCookies } from "@/lib/auth";
-import { sendWhatsAppOtp } from "@/lib/whatsapp";
+import { sendVerificationOtpEmail } from "@/lib/email";
 import crypto from "crypto";
+
+function sha256(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
 
 const limiter = rateLimit({ windowMs: 60_000, max: 3 }); // 3 registrations per minute
 
@@ -42,21 +46,16 @@ export async function POST(request: Request) {
       );
     }
 
-    // WhatsApp number is required for OTP verification
-    if (!whatsappNumber || whatsappNumber.trim().length === 0) {
-      return NextResponse.json(
-        { error: "WhatsApp number is required for verification" },
-        { status: 400 }
-      );
-    }
-
-    // Validate WhatsApp number format (basic E.164 check)
-    const cleanPhone = whatsappNumber.replace(/[^0-9+]/g, "");
-    if (!cleanPhone.match(/^\+?[0-9]{10,15}$/)) {
-      return NextResponse.json(
-        { error: "Please enter a valid WhatsApp number (e.g., +91 98765 43210)" },
-        { status: 400 }
-      );
+    // Phone number is optional contact info (verification goes by email).
+    let cleanPhone = "";
+    if (whatsappNumber && whatsappNumber.trim().length > 0) {
+      cleanPhone = whatsappNumber.replace(/[^0-9+]/g, "");
+      if (!cleanPhone.match(/^\+?[0-9]{10,15}$/)) {
+        return NextResponse.json(
+          { error: "Please enter a valid phone number (e.g., +91 98765 43210)" },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate gender if provided
@@ -99,15 +98,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // Check if WhatsApp number is already used
-    const existingWhatsapp = await db.user.findFirst({
-      where: { whatsappNumber: cleanPhone },
-    });
-    if (existingWhatsapp) {
-      return NextResponse.json(
-        { error: "An account with this WhatsApp number already exists" },
-        { status: 409 }
-      );
+    // Check if this phone number is already used by another account
+    if (cleanPhone) {
+      const existingPhone = await db.user.findFirst({
+        where: { whatsappNumber: cleanPhone },
+      });
+      if (existingPhone) {
+        return NextResponse.json(
+          { error: "An account with this phone number already exists" },
+          { status: 409 }
+        );
+      }
     }
 
     const hashedPassword = await hashPassword(password);
@@ -131,21 +132,25 @@ export async function POST(request: Request) {
       email: user.email,
     });
 
-    // ─── Auto-send WhatsApp OTP after signup ───
+    // ─── Auto-send verification OTP by email after signup ───
     let otpSent = false;
     const otp = generateOtp();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     try {
-      await db.passwordResetToken.create({
-        data: { token: otp, userId: user.id, expiresAt },
+      await db.emailVerificationToken.create({
+        data: { otpHash: sha256(otp), userId: user.id, expiresAt },
       });
 
       if (process.env.NODE_ENV !== "production") {
-        console.log(`🔑 WhatsApp verification OTP for ${cleanPhone}: ${otp}`);
+        console.log(`🔑 Email verification OTP for ${user.email}: ${otp}`);
       }
 
-      otpSent = await sendWhatsAppOtp(cleanPhone, otp);
+      otpSent = await sendVerificationOtpEmail({
+        email: user.email,
+        name: user.name,
+        otp,
+      });
     } catch (err) {
       console.error("[Register] Failed to send OTP:", err);
       // Don't block registration — OTP can be resent from verify page
@@ -160,8 +165,8 @@ export async function POST(request: Request) {
         user: userWithoutPassword,
         otpSent,
         message: otpSent
-          ? "Account created! Check your WhatsApp for the verification code."
-          : "Account created! Please verify your WhatsApp number from your profile.",
+          ? "Account created! Check your email for the verification code."
+          : "Account created! Please verify your email from your profile.",
       },
       {
         status: 201,

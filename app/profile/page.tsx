@@ -9,6 +9,8 @@ import PasswordToggle from "@/components/ui/PasswordToggle";
 import StarRating from "@/components/ui/StarRating";
 import { formatBookingDate } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
+import InstallBanner from "@/components/ui/InstallBanner";
+import NotificationSettings from "@/components/ui/NotificationSettings";
 
 type Tab = "profile" | "security" | "bookings";
 
@@ -652,6 +654,18 @@ function ProfileContent() {
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* PWA install CTA — only on the My Bookings tab (contract) */}
+            {activeTab === "bookings" && (
+              <div className="mt-6">
+                <InstallBanner />
+              </div>
+            )}
+
+            {/* Push notification settings toggle */}
+            <div className="mt-6">
+              <NotificationSettings />
+            </div>
           </div>
         </div>
       </div>

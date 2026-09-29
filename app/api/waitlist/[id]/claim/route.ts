@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
-import { sendBookingConfirmation, isResendConfigured } from "@/lib/email";
-import { sendWhatsAppBookingConfirmation, isWhatsAppConfigured } from "@/lib/whatsapp";
+import { notifyBooking } from "@/lib/notify";
+import { sendTransactionalEmail } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ const CLAIM_EXPIRY_MINUTES = 30;
  * 2. Check the claim hasn't expired
  * 3. Create a booking for the slot
  * 4. Update waitlist entry status to "claimed"
- * 5. Send confirmation email + WhatsApp
+ * 5. Notify (email + push) via notifyBooking(CONFIRMED)
  */
 export const POST = requireAuth(async (request: Request, context) => {
   const { id } = await context!.params!;
@@ -133,35 +133,8 @@ export const POST = requireAuth(async (request: Request, context) => {
       data: { status: "claimed" },
     });
 
-    // Send confirmation (best-effort)
-    const dateStr = booking.date.toISOString().split("T")[0];
-    const timeStr = `${entry.slotStart} — ${entry.slotEnd}`;
-
-    if (isResendConfigured()) {
-      sendBookingConfirmation({
-        customerName: user.name,
-        customerEmail: user.email,
-        services: service ? [{ name: service.name, duration: service.durationMinutes, price: service.price }] : [],
-        employeeName: entry.employee?.name || "TBD",
-        date: dateStr,
-        slotStart: entry.slotStart,
-        slotEnd: entry.slotEnd || "",
-        totalPrice: booking.price,
-        bookingId: booking.id,
-      }).catch((err) => console.error("[Email] Waitlist claim confirmation failed:", err));
-    }
-
-    if (isWhatsAppConfigured() && user.whatsappNumber) {
-      sendWhatsAppBookingConfirmation({
-        customerName: user.name,
-        customerPhone: user.whatsappNumber,
-        services: service ? service.name : "Service",
-        employeeName: entry.employee?.name || "TBD",
-        date: dateStr,
-        time: timeStr,
-        totalPrice: `₹${booking.price.toFixed(0)}`,
-      }).catch((err) => console.error("[WhatsApp] Waitlist claim confirmation failed:", err));
-    }
+    // Notify AFTER both writes committed — idempotent, never throws.
+    await notifyBooking(booking.id, "CONFIRMED");
 
     return NextResponse.json({
       booking,
@@ -201,17 +174,29 @@ async function cascadeToNextWaitlisted(employeeId: string, slotStart: string) {
     },
   });
 
-  // Send notification (best-effort)
-  const { sendWhatsAppSlotAvailable } = await import("@/lib/whatsapp");
-  if (isWhatsAppConfigured() && nextEntry.user.whatsappNumber) {
-    sendWhatsAppSlotAvailable(
-      nextEntry.user.whatsappNumber,
-      nextEntry.user.name,
-      nextEntry.employee?.name || "a specialist",
-      slotStart,
-      CLAIM_EXPIRY_MINUTES
-    ).catch((err) => console.error("[WhatsApp] Cascade notification failed:", err));
-  }
+  // Direct email for the cascade — deliberately NOT notifyBooking():
+  // NotificationLog's (bookingId, event, channel) uniqueness means the
+  // primary WAITLIST_SLOT_OPEN for this slot is already logged, and a
+  // second waitlist member must still be reachable. (Documented in progress.md.)
+  const minutes = CLAIM_EXPIRY_MINUTES;
+  await sendTransactionalEmail({
+    to: nextEntry.user.email,
+    subject: "A Slot Opened Up — Grace Salon",
+    html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #3D5A47;">🎉 A Slot Is Available!</h2>
+        <p>Hi ${nextEntry.user.name},</p>
+        <p>An opening with <strong>${nextEntry.employee?.name || "your specialist"}</strong> just came up:</p>
+        <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0;">
+          <p><strong>Time:</strong> ${slotStart}</p>
+        </div>
+        <p style="color: #666; font-size: 14px;">⏰ Claim within <strong>${minutes} minutes</strong> or it goes to the next person in line.</p>
+        <p style="color: #666; font-size: 14px;">Open Grace Salon to claim your slot.</p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
+      </div>
+    `,
+  });
 
-  console.log(`📱 Waitlist cascade: notified user ${nextEntry.userId} for slot ${slotStart}`);
+  console.log(`[Waitlist] Cascade: notified user ${nextEntry.userId} for slot ${slotStart}`);
 }

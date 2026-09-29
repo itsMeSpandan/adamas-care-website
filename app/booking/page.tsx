@@ -9,6 +9,7 @@ import { format } from "date-fns";
 import { Service, Employee } from "@/lib/types";
 import { formatPrice, formatDuration, displayTime, cn } from "@/lib/utils";
 import StarIcon from "@/components/ui/StarIcon";
+import InstallBanner from "@/components/ui/InstallBanner";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
 
@@ -57,7 +58,7 @@ export default function BookingPage() {
   const [notes, setNotes] = useState("");
   const [bookingResult, setBookingResult] = useState<{ id: string } | null>(null);
 
-  // Auto-fill from auth — phone comes from WhatsApp number on profile
+  // Auto-fill from auth — phone comes from the contact number on profile
   const phone = user?.whatsappNumber || "";
 
   // Computed values for multi-service
@@ -720,7 +721,7 @@ export default function BookingPage() {
                           readOnly
                           className="w-full rounded-xl border border-beige-200 bg-beige-50 px-4 py-2.5 text-sm text-beige-500"
                         />
-                        <p className="mt-1 text-xs text-beige-400">Auto-filled from your WhatsApp number</p>
+                        <p className="mt-1 text-xs text-beige-400">Auto-filled from your contact number</p>
                       </div>
                     )}
                   </div>
@@ -791,6 +792,10 @@ export default function BookingPage() {
                   </div>
                 </div>
 
+                <div className="mx-auto mt-6 max-w-md text-left">
+                  <InstallBanner />
+                </div>
+
                 <div className="mt-8 flex flex-wrap justify-center gap-4">
                   <a href="/booking" className="btn-outline" onClick={(e) => { e.preventDefault(); window.location.reload(); }}>
                     Book Another Appointment
@@ -833,7 +838,7 @@ export default function BookingPage() {
                   )}
                 </p>
                 <p className="mb-4 text-sm text-beige-500">
-                  Join the waitlist and we&apos;ll notify you via WhatsApp if this slot opens up. You&apos;ll have 30 minutes to claim it.
+                  Join the waitlist and we&apos;ll notify you by email if this slot opens up. You&apos;ll have 30 minutes to claim it.
                 </p>
                 <div className="flex gap-3">
                   <button

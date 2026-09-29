@@ -1,24 +1,34 @@
 import { NextResponse } from "next/server";
-import { rateLimit, getRateLimitKey, getEmailKey } from "@/lib/rate-limit";
+import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
+import { rejectCrossOrigin } from "@/lib/csrf";
+import { db } from "@/lib/db";
+import { hashPassword } from "@/lib/crypto";
+import { revokeAllUserTokens } from "@/lib/refresh-tokens";
+import crypto from "crypto";
+import { z } from "zod";
 
-// Stage 3.1: Per-email + per-IP rate limiting for reset-password
+// Per-IP rate limiting for reset-password.
 const limiter = rateLimit({ windowMs: 60_000, max: 5 }); // 5 attempts per minute
 
 export const dynamic = "force-dynamic";
 
-import { db } from "@/lib/db";
-import { hashPassword } from "@/lib/crypto";
+const resetSchema = z.object({
+  token: z.string().min(1, "Token is required").max(256),
+  newPassword: z.string().min(1, "Password is required").max(128),
+});
+
+/** SHA-256 hex — matches how the token was stored in forgot-password. */
+function sha256(value: string): string {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
 
 export async function POST(request: Request) {
-  // Stage 3.1: Rate limit by email + IP (prevents brute-force against specific accounts)
-  // Clone request to read body for email before consuming it
-  let rateLimitEmail = "";
-  try {
-    const cloned = request.clone();
-    const body = await cloned.json();
-    rateLimitEmail = body.email || "";
-  } catch { /* will fail validation below */ }
-  const key = rateLimitEmail ? getEmailKey(request, "reset-password", rateLimitEmail) : getRateLimitKey(request, "reset-password");
+  // ─── CSRF: reject cross-site browser requests ───
+  const originError = rejectCrossOrigin(request);
+  if (originError) return originError;
+
+  // Rate limit by IP (the token itself is the credential here).
+  const key = getRateLimitKey(request, "reset-password");
   const result = await limiter.checkAsync(key);
 
   if (!result.success) {
@@ -36,67 +46,68 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { email, otp, password } = await request.json();
-
-    if (!email || !otp || !password) {
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
       return NextResponse.json(
-        { error: "Email, OTP, and password are required" },
+        { error: "Token and password are required" },
         { status: 400 }
       );
     }
 
-    if (password.length < 8) {
+    const parsed = resetSchema.safeParse(body);
+    if (!parsed.success) {
+      const msg = parsed.error.issues[0]?.message || "Token and password are required";
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
+    const { token, newPassword } = parsed.data;
+
+    // Same password rules as signup (register route).
+    if (newPassword.length < 8) {
       return NextResponse.json(
         { error: "Password must be at least 8 characters" },
         { status: 400 }
       );
     }
-
-    // Find the user
-    const user = await db.user.findUnique({ where: { email } });
-    if (!user) {
+    if (newPassword.length > 128) {
       return NextResponse.json(
-        { error: "Invalid email or OTP" },
+        { error: "Password must be under 128 characters" },
         { status: 400 }
       );
     }
 
-    // Find the OTP record for this user
-    const resetToken = await db.passwordResetToken.findFirst({
-      where: {
-        userId: user.id,
-        token: otp,
-        used: false,
-      },
-      orderBy: { createdAt: "desc" },
+    // Look the token up by hash — the raw token is never stored.
+    const resetToken = await db.passwordResetToken.findUnique({
+      where: { tokenHash: sha256(token) },
     });
 
-    if (!resetToken) {
-      return NextResponse.json(
-        { error: "Invalid or expired OTP. Please request a new one." },
-        { status: 400 }
-      );
-    }
+    const invalidResponse = NextResponse.json(
+      { error: "Invalid or expired link. Please request a new one." },
+      { status: 400 }
+    );
 
-    if (new Date() > resetToken.expiresAt) {
-      return NextResponse.json(
-        { error: "OTP has expired. Please request a new one." },
-        { status: 400 }
-      );
-    }
+    if (!resetToken) return invalidResponse;
+    if (resetToken.usedAt) return invalidResponse;
+    if (new Date() > resetToken.expiresAt) return invalidResponse;
 
-    const hashedPassword = await hashPassword(password);
+    const hashedPassword = await hashPassword(newPassword); // bcrypt cost 12
 
-    await db.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
+    // Reset + mark token used + revoke every refresh token in one
+    // transaction so a partial failure can't leave a reusable token.
+    await db.$transaction([
+      db.user.update({
+        where: { id: resetToken.userId },
+        data: { password: hashedPassword },
+      }),
+      db.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
 
-    // Mark the OTP as used
-    await db.passwordResetToken.update({
-      where: { id: resetToken.id },
-      data: { used: true },
-    });
+    // Force re-login everywhere: all refresh tokens for this user die now.
+    await revokeAllUserTokens(resetToken.userId);
 
     return NextResponse.json(
       {
@@ -111,9 +122,6 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Reset password error:", error);
-    return NextResponse.json(
-      { error: "Failed to reset password" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to reset password" }, { status: 500 });
   }
 }

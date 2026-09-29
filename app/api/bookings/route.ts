@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { applyRedemptionToBooking, linkRedemptionToBooking } from "@/lib/loyalty";
 import { logAudit, getClientIp } from "@/lib/audit";
+import { notifyBooking } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -205,7 +206,7 @@ export const POST = requireAuth(async (request: Request) => {
       );
     }
 
-    // WhatsApp verification check: unverified users cannot book
+    // Email verification check: unverified users cannot book
     const sessionUserId = (await getSessionFromRequest(request))?.userId;
     if (sessionUserId) {
       const bookingUser = await db.user.findUnique({
@@ -213,11 +214,11 @@ export const POST = requireAuth(async (request: Request) => {
         select: { gender: true, emailVerified: true, role: true, whatsappNumber: true },
       });
 
-      // WhatsApp/email verification requirement temporarily suspended.
+      // Email verification requirement temporarily suspended.
       // Admins and employees can book regardless of verification status.
       // if (bookingUser && bookingUser.role === "user" && !bookingUser.emailVerified) {
       //   return NextResponse.json(
-      //     { error: "Please verify your WhatsApp number before booking. Check your WhatsApp for the verification code." },
+      //     { error: "Please verify your email before booking. Check your inbox for the verification code." },
       //     { status: 403 }
       //   );
       // }
@@ -368,6 +369,10 @@ export const POST = requireAuth(async (request: Request) => {
         return { booking, discount: discountInfo };
       });
 
+      // Notify AFTER the transaction commits (contract): a notification
+      // failure must never roll back the booking. notifyBooking never throws.
+      await notifyBooking(result.booking.id, "CONFIRMED");
+
       return NextResponse.json({
         booking: result.booking,
         discount: result.discount,
@@ -454,6 +459,13 @@ export const PATCH = requireAuth(async (request: Request, context) => {
           details: `Booking status changed to ${status}`,
           ip: getClientIp(request),
         });
+      }
+
+      // Notify after the status change committed (idempotent per event).
+      if (status === "confirmed") {
+        await notifyBooking(id, "CONFIRMED");
+      } else if (status === "cancelled") {
+        await notifyBooking(id, "CANCELLED");
       }
 
       return NextResponse.json({ booking: updated });

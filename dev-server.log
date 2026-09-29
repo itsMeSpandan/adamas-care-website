@@ -1,0 +1,48 @@
+  ▲ Next.js 14.2.35
+  - Local:        http://localhost:3099
+  - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 2s
+ ✓ Compiled /middleware in 395ms (115 modules)
+ ✓ Compiled /api/health in 322ms (102 modules)
+ GET /api/health 200 in 1949ms
+ ○ Compiling /api/auth/forgot-password ...
+ ✓ Compiled /api/auth/forgot-password in 764ms (224 modules)
+🔑 Password reset link for customer@gracesalon.test: http://localhost:3000/reset-password?token=kJ8u-lVA3ObCIGJ0mHRPEBQyTVrG6wNG3BpiWO-ZjTY
+📧 Password reset email sent to customer@gracesalon.test
+ POST /api/auth/forgot-password 200 in 1786ms
+ POST /api/auth/forgot-password 200 in 99ms
+ ✓ Compiled /api/auth/login in 391ms (177 modules)
+ POST /api/auth/login 200 in 1508ms
+ ✓ Compiled /api/devices/register in 82ms (275 modules)
+ POST /api/devices/register 200 in 460ms
+ ✓ Compiled /api/availability in 131ms (281 modules)
+ GET /api/availability?employeeId=arjun-mehta&date=2026-09-30 200 in 993ms
+ GET /api/availability?employeeId=arjun-mehta&date=2026-10-01 200 in 568ms
+ ✓ Compiled /api/bookings in 206ms (312 modules)
+📧 Booking Confirmed — Grace Salon sent to customer@gracesalon.test
+[Notify] Firebase not configured — skipping push
+ POST /api/bookings 201 in 4232ms
+prisma:error 
+Invalid `prisma.booking.create()` invocation:
+
+
+Unique constraint failed on the fields: (`employeeId`,`slotStart`)
+ POST /api/bookings 409 in 2119ms
+ GET /api/availability?employeeId=arjun-mehta&date=2026-10-01 200 in 1043ms
+📧 Booking Confirmed — Grace Salon sent to guest-walker@example.com
+ POST /api/bookings 201 in 2205ms
+ ✓ Compiled /api/bookings/[id] in 137ms (202 modules)
+📧 Booking Cancelled — Grace Salon sent to customer@gracesalon.test
+[Notify] Firebase not configured — skipping push
+[Waitlist] No waitlisted users for employee arjun-mehta at 10:00
+[Notify] No recipient for WAITLIST_SLOT_OPEN on booking cmum9dqwt0007udzkd1mfb1ed
+ PATCH /api/bookings/cmum9dqwt0007udzkd1mfb1ed 200 in 3724ms
+ ✓ Compiled /api/cron/reminders in 96ms (129 modules)
+📧 Appointment Reminder — Grace Salon sent to cron-tester@example.com
+ GET /api/cron/reminders 200 in 1514ms
+ GET /api/cron/reminders 200 in 621ms
+ ✓ Compiled /manifest.webmanifest in 235ms (105 modules)
+ GET /manifest.webmanifest 200 in 793ms
+[?25h

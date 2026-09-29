@@ -23,7 +23,7 @@ export default function VerifyEmailPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage(data.message || "OTP sent! Check your WhatsApp.");
+        setMessage(data.message || "OTP sent! Check your email.");
         setStep("verify");
       } else {
         setError(data.error || "Failed to send OTP");
@@ -71,8 +71,8 @@ export default function VerifyEmailPage() {
         </h1>
         <p className="text-sm text-[var(--text-muted)] mb-6">
           {step === "send"
-            ? "We'll send a 6-digit verification code to your WhatsApp number."
-            : "Enter the 6-digit code we sent to your WhatsApp."}
+            ? "We'll send a 6-digit verification code to your email address."
+            : "Enter the 6-digit code we sent to your email."}
         </p>
 
         {message && (

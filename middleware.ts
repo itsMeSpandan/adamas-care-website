@@ -38,7 +38,9 @@ export function middleware(request: NextRequest) {
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://www.gstatic.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
-    "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com",
+    // Firebase Cloud Messaging (web push token registration) — added for the
+    // notification system; no WhatsApp/graph.facebook domains ever existed here.
+    "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://fcm.googleapis.com",
     "frame-src 'self' https://www.google.com https://maps.google.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",

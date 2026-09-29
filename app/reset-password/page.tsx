@@ -1,22 +1,34 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
-type Step = "request" | "otp" | "success";
+type Mode = "request" | "set" | "done";
 
-function ResetPasswordContent() {
+export default function ResetPasswordPage() {
+  const [mode, setMode] = useState<Mode>("request");
+  const [token, setToken] = useState<string | null>(null);
   const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [step, setStep] = useState<Step>("request");
+  const [checkingToken, setCheckingToken] = useState(true);
 
-  const handleRequestOtp = async (e: React.FormEvent) => {
+  // Hydration-safe: read ?token= only after mount (window is client-only).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const t = params.get("token");
+    if (t) {
+      setToken(t);
+      setMode("set");
+    }
+    setCheckingToken(false);
+  }, []);
+
+  const handleRequestLink = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setMessage("");
@@ -31,14 +43,12 @@ function ResetPasswordContent() {
 
       const data = await res.json();
       if (res.ok) {
-        setMessage(data.message || "An OTP has been sent to your email.");
-        // In development, auto-fill OTP if returned
-        if (data.otp) {
-          setOtp(data.otp);
-        }
-        setStep("otp");
+        setMessage(
+          data.message ||
+            "If an account exists with this email, a password reset link has been sent."
+        );
       } else {
-        setError(data.error || "Failed to send OTP.");
+        setError(data.error || "Failed to send the reset link.");
       }
     } catch {
       setError("Failed to connect. Please try again.");
@@ -47,7 +57,7 @@ function ResetPasswordContent() {
     }
   };
 
-  const handleVerifyAndReset = async (e: React.FormEvent) => {
+  const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setMessage("");
@@ -56,12 +66,8 @@ function ResetPasswordContent() {
       setError("Passwords do not match.");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-    if (otp.length !== 6) {
-      setError("OTP must be 6 digits.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
 
@@ -71,15 +77,19 @@ function ResetPasswordContent() {
       const res = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp, password }),
+        body: JSON.stringify({ token, newPassword: password }),
       });
 
       const data = await res.json();
       if (res.ok) {
         setMessage(data.message || "Password reset successful!");
-        setStep("success");
+        setMode("done");
       } else {
         setError(data.error || "Failed to reset password.");
+        // Expired/used links: offer to request a fresh one.
+        if (res.status === 400 && /invalid or expired/i.test(data.error || "")) {
+          setToken(null);
+        }
       }
     } catch {
       setError("Failed to connect. Please try again.");
@@ -87,6 +97,16 @@ function ResetPasswordContent() {
       setLoading(false);
     }
   };
+
+  const heading =
+    mode === "request" ? "Reset Password" : mode === "set" ? "Choose a New Password" : "Password Reset!";
+
+  const subtext =
+    mode === "request"
+      ? "Enter your email and we'll send you a secure reset link."
+      : mode === "set"
+        ? "Your link is valid for 15 minutes — pick a new password below."
+        : "Your password has been updated. You can now sign in.";
 
   return (
     <div className="section-padding bg-beige-50">
@@ -110,24 +130,12 @@ function ResetPasswordContent() {
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
             </div>
-            <h1 className="font-serif text-2xl font-semibold text-beige-700">
-              {step === "request"
-                ? "Reset Password"
-                : step === "otp"
-                  ? "Enter OTP"
-                  : "Password Reset!"}
-            </h1>
-            <p className="mt-2 text-sm text-beige-500">
-              {step === "request"
-                ? "Enter your email and we&apos;ll send you a one-time code."
-                : step === "otp"
-                  ? `We sent a 6-digit code to ${email}`
-                  : "Your password has been updated. You can now sign in."}
-            </p>
+            <h1 className="font-serif text-2xl font-semibold text-beige-700">{heading}</h1>
+            <p className="mt-2 text-sm text-beige-500">{subtext}</p>
           </div>
 
           {/* Messages */}
-          {message && step !== "success" && (
+          {message && mode !== "done" && (
             <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {message}
             </div>
@@ -136,26 +144,28 @@ function ResetPasswordContent() {
           {error && (
             <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {error}
-              {step === "otp" && (
+              {mode === "set" && !token && (
                 <button
                   type="button"
                   onClick={() => {
-                    setStep("request");
-                    setOtp("");
+                    setMode("request");
                     setError("");
                     setMessage("");
                   }}
                   className="mt-2 underline hover:text-red-900"
                 >
-                  Request a new OTP
+                  Request a new link
                 </button>
               )}
             </div>
           )}
 
-          {/* Step 1: Request OTP */}
-          {step === "request" && (
-            <form onSubmit={handleRequestOtp} className="space-y-4">
+          {/* Loading state while we read ?token= from the URL */}
+          {checkingToken && <p className="text-center text-sm text-beige-500">Checking your link…</p>}
+
+          {/* Step 1: Request a reset link */}
+          {!checkingToken && mode === "request" && (
+            <form onSubmit={handleRequestLink} className="space-y-4">
               <div>
                 <label
                   htmlFor="reset-email"
@@ -173,47 +183,17 @@ function ResetPasswordContent() {
                   className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full py-3"
-              >
-                {loading ? "Sending..." : "Send OTP"}
+              <button type="submit" disabled={loading} className="btn-primary w-full py-3">
+                {loading ? "Sending..." : "Send Reset Link"}
               </button>
             </form>
           )}
 
-          {/* Step 2: Enter OTP + New Password */}
-          {step === "otp" && (
-            <form onSubmit={handleVerifyAndReset} className="space-y-4">
+          {/* Step 2: New password (arrived via emailed link) */}
+          {!checkingToken && mode === "set" && (
+            <form onSubmit={handleSetPassword} className="space-y-4">
               <div>
-                <label
-                  htmlFor="otp-input"
-                  className="mb-1 block text-sm font-medium text-beige-700"
-                >
-                  6-Digit OTP
-                </label>
-                <input
-                  id="otp-input"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  maxLength={6}
-                  required
-                  value={otp}
-                  onChange={(e) =>
-                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  placeholder="000000"
-                  className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-center text-lg tracking-[0.3em] text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="new-password"
-                  className="mb-1 block text-sm font-medium text-beige-700"
-                >
+                <label htmlFor="new-password" className="mb-1 block text-sm font-medium text-beige-700">
                   New Password
                 </label>
                 <div className="relative">
@@ -221,6 +201,7 @@ function ResetPasswordContent() {
                     id="new-password"
                     type={showPassword ? "text" : "password"}
                     required
+                    minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter new password"
@@ -230,6 +211,7 @@ function ResetPasswordContent() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-beige-400 hover:text-beige-600"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <svg
@@ -266,34 +248,28 @@ function ResetPasswordContent() {
                 </div>
               </div>
               <div>
-                <label
-                  htmlFor="confirm-password"
-                  className="mb-1 block text-sm font-medium text-beige-700"
-                >
+                <label htmlFor="confirm-password" className="mb-1 block text-sm font-medium text-beige-700">
                   Confirm Password
                 </label>
                 <input
                   id="confirm-password"
                   type={showPassword ? "text" : "password"}
                   required
+                  minLength={8}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirm new password"
                   className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
                 />
               </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="btn-primary w-full py-3"
-              >
+              <button type="submit" disabled={loading} className="btn-primary w-full py-3">
                 {loading ? "Resetting..." : "Reset Password"}
               </button>
             </form>
           )}
 
           {/* Step 3: Success */}
-          {step === "success" && (
+          {mode === "done" && (
             <div className="text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
                 <svg
@@ -301,53 +277,22 @@ function ResetPasswordContent() {
                   height="32"
                   viewBox="0 0 24 24"
                   fill="none"
-                  stroke="currentColor"
+                  stroke="#059669"
                   strokeWidth="2"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="text-emerald-600"
                 >
-                  <polyline points="20 6 9 17 4 12" />
+                  <path d="M20 6 9 17l-5-5" />
                 </svg>
               </div>
               <p className="mb-6 text-sm text-beige-600">{message}</p>
-              <Link
-                href="/"
-                className="btn-primary inline-block px-8 py-3"
-              >
-                Sign In
+              <Link href="/" className="btn-primary inline-block px-8 py-3">
+                Back to Home
               </Link>
             </div>
           )}
-
-          <div className="mt-6 text-center">
-            <Link
-              href="/"
-              className="text-sm text-beige-500 hover:text-beige-700"
-            >
-              &larr; Back to home
-            </Link>
-          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="section-padding bg-beige-50">
-          <div className="section-container mx-auto max-w-md text-center">
-            <div className="flex items-center justify-center py-12">
-              <div className="h-8 w-8 animate-spin rounded-full border-2 border-beige-300 border-t-beige-600" />
-            </div>
-          </div>
-        </div>
-      }
-    >
-      <ResetPasswordContent />
-    </Suspense>
   );
 }

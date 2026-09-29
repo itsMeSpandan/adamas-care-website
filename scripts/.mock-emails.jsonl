@@ -1,0 +1,5 @@
+{"to":"customer@gracesalon.test","subject":"Reset Your Password — Grace Salon","attachments":[],"at":"2026-09-29T05:49:25.070Z"}
+{"to":"customer@gracesalon.test","subject":"Booking Confirmed — Grace Salon","attachments":["grace-salon-booking.ics"],"at":"2026-09-29T05:51:35.232Z"}
+{"to":"guest-walker@example.com","subject":"Booking Confirmed — Grace Salon","attachments":["grace-salon-booking.ics"],"at":"2026-09-29T05:53:49.921Z"}
+{"to":"customer@gracesalon.test","subject":"Booking Cancelled — Grace Salon","attachments":[],"at":"2026-09-29T05:54:52.264Z"}
+{"to":"cron-tester@example.com","subject":"Appointment Reminder — Grace Salon","attachments":[],"at":"2026-09-29T05:56:01.378Z"}

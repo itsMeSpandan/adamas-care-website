@@ -52,6 +52,8 @@ model User {
 
   bookings             Booking[]
   passwordResetTokens  PasswordResetToken[]
+  verificationTokens   EmailVerificationToken[]
+  deviceTokens         DeviceToken[]
   loyaltyTransactions  LoyaltyTransaction[]
   redemptions          RewardRedemption[]
   waitlistEntries      Waitlist[]
@@ -148,6 +150,7 @@ model Booking {
   loyaltyTransactions LoyaltyTransaction[]
   rewardRedemptions  RewardRedemption[]
   bookingServices     BookingService[]
+  notificationLogs    NotificationLog[]
 
   @@index([employeeId, date])
   @@index([userId])
@@ -168,19 +171,35 @@ model RefreshToken {
   @@index([tokenHash])
 }
 
+// Password reset tokens — only the SHA-256 hash of a random 32-byte token is
+// stored; the raw token exists solely in the emailed reset link.
 model PasswordResetToken {
-  id        String   @id @default(cuid())
-  token     String
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
   userId    String
   expiresAt DateTime
-  used      Boolean  @default(false)
-  createdAt DateTime @default(now())
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  requestIp String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // Uniqueness is scoped per user so two different users can share a 6-digit OTP
-  // without violating the constraint (prevents 500 on forgot-password).
-  @@unique([userId, token])
+  @@index([userId])
+}
+
+// Email verification OTPs for signup (kept separate from reset tokens).
+// Only the SHA-256 hash of the 6-digit code is stored.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  otpHash   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, otpHash])
   @@index([userId])
 }
 
@@ -361,25 +380,38 @@ model UserReliability {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ─── WhatsApp Message Logs ────────────────────────────────────────────────────
+// ─── Push notification devices ───────────────────────────────────────────────
 
-model WhatsAppMessageLog {
-  id            String   @id @default(cuid())
-  phoneNumber   String   // Recipient E.164
-  messageType   String   // "otp" | "booking_confirmation" | "slot_available" | "text"
-  templateName  String?  // Template used (for template messages)
-  status        String   @default("sent") // "sent" | "delivered" | "read" | "failed"
-  errorMessage  String?  // API error if failed
-  requestBody   String?  // Truncated request payload (for debugging)
-  responseBody  String?  // Truncated API response
-  responseCode  Int?     // HTTP status code from WhatsApp API
-  durationMs    Int?     // Round-trip time in milliseconds
-  createdAt     DateTime @default(now())
+model DeviceToken {
+  id         String    @id @default(cuid())
+  userId     String
+  token      String    @unique
+  platform   String    // "android" | "web"
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastSeenAt DateTime  @default(now())
+  revokedAt  DateTime?
 
-  @@index([phoneNumber])
-  @@index([messageType])
-  @@index([status])
-  @@index([createdAt])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── Notification delivery log (idempotency guard) ────────────────────────────
+// One row per (booking, event, channel): a second notifyBooking() call for the
+// same combination is a no-op.
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  bookingId String
+  event     String   // CONFIRMED | RESCHEDULED | CANCELLED | REMINDER_24H | REMINDER_1H | WAITLIST_SLOT_OPEN
+  channel   String   // "email" | "push"
+  createdAt DateTime @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, event, channel])
+  @@index([bookingId])
 }
 
 // ─── System Settings ─────────────────────────────────────────────────────────

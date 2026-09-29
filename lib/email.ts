@@ -23,113 +23,143 @@ export function isResendConfigured(): boolean {
   return !!resendApiKey;
 }
 
-// ─── Booking Confirmation Email ─────────────────────────────────────────────
+// ─── Generic transactional email (used by notifyBooking) ─────────────────────────────
 
-interface BookingConfirmationData {
-  customerName: string;
-  customerEmail: string;
-  services: { name: string; duration: number; price: number }[];
-  employeeName: string;
-  date: string;
-  slotStart: string;
-  slotEnd: string;
-  totalPrice: number;
-  bookingId: string;
+export interface TransactionalEmail {
+  to: string;
+  subject: string;
+  html: string;
+  /** Attachments (e.g. .ics calendars) — content is sent as-is (Buffer/base64). */
+  attachments?: { filename: string; content: Buffer }[];
 }
 
-export async function sendBookingConfirmation(data: BookingConfirmationData): Promise<boolean> {
+/**
+ * Send an arbitrary transactional email. Best-effort boolean like the other
+ * senders; never throws.
+ */
+export async function sendTransactionalEmail(msg: TransactionalEmail): Promise<boolean> {
   const client = getResendClient();
   if (!client) {
-    console.warn("[Email] Resend not configured — skipping booking confirmation");
+    console.warn(`[Email] Resend not configured — skipping "${msg.subject}" to ${msg.to}`);
     return false;
   }
-
-  const serviceList = data.services
-    .map((s) => `<li>${s.name} — ${s.duration} min — ₹${s.price.toFixed(0)}</li>`)
-    .join("");
 
   try {
     await client.emails.send({
       from: emailFrom,
-      to: data.customerEmail,
-      subject: `Booking Confirmed — Grace Salon`,
+      to: msg.to,
+      subject: msg.subject,
+      html: msg.html,
+      ...(msg.attachments && msg.attachments.length > 0
+        ? { attachments: msg.attachments.map((a) => ({ filename: a.filename, content: a.content })) }
+        : {}),
+    });
+    console.log(`📧 ${msg.subject} sent to ${msg.to}`);
+    return true;
+  } catch (error) {
+    console.error(`[Email] Failed to send "${msg.subject}" to ${msg.to}:`, error);
+    return false;
+  }
+}
+
+// ─── Verification OTP Email (signup) ─────────────────────────────────────────────────
+
+interface VerificationOtpData {
+  email: string;
+  name: string;
+  otp: string;
+}
+
+/**
+ * Send a 6-digit account-verification code by email (replaces the old
+ * WhatsApp OTP delivery). Best-effort boolean like the other senders.
+ */
+export async function sendVerificationOtpEmail(data: VerificationOtpData): Promise<boolean> {
+  const client = getResendClient();
+  if (!client) {
+    console.warn("[Email] Resend not configured — skipping verification OTP email");
+    return false;
+  }
+
+  try {
+    await client.emails.send({
+      from: emailFrom,
+      to: data.email,
+      subject: `Your Verification Code — Grace Salon`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #3D5A47;">Booking Confirmed ✅</h2>
-          <p>Hi ${data.customerName},</p>
-          <p>Your appointment at <strong>Grace Salon</strong> has been confirmed.</p>
-          <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p><strong>Specialist:</strong> ${data.employeeName}</p>
-            <p><strong>Date:</strong> ${data.date}</p>
-            <p><strong>Time:</strong> ${data.slotStart} — ${data.slotEnd}</p>
-            <p><strong>Services:</strong></p>
-            <ul>${serviceList}</ul>
-            <p style="font-size: 18px; margin-top: 12px;"><strong>Total: ₹${data.totalPrice.toFixed(0)}</strong></p>
+          <h2 style="color: #3D5A47;">Verify Your Email</h2>
+          <p>Hi ${data.name},</p>
+          <p>Use this 6-digit code to verify your Grace Salon account:</p>
+          <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center;">
+            <span style="font-size: 28px; font-weight: 700; letter-spacing: 0.3em; color: #1F1F1F;">${data.otp}</span>
           </div>
-          <p style="color: #666; font-size: 14px;">Booking ID: ${data.bookingId}</p>
-          <p style="color: #666; font-size: 14px;">Need to cancel? Please do so at least 4 hours before your appointment.</p>
+          <p style="color: #666; font-size: 14px;">This code expires in <strong>15 minutes</strong>. Do not share it with anyone.</p>
+          <p style="color: #666; font-size: 14px;">If you didn't create an account, you can safely ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
         </div>
       `,
     });
-    console.log(`📧 Booking confirmation sent to ${data.customerEmail}`);
+    console.log(`📧 Verification OTP sent to ${data.email}`);
     return true;
   } catch (error) {
-    console.error(`[Email] Failed to send booking confirmation to ${data.customerEmail}:`, error);
+    console.error(`[Email] Failed to send verification OTP to ${data.email}:`, error);
     return false;
   }
 }
 
-// ─── Reminder Email ─────────────────────────────────────────────────────────
+// ─── Password Reset Email ─────────────────────────────────────────────────────
 
-interface ReminderData {
-  customerName: string;
-  customerEmail: string;
-  services: { name: string }[];
-  employeeName: string;
-  date: string;
-  slotStart: string;
-  slotEnd: string;
-  hoursBefore: 24 | 2;
+interface PasswordResetData {
+  email: string;
+  name: string;
+  resetUrl: string;
 }
 
-export async function sendReminder(data: ReminderData): Promise<boolean> {
+/**
+ * Send a branded password-reset link email. The raw token lives only in the
+ * emailed link — never in the database or (in production) the logs.
+ * Best-effort: failures are logged and reported as `false`, never thrown.
+ */
+export async function sendPasswordResetEmail(data: PasswordResetData): Promise<boolean> {
   const client = getResendClient();
   if (!client) {
-    console.warn("[Email] Resend not configured — skipping reminder");
+    console.warn("[Email] Resend not configured — skipping password reset email");
     return false;
   }
-
-  const serviceNames = data.services.map((s) => s.name).join(", ");
-  const urgency = data.hoursBefore === 2 ? "tomorrow" : `in ${data.hoursBefore} hours`;
 
   try {
     await client.emails.send({
       from: emailFrom,
-      to: data.customerEmail,
-      subject: `Appointment Reminder — ${data.hoursBefore}h — Grace Salon`,
+      to: data.email,
+      subject: "Reset Your Password — Grace Salon",
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #3D5A47;">Appointment Reminder ⏰</h2>
-          <p>Hi ${data.customerName},</p>
-          <p>This is a friendly reminder that your appointment at <strong>Grace Salon</strong> is ${urgency}.</p>
-          <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p><strong>Specialist:</strong> ${data.employeeName}</p>
-            <p><strong>Date:</strong> ${data.date}</p>
-            <p><strong>Time:</strong> ${data.slotStart} — ${data.slotEnd}</p>
-            <p><strong>Services:</strong> ${serviceNames}</p>
+          <h2 style="color: #3D5A47;">Reset Your Password</h2>
+          <p>Hi ${data.name},</p>
+          <p>We received a request to reset the password for your Grace Salon account.</p>
+          <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center;">
+            <a href="${data.resetUrl}"
+               style="display: inline-block; background: #3D5A47; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+              Choose a New Password
+            </a>
           </div>
-          <p style="color: #666; font-size: 14px;">Need to reschedule? Please do so at least 4 hours before your appointment.</p>
+          <p style="color: #666; font-size: 14px;">
+            This link expires in <strong>15 minutes</strong> and can only be used once.
+          </p>
+          <p style="color: #666; font-size: 14px;">
+            If you didn't request this, you can safely ignore this email — your password will not change.
+          </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
           <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
         </div>
       `,
     });
-    console.log(`📧 ${data.hoursBefore}h reminder sent to ${data.customerEmail}`);
+    console.log(`📧 Password reset email sent to ${data.email}`);
     return true;
   } catch (error) {
-    console.error(`[Email] Failed to send reminder to ${data.customerEmail}:`, error);
+    console.error(`[Email] Failed to send password reset to ${data.email}:`, error);
     return false;
   }
 }

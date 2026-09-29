@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Jost } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -39,6 +39,25 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_IN",
   },
+  // ─── PWA ───
+  // app/manifest.ts is linked automatically; these cover iOS Safari,
+  // which ignores the manifest and needs its own meta tags.
+  appleWebApp: {
+    capable: true,
+    title: BRAND.name,
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#F5F1EA",
 };
 
 export default function RootLayout({

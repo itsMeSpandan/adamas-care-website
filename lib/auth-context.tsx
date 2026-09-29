@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
+import { syncPushDevice, unregisterPushDevice } from "@/lib/firebase-client";
 
 export type UserRole = "guest" | "user" | "employee" | "admin";
 
@@ -93,6 +94,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkSession();
   }, []);
 
+  // Push: refresh this device's registration on every authenticated page load
+  // (no-op without Notification permission or Firebase env config).
+  useEffect(() => {
+    if (user) {
+      syncPushDevice().catch(() => {
+        /* best-effort */
+      });
+    }
+  }, [user]);
+
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     try {
       const res = await fetch("/api/auth/login", {
@@ -113,6 +124,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    try {
+      // Revoke the push device FIRST, while the session cookie is still valid.
+      await unregisterPushDevice();
+    } catch {
+      /* best-effort — logout must never be blocked by push cleanup */
+    }
     try {
       await fetch("/api/auth/logout", {
         method: "POST",

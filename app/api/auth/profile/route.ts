@@ -55,12 +55,12 @@ export const PUT = requireAuth(async (request: Request) => {
     if (email) updateData.email = email;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
     if (whatsappNumber !== undefined) {
-      // Validate WhatsApp number format
+      // Validate phone number format
       if (whatsappNumber && whatsappNumber.trim().length > 0) {
         const cleanPhone = whatsappNumber.replace(/[^0-9+]/g, "");
         if (!cleanPhone.match(/^\+?[0-9]{10,15}$/)) {
           return NextResponse.json(
-            { error: "Please enter a valid WhatsApp number" },
+            { error: "Please enter a valid phone number" },
             { status: 400 }
           );
         }
@@ -71,7 +71,7 @@ export const PUT = requireAuth(async (request: Request) => {
         });
         if (existingPhone) {
           return NextResponse.json(
-            { error: "This WhatsApp number is already associated with another account" },
+            { error: "This phone number is already associated with another account" },
             { status: 409 }
           );
         }

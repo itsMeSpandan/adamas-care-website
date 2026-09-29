@@ -48,3 +48,11 @@ coverage/
 # misc
 *.pem
 *.cache
+
+# Firebase service account keys — never commit
+*firebase-adminsdk*.json
+service-account*.json
+firebase-service-account.json
+
+# Netlify local build state
+.netlify/

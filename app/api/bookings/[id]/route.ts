@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { awardPointsForBooking, clawbackPointsForBooking } from "@/lib/loyalty";
-import { sendBookingConfirmation, isResendConfigured } from "@/lib/email";
-import { sendWhatsAppBookingConfirmation, sendWhatsAppSlotAvailable, isWhatsAppConfigured } from "@/lib/whatsapp";
+import { notifyBooking } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +30,7 @@ const CLAIM_EXPIRY_MINUTES = 30;
 
 /**
  * When a slot opens up (booking cancelled), find the top-ranked waitlisted user
- * and notify them via WhatsApp that they have 30 minutes to claim the slot.
+ * and notify them that they have 30 minutes to claim the slot.
  */
 async function notifyWaitlistedUser(employeeId: string, slotStart: string) {
   const { rankWaitlist } = await import("@/lib/scoring-engine");
@@ -60,17 +59,6 @@ async function notifyWaitlistedUser(employeeId: string, slotStart: string) {
       claimExpiresAt,
     },
   });
-
-  // Send WhatsApp notification (best-effort)
-  if (isWhatsAppConfigured() && topEntry.user.whatsappNumber) {
-    sendWhatsAppSlotAvailable(
-      topEntry.user.whatsappNumber,
-      topEntry.user.name,
-      topEntry.employee?.name || "a specialist",
-      slotStart,
-      CLAIM_EXPIRY_MINUTES
-    ).catch((err) => console.error("[WhatsApp] Waitlist notify failed:", err));
-  }
 
   console.log(`[Waitlist] Notified user ${topEntry.userId} for slot ${slotStart}`);
 }
@@ -137,60 +125,26 @@ export const PATCH = requireAuth(async (request: Request, context) => {
         return updated;
       });
 
-      // Send confirmation email (best-effort, never blocks the response)
-      if (status === "confirmed" && isResendConfigured()) {
-        const fullBooking = await db.booking.findUnique({
-          where: { id },
-          include: { employee: true, service: true, bookingServices: { include: { service: true } } },
-        });
-        if (fullBooking) {
-          const services = fullBooking.bookingServices.length > 0
-            ? fullBooking.bookingServices.map((bs) => ({
-                name: bs.service.name,
-                duration: bs.service.durationMinutes,
-                price: bs.service.price,
-              }))
-            : fullBooking.service
-              ? [{ name: fullBooking.service.name, duration: fullBooking.service.durationMinutes, price: fullBooking.service.price }]
-              : [];
+      // ─── Notifications (AFTER the transaction commits) ───────────────
+      // notifyBooking never throws and is idempotent per (booking, event,
+      // channel), so a notification failure can never affect the booking.
+      if (status === "confirmed") {
+        await notifyBooking(id, "CONFIRMED");
+      } else if (status === "cancelled") {
+        await notifyBooking(id, "CANCELLED");
 
-          const dateStr = fullBooking.date.toISOString().split("T")[0];
-          const timeStr = `${fullBooking.slotStart || ""} — ${fullBooking.slotEnd || ""}`;
-
-          sendBookingConfirmation({
-            customerName: fullBooking.name,
-            customerEmail: fullBooking.email,
-            services,
-            employeeName: fullBooking.employee?.name || "TBD",
-            date: dateStr,
-            slotStart: fullBooking.slotStart || "",
-            slotEnd: fullBooking.slotEnd || "",
-            totalPrice: fullBooking.price,
-            bookingId: fullBooking.id,
-          }).catch((err) => console.error("[Email] Confirmation send failed:", err));
-
-          // WhatsApp confirmation (best-effort)
-          if (isWhatsAppConfigured() && fullBooking.phone) {
-            sendWhatsAppBookingConfirmation({
-              customerName: fullBooking.name,
-              customerPhone: fullBooking.phone,
-              services: services.map((s) => s.name).join(", "),
-              employeeName: fullBooking.employee?.name || "TBD",
-              date: dateStr,
-              time: timeStr,
-              totalPrice: `₹${fullBooking.price.toFixed(0)}`,
-            }).catch((err) => console.error("[WhatsApp] Confirmation send failed:", err));
+        // ─── Waitlist notification on cancellation ────────────────────────
+        // Find waitlisted users for this employee+slot, flip the top-ranked
+        // one to "notified" (starts their claim window), then notify them via
+        // the WAITLIST_SLOT_OPEN event (email + push, idempotent).
+        if (booking.employeeId && booking.slotStart) {
+          try {
+            await notifyWaitlistedUser(booking.employeeId, booking.slotStart);
+            await notifyBooking(id, "WAITLIST_SLOT_OPEN");
+          } catch (err) {
+            console.error("[Waitlist] Notification failed:", err);
           }
         }
-      }
-
-      // ─── Waitlist notification on cancellation ────────────────────────
-      // When a booking is cancelled, find waitlisted users for this employee+slot
-      // and notify the highest-ranked one that a slot is available.
-      if (status === "cancelled" && booking.employeeId && booking.slotStart) {
-        notifyWaitlistedUser(booking.employeeId, booking.slotStart).catch((err) =>
-          console.error("[Waitlist] Notification failed:", err)
-        );
       }
 
       return NextResponse.json({ booking });

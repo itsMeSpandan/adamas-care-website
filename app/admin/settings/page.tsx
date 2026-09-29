@@ -12,22 +12,10 @@ interface SystemSetting {
 
 const PREDEFINED_SETTINGS = [
   {
-    key: "whatsapp_business_number",
-    label: "WhatsApp Business Number",
-    description: "The phone number customers see and receive messages from (E.164 format: +919876543210)",
-    placeholder: "+919876543210",
-  },
-  {
     key: "salon_name",
     label: "Salon Display Name",
-    description: "The name shown in WhatsApp messages and notifications",
+    description: "The name shown in notifications and emails",
     placeholder: "Grace Salon",
-  },
-  {
-    key: "whatsapp_cancellation_policy",
-    label: "Cancellation Policy Text",
-    description: "Custom cancellation policy message sent to customers",
-    placeholder: "Please cancel at least 4 hours before your appointment.",
   },
   {
     key: "booking_reminder_hours",
@@ -113,14 +101,14 @@ export default function AdminSettingsPage() {
             System Settings
           </h1>
           <p className="mt-2 text-beige-600">
-            Manage WhatsApp configuration and other system settings
+            Manage system settings and operational defaults
           </p>
         </div>
 
-        {/* WhatsApp Configuration */}
+        {/* System Settings */}
         <div className="mb-8">
           <h2 className="mb-4 font-serif text-xl font-semibold text-beige-700">
-            WhatsApp Configuration
+            System Settings
           </h2>
           <div className="space-y-4">
             {PREDEFINED_SETTINGS.map((setting) => {
@@ -178,7 +166,7 @@ export default function AdminSettingsPage() {
             📝 Note about Environment Variables
           </h3>
           <p className="text-xs text-beige-600">
-            Some WhatsApp settings (like API tokens) are configured via environment variables
+            Some settings (like API tokens) are configured via environment variables
             for security reasons. The settings above are for values that admins may need to
             change at runtime without redeploying. For API credentials, update your{" "}
             <code className="rounded bg-beige-100 px-1">.env</code> file and redeploy.

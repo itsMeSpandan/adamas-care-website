@@ -163,7 +163,7 @@ function inMemoryCheck(
  * NOTE: We do NOT trust raw client-supplied X-Forwarded-For for spoofing.
  * In production behind a trusted proxy, the first entry is the client IP.
  */
-function getTrustedClientIp(request: Request): string {
+export function getTrustedClientIp(request: Request): string {
   const realIp = request.headers.get("x-real-ip");
   if (realIp) return realIp.trim();
 

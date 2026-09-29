@@ -41,7 +41,7 @@ export default function PrivacyPage() {
               <p className="leading-relaxed">
                 <strong className="text-beige-700">Personal Information:</strong>{" "}
                 When you create an account or book a service, we may collect your
-                name, email address, phone number, WhatsApp number, gender, and
+                name, email address, phone number, gender, and
                 payment-related information.
               </p>
               <p className="leading-relaxed">

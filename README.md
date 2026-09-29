@@ -27,8 +27,8 @@ and employees get a portal with their own schedule, reviews, and weekly bookings
 - **Employee portal** — personal schedule, weekly timetable, bookings, reviews.
 - **Loyalty points & rewards** — earn points on completed bookings, redeem for discounts.
 - **Holidays** — Indian public/festive holidays + admin custom holidays on booking calendar.
-- **Transactional emails** — booking confirmations and reminders via Resend.
-- **WhatsApp confirmations** — booking summaries sent via WhatsApp Cloud API.
+- **Transactional emails** — booking confirmations, reminders, password resets, and
+  signup verification codes via Resend.
 - **Cancellation policy** — late cancellation tracking, automatic restrictions for repeat offenders.
 - **Security headers** — HSTS, CSP, frame-options, nosniff, referrer-policy.
 - **Redis-backed rate limiting** — Upstash Redis for distributed rate limiting across serverless instances.
@@ -45,8 +45,7 @@ and employees get a portal with their own schedule, reviews, and weekly bookings
 | Database | PostgreSQL (Neon) via Prisma 6 |
 | Auth | `jose` JWT in httpOnly cookies, `hash-wasm` bcrypt, refresh token rotation |
 | Rate Limiting | Upstash Redis (`@upstash/ratelimit`) with in-memory fallback |
-| Email | Resend (transactional) + EmailJS (OTP) |
-| WhatsApp | WhatsApp Cloud API |
+| Email | Resend (transactional: confirmations, reminders, password reset, verification) |
 | Error Tracking | Sentry |
 | Animation | Framer Motion, animejs |
 | CI | GitHub Actions (lint, typecheck, test, build) |
@@ -80,8 +79,6 @@ cp .env.example .env
 | `UPSTASH_REDIS_REST_TOKEN` | ⚪ | Redis auth token |
 | `RESEND_API_KEY` | ⚪ | Resend API key for transactional emails |
 | `EMAIL_FROM` | ⚪ | Sender email address for Resend |
-| `EMAILJS_*` | ⚪ | EmailJS credentials for OTP password reset |
-| `WHATSAPP_*` | ⚪ | WhatsApp Cloud API credentials. See [WHATSAPP_SETUP.md](./WHATSAPP_SETUP.md) |
 | `NEXT_PUBLIC_SENTRY_DSN` | ⚪ | Sentry DSN for error tracking |
 
 ### 3. Set up the database
@@ -114,7 +111,7 @@ app/
   api/            Route handlers (auth, bookings, services, employees, availability, cron, health)
   account/        user account pages (loyalty, waitlist)
 components/        UI: layout (PillNav/Footer), sections, cards, ui primitives
-lib/               auth, db, queries, require-auth, rate-limit, email, whatsapp, refresh-tokens, scoring-engine
+lib/               auth, db, queries, require-auth, rate-limit, email, csrf, refresh-tokens, scoring-engine
 prisma/            schema.prisma + seed.ts + migrations/
 scripts/           utility scripts
 middleware.ts      security headers + HTTPS redirect
