@@ -1,6 +1,0 @@
-[mock-resend] listening on http://127.0.0.1:8099 (log: D:\vsasaaadada\adamas-care-website\scripts\.mock-emails.jsonl)
-[mock-resend] 201 Reset Your Password — Grace Salon -> "customer@gracesalon.test"
-[mock-resend] 201 Booking Confirmed — Grace Salon -> "customer@gracesalon.test"
-[mock-resend] 201 Booking Confirmed — Grace Salon -> "guest-walker@example.com"
-[mock-resend] 201 Booking Cancelled — Grace Salon -> "customer@gracesalon.test"
-[mock-resend] 201 Appointment Reminder — Grace Salon -> "cron-tester@example.com"
