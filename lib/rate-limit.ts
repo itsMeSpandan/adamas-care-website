@@ -101,22 +101,26 @@ export function rateLimit(config: RateLimitConfig) {
      */
     async checkAsync(key: string): Promise<RateLimitResult> {
       if (upstash) {
-        const windowSeconds = Math.ceil(windowMs / 1000);
-        // Recreate the limiter with the correct window for this specific endpoint
-        const redis = new Redis({
-          url: process.env.UPSTASH_REDIS_REST_URL!,
-          token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-        });
-        const limiter = new Ratelimit({
-          redis,
-          limiter: Ratelimit.slidingWindow(max, `${windowSeconds}s`),
-          analytics: false,
-          prefix: `gracesalon:ratelimit:${key.split(":")[0]}`,
-        });
+        try {
+          const windowSeconds = Math.ceil(windowMs / 1000);
+          const redis = new Redis({
+            url: process.env.UPSTASH_REDIS_REST_URL!,
+            token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+          });
+          const limiter = new Ratelimit({
+            redis,
+            limiter: Ratelimit.slidingWindow(max, `${windowSeconds}s`),
+            analytics: false,
+            prefix: `gracesalon:ratelimit:${key.split(":")[0]}`,
+          });
 
-        const { success, remaining, reset } = await limiter.limit(key);
-        const retryAfterMs = success ? 0 : Math.max(0, reset - Date.now());
-        return { success, remaining, retryAfterMs: Math.ceil(retryAfterMs) };
+          const { success, remaining, reset } = await limiter.limit(key);
+          const retryAfterMs = success ? 0 : Math.max(0, reset - Date.now());
+          return { success, remaining, retryAfterMs: Math.ceil(retryAfterMs) };
+        } catch (err) {
+          console.warn("[RateLimit] Upstash Redis failed, falling back to memory:", err);
+          return inMemoryCheck(key, windowMs, max);
+        }
       }
 
       return inMemoryCheck(key, windowMs, max);
