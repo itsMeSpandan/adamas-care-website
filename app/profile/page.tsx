@@ -9,8 +9,15 @@ import PasswordToggle from "@/components/ui/PasswordToggle";
 import StarRating from "@/components/ui/StarRating";
 import { formatBookingDate } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
-import InstallBanner from "@/components/ui/InstallBanner";
 import NotificationSettings from "@/components/ui/NotificationSettings";
+import CountryCodeSelect from "@/components/ui/CountryCodeSelect";
+import {
+  absorbPhoneInput,
+  composePhoneNumber,
+  splitPhoneNumber,
+  DEFAULT_COUNTRY,
+} from "@/lib/countries";
+import { validateWhatsAppNumber } from "@/lib/whatsapp-prompt";
 
 type Tab = "profile" | "security" | "bookings";
 
@@ -46,6 +53,10 @@ function ProfileContent() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  // Contact number: national digits + country dial code, composed to
+  // `+<dial><digits>` before it is sent to /api/auth/profile.
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+  const [phoneDial, setPhoneDial] = useState(`+${DEFAULT_COUNTRY.dial}`);
 
   // Security state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -72,6 +83,9 @@ function ProfileContent() {
       setName(user.name);
       setEmail(user.email);
       setAvatarUrl(user.avatarUrl);
+      const split = splitPhoneNumber(user.whatsappNumber);
+      setPhoneDial(split.dial);
+      setWhatsappNumber(split.national);
     }
   }, [user]);
 
@@ -94,13 +108,33 @@ function ProfileContent() {
 
   const handleProfileSave = async () => {
     if (!user) return;
+
+    // Empty field = clear the stored number; otherwise compose + validate
+    // against the same rule the server enforces.
+    const composedPhone = whatsappNumber.trim()
+      ? composePhoneNumber(phoneDial, whatsappNumber)
+      : "";
+    if (composedPhone) {
+      const phoneError = validateWhatsAppNumber(composedPhone);
+      if (phoneError) {
+        setMessage(phoneError);
+        return;
+      }
+    }
+
     setSaving(true);
     setMessage("");
     try {
       const res = await fetch("/api/auth/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, name, email, avatarUrl }),
+        body: JSON.stringify({
+          userId: user.id,
+          name,
+          email,
+          avatarUrl,
+          whatsappNumber: composedPhone,
+        }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -109,7 +143,12 @@ function ProfileContent() {
       }
       await res.json();
       // Update auth context directly
-      updateUser({ name, email, avatarUrl } as Partial<AuthUser>);
+      updateUser({
+        name,
+        email,
+        avatarUrl,
+        whatsappNumber: composedPhone || null,
+      } as Partial<AuthUser>);
       setMessage("Profile updated successfully!");
     } catch {
       setMessage("Failed to update profile");
@@ -465,6 +504,36 @@ function ProfileContent() {
                           className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
                         />
                       </div>
+                      <div>
+                        <label htmlFor="profile-whatsapp" className="mb-1 block text-sm font-medium text-beige-700">
+                          Phone Number (WhatsApp)
+                        </label>
+                        <div className="flex gap-2">
+                          <CountryCodeSelect
+                            value={phoneDial}
+                            onChange={setPhoneDial}
+                            ariaLabel="Country dial code"
+                            className="w-[118px] shrink-0"
+                          />
+                          <input
+                            id="profile-whatsapp"
+                            type="tel"
+                            inputMode="tel"
+                            autoComplete="tel"
+                            value={whatsappNumber}
+                            onChange={(e) => {
+                              const next = absorbPhoneInput(e.target.value, phoneDial);
+                              setPhoneDial(next.dial);
+                              setWhatsappNumber(next.national);
+                            }}
+                            placeholder="98765 43210"
+                            className="min-w-0 flex-1 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
+                          />
+                        </div>
+                        <p className="mt-1.5 text-xs text-beige-400">
+                          Optional — used to pre-fill your number when booking
+                        </p>
+                      </div>
                       <button
                         onClick={handleProfileSave}
                         disabled={saving}
@@ -654,13 +723,6 @@ function ProfileContent() {
                 </motion.div>
               )}
             </AnimatePresence>
-
-            {/* PWA install CTA — only on the My Bookings tab (contract) */}
-            {activeTab === "bookings" && (
-              <div className="mt-6">
-                <InstallBanner />
-              </div>
-            )}
 
             {/* Push notification settings toggle */}
             <div className="mt-6">

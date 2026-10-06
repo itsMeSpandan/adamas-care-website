@@ -404,7 +404,7 @@ model DeviceToken {
 model NotificationLog {
   id        String   @id @default(cuid())
   bookingId String
-  event     String   // CONFIRMED | RESCHEDULED | CANCELLED | REMINDER_24H | REMINDER_1H | WAITLIST_SLOT_OPEN
+  event     String   // CONFIRMED | RESCHEDULED | CANCELLED | REMINDER_24H | REMINDER_6H | WAITLIST_SLOT_OPEN
   channel   String   // "email" | "push"
   createdAt DateTime @default(now())
 

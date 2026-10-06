@@ -8,6 +8,9 @@ import PillNavWrapper from "@/components/layout/PillNavWrapper";
 
 import Footer from "@/components/layout/Footer";
 import CookieConsent from "@/components/ui/CookieConsent";
+import WhatsAppPromptModal from "@/components/ui/WhatsAppPromptModal";
+import NotificationPromptModal from "@/components/ui/NotificationPromptModal";
+import InstallBanner from "@/components/ui/InstallBanner";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -74,6 +77,20 @@ export default function RootLayout({
             <main className="pt-24">{children}</main>
             <Footer />
             <CookieConsent />
+            {/* Raised by lib/auth-context after a Google sign-in when the
+                account has no contact number yet. No-ops otherwise. */}
+            <WhatsAppPromptModal />
+            {/* Start-of-visit soft-ask: returns every session until
+                notifications are actually enabled (session-scoped dismiss). */}
+            <NotificationPromptModal />
+            {/* Install CTA on every visit until the app is installed
+                (session-scoped dismiss — see InstallBanner). Docked
+                bottom-right; hidden until the cookie bar is answered. */}
+            <div className="pointer-events-none fixed bottom-4 right-4 z-[60] w-[calc(100vw-2rem)] max-w-sm sm:right-6">
+              <div className="pointer-events-auto">
+                <InstallBanner />
+              </div>
+            </div>
           </ToastProvider>
         </AuthProvider>
       </body>

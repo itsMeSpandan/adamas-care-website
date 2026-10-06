@@ -55,7 +55,7 @@ export default function PillNavWrapper() {
 
   return (
     <PillNav
-      logo="/logo.svg"
+      logo="/logo.png"
       logoAlt="Grace Salon"
       items={items}
       activeHref={pathname}

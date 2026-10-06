@@ -89,7 +89,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const existingUser = await db.user.findUnique({ where: { email } });
+    // Case-insensitive uniqueness: the Google route and this one must agree
+    // on whether an address is taken, or the same person gets two accounts.
+    const existingUser = await db.user.findFirst({
+      where: {
+        email: { equals: email.trim().toLowerCase(), mode: "insensitive" },
+      },
+    });
 
     if (existingUser) {
       return NextResponse.json(

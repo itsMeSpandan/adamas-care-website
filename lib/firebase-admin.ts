@@ -12,9 +12,11 @@
 
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getMessaging, type Messaging } from "firebase-admin/messaging";
+import { getAuth, type Auth, type DecodedIdToken } from "firebase-admin/auth";
 
 let cachedApp: App | null | undefined;
 let cachedMessaging: Messaging | null | undefined;
+let cachedAuth: Auth | null | undefined;
 
 export function isFirebaseConfigured(): boolean {
   return !!(
@@ -56,4 +58,32 @@ export function getFirebaseMessaging(): Messaging | null {
   const app = getFirebaseApp();
   cachedMessaging = app ? getMessaging(app) : null;
   return cachedMessaging;
+}
+
+/** Auth instance, or null when Firebase is not configured. */
+function getFirebaseAuth(): Auth | null {
+  if (cachedAuth !== undefined) return cachedAuth;
+  const app = getFirebaseApp();
+  cachedAuth = app ? getAuth(app) : null;
+  return cachedAuth;
+}
+
+/**
+ * Verify a Firebase ID token (Google sign-in credential) and return its
+ * claims, or null when Firebase is unconfigured or the token is invalid /
+ * expired / issued for a different project (audience check is built in).
+ *
+ * Used by POST /api/auth/google to turn a browser Google popup into our
+ * own cookie session.
+ */
+export async function verifyGoogleIdToken(
+  idToken: string
+): Promise<DecodedIdToken | null> {
+  const auth = getFirebaseAuth();
+  if (!auth) return null;
+  try {
+    return await auth.verifyIdToken(idToken);
+  } catch {
+    return null;
+  }
 }

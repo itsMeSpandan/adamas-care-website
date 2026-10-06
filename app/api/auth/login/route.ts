@@ -37,7 +37,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await db.user.findUnique({ where: { email } });
+    // Case-insensitive lookup: register + Google sign-in store the address
+    // lowercased, so "User@X.com" must still find "user@x.com" — otherwise a
+    // password login fails for the same account Google sign-in can open.
+    const user = await db.user.findFirst({
+      where: {
+        email: { equals: String(email).trim().toLowerCase(), mode: "insensitive" },
+      },
+    });
 
     if (!user || !(await comparePassword(password, user.password))) {
       return NextResponse.json(

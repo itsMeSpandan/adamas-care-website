@@ -21,11 +21,14 @@ export default function CookieConsent() {
   const accept = () => {
     localStorage.setItem(COOKIE_KEY, "accepted");
     setVisible(false);
+    // Let docked CTAs (InstallBanner) move down now that this bar is gone.
+    window.dispatchEvent(new CustomEvent("gracesalon:cookie-decided"));
   };
 
   const decline = () => {
     localStorage.setItem(COOKIE_KEY, "declined");
     setVisible(false);
+    window.dispatchEvent(new CustomEvent("gracesalon:cookie-decided"));
   };
 
   return (

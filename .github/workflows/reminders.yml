@@ -1,0 +1,37 @@
+name: Booking reminders
+
+# Fires the reminder endpoint every 10 minutes so users get their next-day
+# and 6-hours-before booking notifications regardless of host.
+# vercel.json already schedules the same endpoint on Vercel — the
+# NotificationLog idempotency guard makes double runs harmless.
+#
+# Requires (Repository → Settings → Secrets and variables → Actions):
+#   variable APP_URL      e.g. https://gracesalon.com
+#   secret   CRON_SECRET  same value as the app's CRON_SECRET env var
+# Without them the workflow is a harmless no-op.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/cron/reminders
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "APP_URL variable or CRON_SECRET secret not set — skipping."
+            exit 0
+          fi
+          code=$(curl -sS -o body.json -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/cron/reminders")
+          echo "HTTP $code"
+          cat body.json
+          echo
+          test "$code" = "200"

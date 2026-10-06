@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
+
 import { useAuth } from "@/lib/auth-context";
 import { StaggeredMenu } from "@/components/ui/StaggeredMenu";
 import UserPanel from "@/components/ui/UserPanel";
@@ -51,8 +51,16 @@ const PillNav = ({
       {/* ── Brand bar: logo + name on the left, auth panel on the right ── */}
       <div className={`global-brand-bar${scrolled ? " scrolled" : ""}`}>
         <Link className="global-brand" href="/" aria-label="Home">
-          <Image src={logo} alt={logoAlt} className="global-brand-logo" width={110} height={24} />
-          <span className="global-brand-name">{logoAlt}</span>
+          {/* Full lockup (mark + wordmark) — replaces the old icon + separate
+              name span, which would have duplicated the text baked into the art. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={logo}
+            alt={logoAlt}
+            className="global-brand-logo"
+            width={140}
+            height={56}
+          />
         </Link>
         {isAuthenticated && (
           <div className="global-brand-auth">

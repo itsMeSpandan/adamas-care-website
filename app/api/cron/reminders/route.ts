@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
  * Triggered by Vercel Cron (every 10 minutes) with `Authorization: Bearer CRON_SECRET`.
  *
  * Window-based lookup:
- *   - REMINDER_24H: slot starts between now+23h and now+25h
- *   - REMINDER_1H:  slot starts between now+30min and now+90min
+ *   - REMINDER_24H: slot starts between now+23h and now+25h (next day)
+ *   - REMINDER_6H:  slot starts between now+5.5h and now+6.5h
  *
  * Idempotency comes from NotificationLog (checked inside notifyBooking), so
  * two cron runs inside the same window send each reminder exactly once.
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
   const HOUR = 60 * 60 * 1000;
 
   let sent24h = 0;
-  let sent1h = 0;
+  let sent6h = 0;
 
   // Candidate pre-filter. The date column is midnight of the booking day while
   // the slot time lives in slotStart, so a narrow future band would miss every
@@ -63,18 +63,18 @@ export async function GET(request: Request) {
     sent24h++;
   }
 
-  // ─── ~1-hour reminders ──────────────────────────────────────────────────
+  // ─── ~6-hour reminders ──────────────────────────────────────────────────
   for (const booking of candidates) {
     const hoursUntil = hoursUntilSlot(booking);
-    if (hoursUntil < 0.5 || hoursUntil > 1.5) continue;
-    await notifyBooking(booking.id, "REMINDER_1H");
-    sent1h++;
+    if (hoursUntil < 5.5 || hoursUntil > 6.5) continue;
+    await notifyBooking(booking.id, "REMINDER_6H");
+    sent6h++;
   }
 
   return NextResponse.json({
     message: "Reminders processed",
     sent24h,
-    sent1h,
+    sent6h,
     timestamp: now.toISOString(),
   });
 }

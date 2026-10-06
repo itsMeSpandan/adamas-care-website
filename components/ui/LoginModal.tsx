@@ -4,8 +4,18 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
+import {
+  signInWithGoogle,
+  isFirebaseClientConfigured,
+} from "@/lib/firebase-client";
 import PasswordToggle from "@/components/ui/PasswordToggle";
 import { BRAND } from "@/lib/brand";
+import CountryCodeSelect from "@/components/ui/CountryCodeSelect";
+import {
+  absorbPhoneInput,
+  composePhoneNumber,
+  DEFAULT_COUNTRY,
+} from "@/lib/countries";
 
 type AuthMode = "signin" | "signup";
 
@@ -42,7 +52,7 @@ function validateWhatsappNumber(number: string): string | null {
 }
 
 export default function LoginModal({ open, onClose, initialMode = "signin" }: LoginModalProps) {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState("");
@@ -50,8 +60,12 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
   const [password, setPassword] = useState("");
   const [gender, setGender] = useState<"" | "male" | "female" | "other">("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
+  // Country dial code for the optional phone field (national digits stay in
+  // whatsappNumber; composed with composePhoneNumber before validate/submit).
+  const [phoneDial, setPhoneDial] = useState(`+${DEFAULT_COUNTRY.dial}`);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -133,11 +147,17 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
     e.preventDefault();
     setFormError(null);
 
+    // Compose country code + national digits into the full number the API
+    // validates (empty stays empty — the field is optional).
+    const composedPhone = whatsappNumber.trim()
+      ? composePhoneNumber(phoneDial, whatsappNumber)
+      : "";
+
     // Validate all fields
     const nameErr = validateField("name", name);
     const emailErr = validateField("email", email);
     const passwordErr = validateField("password", password);
-    const whatsappErr = validateField("whatsappNumber", whatsappNumber);
+    const whatsappErr = validateField("whatsappNumber", composedPhone);
     setTouched({ name: true, email: true, password: true, whatsappNumber: true });
     if (nameErr || emailErr || passwordErr || whatsappErr) return;
 
@@ -151,7 +171,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
           email: email.trim().toLowerCase(),
           password,
           gender: gender || null,
-          whatsappNumber: whatsappNumber.trim(),
+          whatsappNumber: composedPhone,
         }),
       });
 
@@ -186,11 +206,36 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
     setPassword("");
     setGender("");
     setWhatsappNumber("");
+    setPhoneDial(`+${DEFAULT_COUNTRY.dial}`);
     setShowPassword(false);
     setFieldErrors({});
     setTouched({});
     setFormError(null);
     setSignupSuccess(false);
+  };
+
+  // Google popup → Firebase ID token → POST /api/auth/google (signup+login in one)
+  const handleGoogleSignIn = async () => {
+    setFormError(null);
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      if (result === null) return; // popup closed — no error to show
+      if ("error" in result) {
+        setFormError(result.error);
+        return;
+      }
+      const { ok, error } = await loginWithGoogle(result.idToken);
+      if (ok) {
+        resetForm();
+        showToast("Signed in with Google", "success");
+        onClose();
+      } else {
+        setFormError(error || "Google sign-in failed. Please try again.");
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const handleClose = () => {
@@ -378,20 +423,44 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                         <label htmlFor="auth-whatsapp" className="mb-1 block text-sm font-medium text-beige-700">
                           Phone Number (optional)
                         </label>
-                        <input
-                          id="auth-whatsapp"
-                          type="tel"
-                          autoComplete="tel"
-                          value={whatsappNumber}
-                          onChange={(e) => { setWhatsappNumber(e.target.value); handleFieldChange("whatsappNumber"); }}
-                          onBlur={() => handleBlur("whatsappNumber", whatsappNumber)}
-                          placeholder="e.g. +91 98765 43210"
-                          className={`w-full rounded-xl border bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:bg-white focus:outline-none focus:ring-2 ${
-                            touched.whatsappNumber && fieldErrors.whatsappNumber
-                              ? "border-red-300 focus:border-red-400 focus:ring-red-100"
-                              : "border-beige-300 focus:border-beige-500 focus:ring-beige-200"
-                          }`}
-                        />
+                        <div className="flex gap-2">
+                          <CountryCodeSelect
+                            value={phoneDial}
+                            onChange={(d) => {
+                              setPhoneDial(d);
+                              handleFieldChange("whatsappNumber");
+                            }}
+                            ariaLabel="Country dial code"
+                            className="w-[118px] shrink-0"
+                          />
+                          <input
+                            id="auth-whatsapp"
+                            type="tel"
+                            autoComplete="tel"
+                            inputMode="tel"
+                            value={whatsappNumber}
+                            onChange={(e) => {
+                              const next = absorbPhoneInput(e.target.value, phoneDial);
+                              setPhoneDial(next.dial);
+                              setWhatsappNumber(next.national);
+                              handleFieldChange("whatsappNumber");
+                            }}
+                            onBlur={() =>
+                              handleBlur(
+                                "whatsappNumber",
+                                whatsappNumber.trim()
+                                  ? composePhoneNumber(phoneDial, whatsappNumber)
+                                  : "",
+                              )
+                            }
+                            placeholder="98765 43210"
+                            className={`min-w-0 flex-1 rounded-xl border bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:bg-white focus:outline-none focus:ring-2 ${
+                              touched.whatsappNumber && fieldErrors.whatsappNumber
+                                ? "border-red-300 focus:border-red-400 focus:ring-red-100"
+                                : "border-beige-300 focus:border-beige-500 focus:ring-beige-200"
+                            }`}
+                          />
+                        </div>
                         {touched.whatsappNumber && fieldErrors.whatsappNumber && (
                           <p className="mt-1.5 text-xs text-red-500">{fieldErrors.whatsappNumber}</p>
                         )}
@@ -460,7 +529,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
 
                 <button
                   type="submit"
-                  disabled={loading || (mode === "signup" && !gender)}
+                  disabled={loading || googleLoading || (mode === "signup" && !gender)}
                   className="btn-primary mt-6 w-full py-3"
                 >
                   {loading ? (
@@ -475,6 +544,46 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                     mode === "signin" ? "Sign In" : "Create Account"
                   )}
                 </button>
+
+                {/* Google sign-in — shown only when Firebase env is configured */}
+                {isFirebaseClientConfigured() && (
+                  <div className="mt-4">
+                    <div className="relative my-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-beige-200" />
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-white px-3 text-xs text-beige-400">or</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGoogleSignIn}
+                      disabled={loading || googleLoading}
+                      className="flex w-full items-center justify-center gap-3 rounded-xl border border-beige-300 bg-white px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-50 disabled:opacity-60"
+                    >
+                      {googleLoading ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Signing in…
+                        </span>
+                      ) : (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+                            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+                            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+                            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+                            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
+                          </svg>
+                          Continue with Google
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 {mode === "signin" && (
                   <div className="mt-4 text-center">

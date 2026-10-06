@@ -34,14 +34,19 @@ export function middleware(request: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com data: blob:",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://www.gstatic.com`,
+    // lh3.googleusercontent.com = Google profile photos on User.avatarUrl.
+    // flagcdn.com = country flags in the phone country-code dropdown.
+    "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com https://lh3.googleusercontent.com https://flagcdn.com data: blob:",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://www.gstatic.com https://apis.google.com https://accounts.google.com`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     // Firebase Cloud Messaging (web push token registration) — added for the
     // notification system; no WhatsApp/graph.facebook domains ever existed here.
-    "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://fcm.googleapis.com",
-    "frame-src 'self' https://www.google.com https://maps.google.com",
+    // Google sign-in (Firebase Auth popup): token exchange + Google endpoints.
+    "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://fcm.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://www.googleapis.com https://apis.google.com https://www.google.com",
+    // *.firebaseapp.com hosts the Firebase Auth handshake iframe; apis.google.com
+    // is loaded by the Google popup helper. Both are required by signInWithPopup.
+    "frame-src 'self' https://www.google.com https://maps.google.com https://accounts.google.com https://apis.google.com https://*.firebaseapp.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

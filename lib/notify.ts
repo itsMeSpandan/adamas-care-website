@@ -3,7 +3,7 @@
  *
  * Contract:
  *   notifyBooking(bookingId, event):
- *     CONFIRMED | RESCHEDULED | CANCELLED | REMINDER_24H | REMINDER_1H | WAITLIST_SLOT_OPEN
+ *     CONFIRMED | RESCHEDULED | CANCELLED | REMINDER_24H | REMINDER_6H | WAITLIST_SLOT_OPEN
  *
  *   - Email ALWAYS (guests without an account get email only).
  *   - Push to every non-revoked DeviceToken of the recipient account.
@@ -29,7 +29,7 @@ export type BookingEvent =
   | "RESCHEDULED"
   | "CANCELLED"
   | "REMINDER_24H"
-  | "REMINDER_1H"
+  | "REMINDER_6H"
   | "WAITLIST_SLOT_OPEN";
 
 type BookingFull = NonNullable<
@@ -229,7 +229,7 @@ function buildEmail(
       };
 
     case "REMINDER_24H":
-    case "REMINDER_1H": {
+    case "REMINDER_6H": {
       const isDayBefore = event === "REMINDER_24H";
       return {
         subject: `Appointment Reminder — Grace Salon`,
@@ -237,7 +237,7 @@ function buildEmail(
           <h2 style="color: #3D5A47;">Appointment Reminder ⏰</h2>
           <p>Hi ${recipient.name},</p>
           <p>This is a friendly reminder that your appointment at <strong>Grace Salon</strong> is ${
-            isDayBefore ? "tomorrow" : "starting in about an hour"
+            isDayBefore ? "tomorrow" : "starting in about 6 hours"
           }.</p>
           ${detailsBox(booking)}
           <p style="color: #666; font-size: 14px;">Need to reschedule? Please do so at least 4 hours before your appointment.</p>`),
@@ -304,8 +304,8 @@ function pushTitleBody(
       return { title: "Booking cancelled", body: `Your appointment on ${dateStr} at ${timeStr} was cancelled.` };
     case "REMINDER_24H":
       return { title: "Appointment tomorrow ⏰", body: `Reminder: your appointment is tomorrow at ${timeStr}.` };
-    case "REMINDER_1H":
-      return { title: "Appointment starting soon ⏰", body: `Your appointment starts in about an hour (${timeStr}).` };
+    case "REMINDER_6H":
+      return { title: "Appointment in 6 hours ⏰", body: `Your appointment starts in about 6 hours (${timeStr}).` };
     case "WAITLIST_SLOT_OPEN":
       return {
         title: "A slot opened up! 🎉",

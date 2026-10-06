@@ -49,6 +49,57 @@ async function getMessagingInstance() {
   return messagingPromise;
 }
 
+/**
+ * Google sign-in popup — returns a Firebase ID token to POST to
+ * /api/auth/google, or null when cancelled / blocked / unconfigured.
+ *
+ * Errors are normalized to a user-facing message via the returned
+ * { error } variant so the login modal can display something useful.
+ */
+export type GoogleSignInResult =
+  | { idToken: string }
+  | { error: string }
+  | null; // user closed the popup — not an error
+
+export async function signInWithGoogle(): Promise<GoogleSignInResult> {
+  if (!isFirebaseClientConfigured()) {
+    return { error: "Google sign-in is not configured yet." };
+  }
+  try {
+    const { initializeApp, getApps } = await import("firebase/app");
+    const { getAuth, GoogleAuthProvider, signInWithPopup } = await import(
+      "firebase/auth"
+    );
+    const app =
+      getApps()[0] ??
+      initializeApp({
+        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      });
+
+    const credential = await signInWithPopup(getAuth(app), new GoogleAuthProvider());
+    const idToken = await credential.user.getIdToken();
+    return { idToken };
+  } catch (err) {
+    const code = (err as { code?: string })?.code;
+    // User dismissed the popup — silently ignore (no error banner).
+    if (
+      code === "auth/popup-closed-by-user" ||
+      code === "auth/cancelled-popup-request"
+    ) {
+      return null;
+    }
+    if (code === "auth/popup-blocked") {
+      return { error: "Pop-up blocked. Allow pop-ups for this site and try again." };
+    }
+    console.warn("[GoogleAuth] sign-in failed:", err);
+    return { error: "Google sign-in failed. Please try again." };
+  }
+}
+
 /** Service worker registration used for push (from /firebase-messaging-sw.js). */
 export async function getSwRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return null;

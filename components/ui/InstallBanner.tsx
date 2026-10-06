@@ -3,37 +3,34 @@
 /**
  * InstallBanner — PWA install CTA.
  *
- * Mount points (contract): ONLY after a successful booking or on the
- * My Bookings page — never on first load.
+ * Mount point (contract): global — app/layout.tsx, so the user is prompted
+ * on EVERY visit until the app is installed.
  *
  * - Chromium: "Install <brand>" button (beforeinstallprompt deferred prompt).
  * - iOS Safari: 3-step guide (Share → Add to Home Screen → Add).
- * - Dismissal remembered for 14 days in localStorage (try/catch,
- *   hydration-safe: hidden until browser state is read).
+ * - Dismissal lasts for the CURRENT session only (sessionStorage, not
+ *   localStorage): closing the tab forgets it and the prompt returns next
+ *   visit, per the product rule "prompt every time until they have allowed
+ *   to install". Accepting the install ends prompting permanently.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { BRAND } from "@/lib/brand";
 
-const DISMISS_KEY = "gracesalon:install-banner-dismissed-at";
-const DISMISS_DAYS = 14;
+const DISMISS_KEY = "gracesalon:install-banner-dismissed-this-session";
 
 function readDismissed(): boolean {
   try {
-    const raw = window.localStorage.getItem(DISMISS_KEY);
-    if (!raw) return false;
-    const at = Number(raw);
-    if (!Number.isFinite(at)) return false;
-    return Date.now() - at < DISMISS_DAYS * 24 * 60 * 60 * 1000;
+    return window.sessionStorage.getItem(DISMISS_KEY) === "1";
   } catch {
-    return false; // localStorage blocked → allow banner
+    return false; // sessionStorage blocked → allow banner
   }
 }
 
 function writeDismissed(): void {
   try {
-    window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    window.sessionStorage.setItem(DISMISS_KEY, "1");
   } catch {
     /* private mode — dismissal just won't persist */
   }
@@ -50,9 +47,20 @@ export default function InstallBanner() {
   const [dismissed, setDismissed] = useState(true); // hidden until checked
   const [installing, setInstalling] = useState(false);
   const [installed, setInstalled] = useState(false);
+  // Docked bottom-right by app/layout.tsx — stay hidden while the cookie bar
+  // owns the bottom of the screen (it re-checks live via the custom event).
+  const [cookiePending, setCookiePending] = useState(true);
 
   useEffect(() => {
     setDismissed(readDismissed());
+    try {
+      setCookiePending(!window.localStorage.getItem("gracesalon_cookie_consent"));
+    } catch {
+      setCookiePending(false);
+    }
+    const onCookieDecided = () => setCookiePending(false);
+    window.addEventListener("gracesalon:cookie-decided", onCookieDecided);
+    return () => window.removeEventListener("gracesalon:cookie-decided", onCookieDecided);
   }, []);
 
   const dismiss = useCallback(() => {
@@ -71,8 +79,9 @@ export default function InstallBanner() {
     }
   }, [promptInstall, dismiss]);
 
-  // Nothing to show: hydration pending, already installed, or dismissed.
-  if (!ready || dismissed || isStandalone || installed) return null;
+  // Nothing to show: hydration pending, already installed, dismissed for
+  // this session, or the cookie bar hasn't been answered yet.
+  if (!ready || dismissed || isStandalone || installed || cookiePending) return null;
 
   // iOS Safari: no programmatic prompt — show the manual guide.
   if (isIos) {

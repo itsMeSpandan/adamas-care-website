@@ -7,7 +7,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const session = await getSessionFromRequest(request);
   if (!session) {
-    return NextResponse.json({ user: null });
+    // Tell the client whether a refresh cookie was even sent, so an
+    // anonymous visitor never fires a doomed POST /api/auth/refresh.
+    const cookieHeader = request.headers.get("cookie") || "";
+    const canRefresh = /(?:^|;\s*)gracesalon_refresh=[^;]+/.test(cookieHeader);
+    return NextResponse.json({ user: null, canRefresh });
   }
 
   try {

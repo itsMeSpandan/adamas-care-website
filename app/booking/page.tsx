@@ -9,7 +9,6 @@ import { format } from "date-fns";
 import { Service, Employee } from "@/lib/types";
 import { formatPrice, formatDuration, displayTime, cn } from "@/lib/utils";
 import StarIcon from "@/components/ui/StarIcon";
-import InstallBanner from "@/components/ui/InstallBanner";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
 
@@ -790,10 +789,6 @@ export default function BookingPage() {
                       <span className="font-mono text-xs text-beige-600">{bookingResult.id}</span>
                     </div>
                   </div>
-                </div>
-
-                <div className="mx-auto mt-6 max-w-md text-left">
-                  <InstallBanner />
                 </div>
 
                 <div className="mt-8 flex flex-wrap justify-center gap-4">
