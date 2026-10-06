@@ -42,14 +42,20 @@ function getFirebaseApp(): App | null {
     return cachedApp;
   }
 
-  cachedApp = initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID!,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-      privateKey,
-    }),
-  });
-  return cachedApp;
+  try {
+    cachedApp = initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID!,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
+        privateKey,
+      }),
+    });
+    return cachedApp;
+  } catch (err) {
+    console.error("🔥 FATAL FIREBASE INIT ERROR: Private key is likely malformed in Netlify environment variables.");
+    console.error(err);
+    return null;
+  }
 }
 
 /** Messaging instance, or null when Firebase is not configured. */
