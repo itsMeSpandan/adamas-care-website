@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 
 import { useAuth } from "@/lib/auth-context";
 import { StaggeredMenu } from "@/components/ui/StaggeredMenu";
 import UserPanel from "@/components/ui/UserPanel";
 import "./PillNav.css";
 
-
+const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
+  ssr: false,
+});
 
 interface PillNavItem {
   label: string;
@@ -38,6 +41,7 @@ const PillNav = ({
 }: PillNavProps) => {
   const { isAuthenticated } = useAuth();
   const [scrolled, setScrolled] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -80,7 +84,14 @@ const PillNav = ({
               ariaLabel: item.ariaLabel || item.label,
               link: item.href,
             })),
-            { label: "Book Appointment", ariaLabel: "Book Appointment", link: "/booking" },
+            isAuthenticated
+              ? { label: "Book Appointment", ariaLabel: "Book Appointment", link: "/booking" }
+              : {
+                  label: "Book Appointment",
+                  ariaLabel: "Book Appointment",
+                  link: "#",
+                  onClick: () => setLoginOpen(true),
+                },
           ]}
           socialItems={[
             { label: "WhatsApp", link: "https://wa.me/919238381831" },
@@ -96,6 +107,8 @@ const PillNav = ({
           logoUrl={logo}
         />
       </div>
+
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} />
     </>
   );
 };

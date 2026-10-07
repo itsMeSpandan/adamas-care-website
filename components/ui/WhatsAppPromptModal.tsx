@@ -39,6 +39,7 @@ export default function WhatsAppPromptModal() {
   // composed into the E.164-ish `+<dial><number>` the API validates.
   const [number, setNumber] = useState("");
   const [dial, setDial] = useState(`+${DEFAULT_COUNTRY.dial}`);
+  const [gender, setGender] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -57,28 +58,34 @@ export default function WhatsAppPromptModal() {
       setError(validationError);
       return;
     }
+    if (!gender) {
+      setError("Please select your gender.");
+      return;
+    }
 
     setSaving(true);
     try {
       const res = await fetch("/api/auth/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ whatsappNumber: fullNumber }),
+        body: JSON.stringify({ whatsappNumber: fullNumber, gender }),
         credentials: "include",
       });
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || "Could not save your number. Please try again.");
+        setError(data.error || "Could not save your details. Please try again.");
         return;
       }
 
       const data = await res.json();
       updateUser({
         whatsappNumber: data.user?.whatsappNumber ?? fullNumber,
+        gender: data.user?.gender ?? gender,
       });
       setNumber("");
-      showToast("Contact number saved", "success");
+      setGender("");
+      showToast("Details saved", "success");
       dismissWhatsAppPrompt();
     } catch {
       setError("Something went wrong. Please try again.");
@@ -89,6 +96,7 @@ export default function WhatsAppPromptModal() {
 
   const handleSkip = () => {
     setNumber("");
+    setGender("");
     setError("");
     dismissWhatsAppPrompt();
   };
@@ -134,11 +142,10 @@ export default function WhatsAppPromptModal() {
                 id="wa-prompt-title"
                 className="font-serif text-xl font-semibold text-beige-700"
               >
-                Add your contact number
+                Complete your profile
               </h2>
               <p className="mt-1 text-sm text-beige-500">
-                We&apos;ll use it to pre-fill your number when you book, so you
-                never have to type it again.
+                Please provide your contact number and gender to complete your profile.
               </p>
             </div>
 
@@ -175,9 +182,21 @@ export default function WhatsAppPromptModal() {
                       className="min-w-0 flex-1 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
                     />
                   </div>
-                  <p className="mt-1.5 text-xs text-beige-400">
-                    Optional — but it makes booking faster.
-                  </p>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-beige-700">Gender</label>
+                  <div className="flex gap-3">
+                    <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-100 has-[:checked]:border-beige-600 has-[:checked]:bg-beige-50">
+                      <input type="radio" name="gender" value="female" checked={gender === "female"} onChange={(e) => setGender(e.target.value)} className="text-beige-600 focus:ring-beige-500" /> Female
+                    </label>
+                    <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-100 has-[:checked]:border-beige-600 has-[:checked]:bg-beige-50">
+                      <input type="radio" name="gender" value="male" checked={gender === "male"} onChange={(e) => setGender(e.target.value)} className="text-beige-600 focus:ring-beige-500" /> Male
+                    </label>
+                    <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-100 has-[:checked]:border-beige-600 has-[:checked]:bg-beige-50">
+                      <input type="radio" name="gender" value="other" checked={gender === "other"} onChange={(e) => setGender(e.target.value)} className="text-beige-600 focus:ring-beige-500" /> Other
+                    </label>
+                  </div>
                 </div>
 
                 {error && <p className="text-sm text-red-600">{error}</p>}
@@ -185,10 +204,10 @@ export default function WhatsAppPromptModal() {
 
               <button
                 type="submit"
-                disabled={saving || !number.trim()}
+                disabled={saving || !number.trim() || !gender}
                 className="mt-6 w-full btn-primary"
               >
-                {saving ? "Saving..." : "Save number"}
+                {saving ? "Saving..." : "Save details"}
               </button>
 
               <button

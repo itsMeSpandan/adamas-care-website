@@ -65,6 +65,12 @@ export default function BookingPage() {
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
   const selectedServiceIds = selectedServices.map((s) => s.id);
 
+  // 14-day booking window from today (today + 13 = 14 days inclusive)
+  const bookingWindowStart = new Date();
+  bookingWindowStart.setHours(0, 0, 0, 0);
+  const bookingWindowEnd = new Date(bookingWindowStart);
+  bookingWindowEnd.setDate(bookingWindowEnd.getDate() + 13);
+
   // Helper: toggle a service in/out of the selection
   const toggleService = (service: Service) => {
     setSelectedServices((prev) => {
@@ -134,24 +140,42 @@ export default function BookingPage() {
     setSelectedDate(null);
     setSelectedSlot(null);
 
-    const now = new Date();
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    // Collect unique year-month strings that the 14-day window spans
+    const monthsSet = new Set<string>();
+    const cursor = new Date(bookingWindowStart);
+    while (cursor <= bookingWindowEnd) {
+      monthsSet.add(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+      cursor.setMonth(cursor.getMonth() + 1);
+      cursor.setDate(1);
+    }
+    const months = Array.from(monthsSet);
 
     if (selectedEmployee) {
-      fetch(
-        `/api/availability/dates?employeeId=${selectedEmployee.id}&month=${monthStr}&serviceDuration=${totalDuration}`
+      Promise.all(
+        months.map((monthStr) =>
+          fetch(
+            `/api/availability/dates?employeeId=${selectedEmployee.id}&month=${monthStr}&serviceDuration=${totalDuration}`
+          ).then((res) => res.json())
+        )
       )
-        .then((res) => res.json())
-        .then((data) => setAvailableDates(data.dates || []))
+        .then((results) => {
+          const allDates = new Set<string>();
+          for (const r of results) {
+            for (const d of r.dates || []) allDates.add(d);
+          }
+          setAvailableDates(Array.from(allDates));
+        })
         .catch(() => setAvailableDates([]))
         .finally(() => setDatesLoading(false));
     } else {
       const empIds = getEligibleEmployeeIds();
       Promise.all(
-        empIds.map((eid) =>
-          fetch(
-            `/api/availability/dates?employeeId=${eid}&month=${monthStr}&serviceDuration=${totalDuration}`
-          ).then((res) => res.json())
+        empIds.flatMap((eid) =>
+          months.map((monthStr) =>
+            fetch(
+              `/api/availability/dates?employeeId=${eid}&month=${monthStr}&serviceDuration=${totalDuration}`
+            ).then((res) => res.json())
+          )
         )
       )
         .then((results) => {
@@ -512,10 +536,11 @@ export default function BookingPage() {
                         setSelectedDate(date ?? null);
                         setSelectedSlot(null);
                       }}
+                      startMonth={bookingWindowStart}
+                      endMonth={bookingWindowEnd}
                       disabled={(date) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        if (date < today) return true;
+                        if (date < bookingWindowStart) return true;
+                        if (date > bookingWindowEnd) return true;
                         const dateKey = format(date, "yyyy-MM-dd");
                         return !availableDates.includes(dateKey);
                       }}

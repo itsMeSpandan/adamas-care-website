@@ -89,9 +89,15 @@ export default function Navbar() {
 
           {/* Desktop CTA + Auth */}
           <div className="hidden items-center gap-3 md:flex">
-            <Link href="/booking" className="btn-primary text-sm">
-              Book appointment
-            </Link>
+            {isAuthenticated ? (
+              <Link href="/booking" className="btn-primary text-sm">
+                Book appointment
+              </Link>
+            ) : (
+              <button onClick={() => setLoginOpen(true)} className="btn-primary text-sm">
+                Book appointment
+              </button>
+            )}
             {isAuthenticated ? (
               <UserPanel />
             ) : (
@@ -177,13 +183,22 @@ export default function Navbar() {
                 transition={{ delay: navLinks.length * 0.1 }}
                 className="flex flex-col items-center gap-4"
               >
-                <Link
-                  href="/booking"
-                  onClick={() => setMobileOpen(false)}
-                  className="btn-primary text-lg"
-                >
-                  Book appointment
-                </Link>
+                {isAuthenticated ? (
+                  <Link
+                    href="/booking"
+                    onClick={() => setMobileOpen(false)}
+                    className="btn-primary text-lg"
+                  >
+                    Book appointment
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => { setMobileOpen(false); setLoginOpen(true); }}
+                    className="btn-primary text-lg"
+                  >
+                    Book appointment
+                  </button>
+                )}
                 {!isAuthenticated && (
                   <button
                     onClick={() => { setMobileOpen(false); setLoginOpen(true); }}

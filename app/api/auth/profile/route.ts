@@ -18,7 +18,7 @@ export const PUT = requireAuth(async (request: Request) => {
     const body = await request.json();
     // IMPORTANT: the target user is always derived from the authenticated session,
     // never from a client-supplied `userId` (prevents IDOR / account takeover).
-    const { name, email, avatarUrl, whatsappNumber, currentPassword, newPassword } = body;
+    const { name, email, avatarUrl, whatsappNumber, gender, currentPassword, newPassword } = body;
 
     const user = await findUserById(session.userId);
     if (!user) {
@@ -54,6 +54,7 @@ export const PUT = requireAuth(async (request: Request) => {
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (avatarUrl) updateData.avatarUrl = avatarUrl;
+    if (gender) updateData.gender = gender;
     if (whatsappNumber !== undefined) {
       // Validate phone number format
       if (whatsappNumber && whatsappNumber.trim().length > 0) {

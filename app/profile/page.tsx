@@ -494,16 +494,7 @@ function ProfileContent() {
                           className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
                         />
                       </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-beige-700">Avatar URL</label>
-                        <input
-                          type="url"
-                          value={avatarUrl}
-                          onChange={(e) => setAvatarUrl(e.target.value)}
-                          placeholder="https://..."
-                          className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
-                        />
-                      </div>
+
                       <div>
                         <label htmlFor="profile-whatsapp" className="mb-1 block text-sm font-medium text-beige-700">
                           Phone Number (WhatsApp)

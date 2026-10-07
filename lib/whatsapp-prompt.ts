@@ -11,6 +11,7 @@
 /** Minimum shape needed to decide — mirrors AuthUser from lib/auth-context. */
 export interface PromptableUser {
   whatsappNumber?: string | null;
+  gender?: string | null;
 }
 
 function storageKey(userId: string): string {
@@ -85,7 +86,7 @@ export function validateWhatsAppNumber(number: string): string | null {
  *
  * Prompts only when all of these hold:
  *   - there is a signed-in user,
- *   - their stored number is null/empty/whitespace (the core product rule),
+ *   - their stored number or gender is missing
  *   - they have not dismissed it on this device.
  */
 export function shouldPromptForWhatsApp(
@@ -94,5 +95,8 @@ export function shouldPromptForWhatsApp(
 ): boolean {
   if (!user) return false;
   if (dismissed) return false;
-  return (user.whatsappNumber ?? "").trim().length === 0;
+  const missingPhone = (user.whatsappNumber ?? "").trim().length === 0;
+  const missingGender = !user.gender || (user.gender ?? "").trim().length === 0;
+  return missingPhone || missingGender;
 }
+
