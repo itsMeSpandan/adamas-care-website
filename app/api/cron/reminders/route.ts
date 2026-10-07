@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { notifyBooking } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Constant-time string comparison. A plain `!==` leaks how many leading
+ * characters of the secret were guessed via response timing.
+ */
+function safeEqual(a: string, b: string): boolean {
+  const bufA = Buffer.from(a, "utf8");
+  const bufB = Buffer.from(b, "utf8");
+  if (bufA.length !== bufB.length) return false;
+  return timingSafeEqual(bufA, bufB);
+}
 
 /**
  * GET /api/cron/reminders
@@ -18,9 +30,25 @@ export const dynamic = "force-dynamic";
  * A notification failure never affects the booking.
  */
 export async function GET(request: Request) {
-  // Verify cron secret to prevent unauthorized access
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  // Verify cron secret to prevent unauthorized access.
+  //
+  // This must fail CLOSED. The previous check interpolated the env var
+  // directly, so an unset CRON_SECRET turned the expected value into the
+  // literal string "Bearer undefined" — anyone who guessed it could fire the
+  // whole reminder blast. Refuse to run at all when it is missing.
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error(
+      "[cron/reminders] CRON_SECRET is not configured — refusing to run."
+    );
+    return NextResponse.json(
+      { error: "Server is not configured" },
+      { status: 500 }
+    );
+  }
+
+  const authHeader = request.headers.get("authorization") ?? "";
+  if (!safeEqual(authHeader, `Bearer ${cronSecret}`)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

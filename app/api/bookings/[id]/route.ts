@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
+import { getSessionFromRequest } from "@/lib/auth";
 import { awardPointsForBooking, clawbackPointsForBooking } from "@/lib/loyalty";
 import { notifyBooking } from "@/lib/notify";
 
@@ -69,12 +70,53 @@ export const PATCH = requireAuth(async (request: Request, context) => {
     const body = await request.json();
     const { status, rating, review } = body;
 
+    // requireAuth only proves that *someone* is signed in — it says nothing
+    // about whether that someone owns this booking. Without the checks below,
+    // any authenticated account could cancel/confirm another customer's
+    // appointment (firing real emails, loyalty clawbacks and reliability
+    // penalties) or overwrite their rating and review.
+    const session = await getSessionFromRequest(request);
+    if (!session) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const existing = await db.booking.findUnique({
+      where: { id },
+      select: { id: true, userId: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    const isAdmin = session.role === "admin";
+    // Staff-created walk-in bookings have no userId, so nobody "owns" them.
+    const isOwner = !!existing.userId && existing.userId === session.userId;
+
+    if (!isAdmin && !isOwner) {
+      return NextResponse.json(
+        { error: "You can only change your own bookings" },
+        { status: 403 }
+      );
+    }
+
     // Handle status updates
     if (status) {
       if (!["pending", "confirmed", "completed", "cancelled"].includes(status)) {
         return NextResponse.json(
           { error: "Invalid status. Must be one of: pending, confirmed, completed, cancelled" },
           { status: 400 }
+        );
+      }
+
+      // Customers may only cancel their own booking. Moving a booking into
+      // pending/confirmed/completed is a staff action.
+      if (!isAdmin && status !== "cancelled") {
+        return NextResponse.json(
+          { error: "Only staff can set this status" },
+          { status: 403 }
         );
       }
       // Atomic: status update + loyalty + reliability in a single transaction
@@ -152,6 +194,15 @@ export const PATCH = requireAuth(async (request: Request, context) => {
 
     // Handle rating/review updates
     if (rating !== undefined) {
+      // A review belongs to the customer who sat through the appointment —
+      // even an admin has no business rewriting someone's words.
+      if (!isOwner) {
+        return NextResponse.json(
+          { error: "You can only rate your own booking" },
+          { status: 403 }
+        );
+      }
+
       const numRating = Number(rating);
       if (isNaN(numRating) || numRating < 0 || numRating > 5) {
         return NextResponse.json(

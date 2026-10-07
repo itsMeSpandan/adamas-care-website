@@ -8,10 +8,14 @@
  * When Redis is not configured (local dev), falls back to the original
  * in-memory sliding-window limiter.
  *
- * Usage is unchanged:
+ * Usage:
  *   const limiter = rateLimit({ windowMs: 60_000, max: 5 });
- *   const result = limiter.check(key);
+ *   const result = await limiter.checkAsync(key);
  *   if (!result.success) return 429 response.
+ *
+ * `checkAsync` is REQUIRED whenever Redis is configured. The synchronous
+ * `check()` cannot enforce a distributed limit and throws in that case rather
+ * than quietly answering from the per-instance fallback.
  */
 
 // ─── Upstash-backed implementation ─────────────────────────────────────────
@@ -36,6 +40,24 @@ function getUpstashLimiter(): Ratelimit | null {
     prefix: "gracesalon:ratelimit",
   });
   return upstashLimiter;
+}
+
+// ─── Configuration guard ───────────────────────────────────────────────────
+//
+// Without Redis the limiter falls back to an in-process Map. On a serverless
+// platform every instance keeps its own counter, so a "10 per minute" login
+// limit silently becomes "10 per minute per warm instance" across a whole
+// fleet. Say so loudly in production instead of pretending the limit holds.
+const hasRedisConfig = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+);
+
+if (process.env.NODE_ENV === "production" && !hasRedisConfig) {
+  console.error(
+    "[RateLimit] UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN are not set. " +
+      "Rate limits are per-instance and therefore NOT enforced globally in " +
+      "production. Set both variables in the hosting environment."
+  );
 }
 
 // ─── In-memory fallback ────────────────────────────────────────────────────
@@ -78,18 +100,20 @@ export function rateLimit(config: RateLimitConfig) {
   const upstash = getUpstashLimiter();
 
   return {
+    /**
+     * Synchronous check — only valid when Redis is NOT configured.
+     *
+     * With Redis in play the authoritative answer needs an async round-trip, so
+     * the previous implementation answered from the in-memory limiter instead,
+     * silently disabling the distributed limit for anyone who called it. Fail
+     * loudly instead: every caller in this codebase should use checkAsync().
+     */
     check(key: string): RateLimitResult {
-      // If Upstash is configured, use it (async check wrapped as sync-ish)
       if (upstash) {
-        // NOTE: @upstash/ratelimit is async. We fire-and-forget here and
-        // let the caller handle the result via the Promise-returning variant.
-        // For compatibility with the existing sync API, we return a result
-        // from the in-memory limiter as a fast path, but the real check
-        // should use checkAsync().
-        //
-        // In practice, the callers below also support async via the
-        // `checkAsync` method we expose.
-        return inMemoryCheck(key, windowMs, max);
+        throw new Error(
+          "rateLimit().check() cannot enforce a distributed limit. " +
+            "Use `await limiter.checkAsync(key)` instead."
+        );
       }
 
       return inMemoryCheck(key, windowMs, max);

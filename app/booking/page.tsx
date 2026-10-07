@@ -72,6 +72,11 @@ export default function BookingPage() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [datesLoading, setDatesLoading] = useState(false);
+  // Set when the available-dates request itself fails. Without this the only
+  // signal was an empty list — which the picker renders as "every day is
+  // greyed out", indistinguishable from a genuinely fully-booked month.
+  const [datesError, setDatesError] = useState(false);
+  const [datesRetryKey, setDatesRetryKey] = useState(0);
   const [waitlistCounts, setWaitlistCounts] = useState<Record<string, number>>({});
   const [waitlistModal, setWaitlistModal] = useState<{ slot: TimeSlot } | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
@@ -161,9 +166,6 @@ export default function BookingPage() {
   // Fetch available dates when entering step 2
   useEffect(() => {
     if (step !== 2 || selectedServices.length === 0) return;
-    setDatesLoading(true);
-    setSelectedDate(null);
-    setSelectedSlot(null);
 
     // Collect unique year-month strings that the 14-day window spans
     const monthsSet = new Set<string>();
@@ -175,47 +177,60 @@ export default function BookingPage() {
     }
     const months = Array.from(monthsSet);
 
-    if (selectedEmployee) {
-      Promise.all(
-        months.map((monthStr) =>
-          fetch(
-            `/api/availability/dates?employeeId=${selectedEmployee.id}&month=${monthStr}&serviceDuration=${totalDuration}`
-          ).then((res) => res.json())
-        )
-      )
-        .then((results) => {
-          const allDates = new Set<string>();
-          for (const r of results) {
-            for (const d of r.dates || []) allDates.add(d);
-          }
-          setAvailableDates(Array.from(allDates));
-        })
-        .catch(() => setAvailableDates([]))
-        .finally(() => setDatesLoading(false));
-    } else {
-      const empIds = getEligibleEmployeeIds();
-      Promise.all(
-        empIds.flatMap((eid) =>
-          months.map((monthStr) =>
-            fetch(
-              `/api/availability/dates?employeeId=${eid}&month=${monthStr}&serviceDuration=${totalDuration}`
-            ).then((res) => res.json())
-          )
-        )
-      )
-        .then((results) => {
-          const allDates = new Set<string>();
-          for (const r of results) {
-            for (const d of r.dates || []) {
-              allDates.add(d);
-            }
-          }
-          setAvailableDates(Array.from(allDates));
-        })
-        .catch(() => setAvailableDates([]))
-        .finally(() => setDatesLoading(false));
+    const empIds = selectedEmployee
+      ? [selectedEmployee.id]
+      : getEligibleEmployeeIds();
+
+    if (empIds.length === 0) {
+      setAvailableDates([]);
+      setDatesError(false);
+      setDatesLoading(false);
+      return;
     }
-  }, [step, selectedServices, selectedEmployee, employees, user?.gender]);
+
+    setDatesLoading(true);
+    setDatesError(false);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+
+    // One request per month for the whole employee pool — the route accepts a
+    // comma-separated employeeIds list, so N employees no longer means N
+    // concurrent serverless invocations.
+    const employeeParam = encodeURIComponent(empIds.join(","));
+    let cancelled = false;
+
+    Promise.all(
+      months.map(async (monthStr) => {
+        const res = await fetch(
+          `/api/availability/dates?employeeIds=${employeeParam}&month=${monthStr}&serviceDuration=${totalDuration}`
+        );
+        if (!res.ok) {
+          throw new Error(`availability/dates responded ${res.status}`);
+        }
+        return res.json();
+      })
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const allDates = new Set<string>();
+        for (const r of results) {
+          for (const d of r.dates || []) allDates.add(d);
+        }
+        setAvailableDates(Array.from(allDates));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAvailableDates([]);
+        setDatesError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setDatesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [step, selectedServices, selectedEmployee, employees, user?.gender, datesRetryKey]);
 
   // Fetch available slots when date is selected
   useEffect(() => {
@@ -283,9 +298,17 @@ export default function BookingPage() {
         )
       : [];
 
-  // Holidays still ahead of today — the API returns them oldest-first.
+  // Holidays still ahead of today, limited to the current month. The 14-day
+  // booking window can reach into the next month, but showing next month's
+  // festivals under this month's grid is just noise. The API returns holidays
+  // oldest-first, so the slice keeps the soonest ones.
+  const currentMonthKey = format(new Date(), "yyyy-MM");
   const upcomingHolidays = holidays
-    .filter((h) => holidayDate(h) >= new Date())
+    .filter(
+      (h) =>
+        holidayDate(h) >= new Date() &&
+        format(holidayDate(h), "yyyy-MM") === currentMonthKey
+    )
     .slice(0, 6);
 
   const handleBooking = async () => {
@@ -556,6 +579,22 @@ export default function BookingPage() {
                   <div className="flex items-center justify-center py-8">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-beige-300 border-t-beige-600" />
                     <span className="ml-3 text-sm text-beige-500">Loading available dates...</span>
+                  </div>
+                ) : datesError ? (
+                  <div className="mb-8 rounded-card border border-red-200 bg-red-50 p-6 text-center shadow-card">
+                    <p className="text-sm font-medium text-red-700">
+                      We couldn&apos;t load the calendar just now.
+                    </p>
+                    <p className="mt-1 text-xs text-red-600">
+                      Please try again — your details are still saved.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setDatesRetryKey((k) => k + 1)}
+                      className="mt-4 rounded-full bg-beige-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-beige-700"
+                    >
+                      Try again
+                    </button>
                   </div>
                 ) : (
                   <div className="mb-8 rounded-card border border-beige-200 bg-white p-4 shadow-card">

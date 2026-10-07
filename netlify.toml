@@ -11,7 +11,10 @@
   command = "npm run build"
 
 [build.environment]
-  NODE_VERSION = "20"
+  # firebase-admin / google-auth-library@11 / google-gax@6 declare
+  # engines: node >= 22, so building on Node 20 emits unsupported-engine
+  # warnings and pulls in older transitive code paths.
+  NODE_VERSION = "22"
   # These variable NAMES appear as plain words in README/docs/commit logs,
   # which was tripping Netlify's secrets scanner even though no real values
   # are committed. Omitting by key (not disabling scanning entirely) keeps

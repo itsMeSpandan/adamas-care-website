@@ -587,6 +587,44 @@ export async function getDynamicAvailableSlots(
 }
 
 /**
+ * Pure merge of recurring availability with date-specific overrides.
+ *
+ * Kept separate (and exported) so callers that already batch-fetched
+ * availability + overrides for a whole month can reuse the exact same rules
+ * instead of issuing two queries per day.
+ */
+export function applyOverridesToWindows(
+  base: SlotInterval[],
+  overrides: {
+    isBlocked: boolean;
+    startTime: string | null;
+    endTime: string | null;
+  }[]
+): SlotInterval[] {
+  let windows: SlotInterval[] = base.map((w) => ({ start: w.start, end: w.end }));
+
+  for (const override of overrides) {
+    if (override.isBlocked) {
+      if (!override.startTime) {
+        // Full-day leave → no working hours
+        return [];
+      }
+      // Partial block
+      windows = subtractTimeRange(
+        windows,
+        override.startTime,
+        override.endTime || "23:59"
+      );
+    } else if (override.startTime && override.endTime) {
+      // Extra hours outside normal schedule
+      windows.push({ start: override.startTime, end: override.endTime });
+    }
+  }
+
+  return windows.length === 0 ? [] : mergeWindows(windows);
+}
+
+/**
  * Fetch and merge working hours for an employee on a given DB day-of-week,
  * applying any AvailabilityOverrides for the given date.
  */
@@ -602,35 +640,14 @@ async function getWorkingHours(
 
   if (availability.length === 0) return [];
 
-  let windows: SlotInterval[] = availability.map((a) => ({
-    start: a.startTime,
-    end: a.endTime,
-  }));
-
   const overrides = await db.availabilityOverride.findMany({
     where: { employeeId, overrideDate: dayStart },
   });
 
-  for (const override of overrides) {
-    if (override.isBlocked) {
-      if (!override.startTime) {
-        // Full-day leave → no working hours
-        windows = [];
-        break;
-      }
-      // Partial block
-      windows = subtractTimeRange(
-        windows,
-        override.startTime,
-        override.endTime || "23:59"
-      );
-    } else if (override.startTime && override.endTime) {
-      // Extra hours outside normal schedule
-      windows.push({ start: override.startTime, end: override.endTime });
-    }
-  }
-
-  return windows.length === 0 ? [] : mergeWindows(windows);
+  return applyOverridesToWindows(
+    availability.map((a) => ({ start: a.startTime, end: a.endTime })),
+    overrides
+  );
 }
 
 // ─── Phase 3 (addition): Gender-matched employee filter ──────────────────────
