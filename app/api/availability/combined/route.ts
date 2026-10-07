@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDynamicAvailableSlots, computeTotalDuration } from "@/lib/scoring-engine";
+import {
+  buildSlotGrid,
+  computeTotalDuration,
+  containsInterval,
+  getFreeGaps,
+  getWorkingWindows,
+} from "@/lib/scoring-engine";
 import { db } from "@/lib/db";
-import { timeToMinutes, minutesToTime } from "@/lib/slots";
+import { mergeWindows } from "@/lib/slots";
 
 export const dynamic = "force-dynamic";
 
@@ -10,17 +16,25 @@ export const dynamic = "force-dynamic";
  *   &serviceDuration=60
  *   &serviceIds=s1,s2
  *
- * Returns combined available slots across all listed employees.
- * Also returns "occupied" slots — time slots where ALL employees are booked.
- * This enables the waitlist flow: when all same-gender specialists are booked,
- * the client sees the occupied slots with a "Join waitlist" option.
+ * Returns combined available slots across all listed employees, plus the
+ * "occupied" slots: times inside someone's shift where NO employee can take
+ * the requested duration (everyone is booked, or the time falls inside a
+ * booking's cleanup buffer). This enables the waitlist flow — the client shows
+ * occupied slots as "Join waitlist" options.
+ *
+ * Occupied slots carry an `employeeId` (the first employee whose shift covers
+ * the interval). The waitlist is keyed per employee, so the entry needs an
+ * owner to be notified against when their slot frees up.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const employeeIdsParam = searchParams.get("employeeIds");
   const dateStr = searchParams.get("date");
   const serviceIdsParam = searchParams.get("serviceIds");
-  const serviceDuration = parseInt(searchParams.get("serviceDuration") || "60", 10);
+  const serviceDuration = parseInt(
+    searchParams.get("serviceDuration") || "60",
+    10
+  );
 
   if (!employeeIdsParam || !dateStr) {
     return NextResponse.json(
@@ -47,20 +61,29 @@ export async function GET(request: NextRequest) {
       totalDurationMinutes = serviceDuration;
     }
 
-    // Fetch available slots for each employee in parallel
-    const perEmployeeResults = await Promise.all(
-      employeeIds.map(async (eid) => {
-        const dynamicSlots = await getDynamicAvailableSlots(eid, dateStr, totalDurationMinutes);
-        return { employeeId: eid, slots: dynamicSlots };
-      })
+    // Per-employee shift windows (still include booked time) and free gaps.
+    const perEmployee = await Promise.all(
+      employeeIds.map(async (eid) => ({
+        employeeId: eid,
+        windows: await getWorkingWindows(eid, dateStr),
+        gaps: await getFreeGaps(eid, dateStr),
+      }))
     );
 
-    // Merge available slots: union by start time
-    const availableMap = new Map<string, { start: string; end: string; employeeId: string }>();
-    for (const emp of perEmployeeResults) {
-      for (const s of emp.slots) {
+    // Available slots: every start at least one employee can serve, keeping the
+    // first employee (in request order) who can take it.
+    const availableMap = new Map<
+      string,
+      { start: string; end: string; employeeId: string }
+    >();
+    for (const emp of perEmployee) {
+      for (const s of buildSlotGrid(emp.gaps, totalDurationMinutes)) {
         if (!availableMap.has(s.start)) {
-          availableMap.set(s.start, { start: s.start, end: s.end, employeeId: emp.employeeId });
+          availableMap.set(s.start, {
+            start: s.start,
+            end: s.end,
+            employeeId: emp.employeeId,
+          });
         }
       }
     }
@@ -69,138 +92,30 @@ export async function GET(request: NextRequest) {
       a.start.localeCompare(b.start)
     );
 
-    // To find "occupied" slots (all employees booked), we need to know the
-    // working hours union. We generate all possible 15-min slots from working hours
-    // and subtract the available ones.
-    const occupiedSlots: Array<{ start: string; end: string }> = [];
+    // Universe of candidate slots: the union of everyone's shift windows.
+    // Occupancy is decided by testing the whole interval against each
+    // employee's free gaps — start-time grid comparisons break as soon as the
+    // 10-minute cleanup buffer shifts a gap start off the :00/:15 grid.
+    const mergedWindows = mergeWindows(perEmployee.flatMap((emp) => emp.windows));
 
-    if (availableSlots.length > 0 || perEmployeeResults.some(e => e.slots.length === 0)) {
-      // Generate the "universe" of possible slots from working hours
-      // Use the first employee's working hours as the baseline
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const date = new Date(Date.UTC(year, month - 1, day));
-      const jsDay = date.getUTCDay();
-      const dbDay = jsDay === 0 ? 6 : jsDay - 1;
-      const dayStart = new Date(Date.UTC(year, month - 1, day));
+    const occupiedSlots: Array<{
+      start: string;
+      end: string;
+      employeeId: string;
+    }> = [];
 
-      // Fetch working hours for all employees
-      const allAvailability = await db.employeeAvailability.findMany({
-        where: {
-          employeeId: { in: employeeIds },
-          dayOfWeek: dbDay,
-          isActive: true,
-        },
-        orderBy: { startTime: "asc" },
-      });
+    for (const candidate of buildSlotGrid(mergedWindows, totalDurationMinutes)) {
+      const canServe = perEmployee.some((emp) =>
+        containsInterval(emp.gaps, candidate.start, candidate.end)
+      );
+      if (canServe) continue;
 
-      // Fetch overrides
-      const allOverrides = await db.availabilityOverride.findMany({
-        where: {
-          employeeId: { in: employeeIds },
-          overrideDate: dayStart,
-        },
-      });
+      const owner =
+        perEmployee.find((emp) =>
+          containsInterval(emp.windows, candidate.start, candidate.end)
+        ) || perEmployee[0];
 
-      // Fetch ALL bookings for these employees on this date
-      const dayEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
-      const allBookings = await db.booking.findMany({
-        where: {
-          employeeId: { in: employeeIds },
-          date: { gte: dayStart, lte: dayEnd },
-          status: { in: ["confirmed", "pending"] },
-          slotStart: { not: null },
-          slotEnd: { not: null },
-        },
-        select: {
-          employeeId: true,
-          slotStart: true,
-          slotEnd: true,
-        },
-      });
-
-      // Group by employee
-      const availByEmp = new Map<string, Array<{ startTime: string; endTime: string }>>();
-      for (const a of allAvailability) {
-        if (!availByEmp.has(a.employeeId)) availByEmp.set(a.employeeId, []);
-        availByEmp.get(a.employeeId)!.push({ startTime: a.startTime, endTime: a.endTime });
-      }
-
-      const overridesByEmp = new Map<string, typeof allOverrides>();
-      for (const o of allOverrides) {
-        if (!overridesByEmp.has(o.employeeId)) overridesByEmp.set(o.employeeId, []);
-        overridesByEmp.get(o.employeeId)!.push(o);
-      }
-
-      const bookingsByEmp = new Map<string, typeof allBookings>();
-      for (const b of allBookings) {
-        if (!b.employeeId) continue;
-        if (!bookingsByEmp.has(b.employeeId)) bookingsByEmp.set(b.employeeId, []);
-        bookingsByEmp.get(b.employeeId)!.push(b);
-      }
-
-      // For each employee, compute their booked time ranges
-      const employeeBookedRanges = new Map<string, Array<{ start: string; end: string }>>();
-      for (const empId of employeeIds) {
-        const empBookings = bookingsByEmp.get(empId) || [];
-        const ranges: Array<{ start: string; end: string }> = [];
-        for (const b of empBookings) {
-          if (b.slotStart && b.slotEnd) {
-            ranges.push({ start: b.slotStart, end: b.slotEnd });
-          }
-        }
-        employeeBookedRanges.set(empId, ranges);
-      }
-
-      // Generate all possible 15-min slots from the union of working hours
-      // Collect all working windows across all employees
-      const allWindows: Array<{ start: string; end: string }> = [];
-      for (const empId of employeeIds) {
-        let windows = (availByEmp.get(empId) || []).map(a => ({
-          start: a.startTime,
-          end: a.endTime,
-        }));
-
-        const overrides = overridesByEmp.get(empId) || [];
-        for (const override of overrides) {
-          if (override.isBlocked) {
-            if (!override.startTime) {
-              windows = [];
-              break;
-            }
-            windows = subtractTimeRangeSimple(windows, override.startTime, override.endTime || "23:59");
-          } else if (override.startTime && override.endTime) {
-            windows.push({ start: override.startTime, end: override.endTime });
-          }
-        }
-
-        allWindows.push(...windows);
-      }
-
-      // Merge all windows
-      const mergedWindows = mergeWindowsSimple(allWindows);
-
-      // Generate all possible 15-min slots
-      const STEP = 15;
-      const allPossibleSlots: Array<{ start: string; end: string }> = [];
-      for (const w of mergedWindows) {
-        const wStart = timeToMinutes(w.start);
-        const wEnd = timeToMinutes(w.end);
-        for (let t = wStart; t + totalDurationMinutes <= wEnd; t += STEP) {
-          allPossibleSlots.push({
-            start: minutesToTime(t),
-            end: minutesToTime(t + totalDurationMinutes),
-          });
-        }
-      }
-
-      // Find occupied slots: slots where NO employee has it available
-      // A slot is "occupied" if it's in the universe but NOT in the available set
-      const availableStarts = new Set(availableSlots.map(s => s.start));
-      for (const possible of allPossibleSlots) {
-        if (!availableStarts.has(possible.start)) {
-          occupiedSlots.push(possible);
-        }
-      }
+      occupiedSlots.push({ ...candidate, employeeId: owner.employeeId });
     }
 
     // Fetch waitlist counts for occupied slots
@@ -231,47 +146,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Simple time range helpers (inline to avoid circular deps)
-function subtractTimeRangeSimple(
-  windows: Array<{ start: string; end: string }>,
-  subStart: string,
-  subEnd: string
-): Array<{ start: string; end: string }> {
-  const s = timeToMinutes(subStart);
-  const e = timeToMinutes(subEnd);
-  const result: Array<{ start: string; end: string }> = [];
-
-  for (const w of windows) {
-    const ws = timeToMinutes(w.start);
-    const we = timeToMinutes(w.end);
-
-    if (e <= ws || s >= we) {
-      result.push(w);
-    } else {
-      if (s > ws) result.push({ start: w.start, end: minutesToTime(s) });
-      if (e < we) result.push({ start: minutesToTime(e), end: w.end });
-    }
-  }
-
-  return result;
-}
-
-function mergeWindowsSimple(windows: Array<{ start: string; end: string }>): Array<{ start: string; end: string }> {
-  if (windows.length === 0) return [];
-
-  const sorted = [...windows].sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
-  const merged: Array<{ start: string; end: string }> = [sorted[0]];
-
-  for (let i = 1; i < sorted.length; i++) {
-    const last = merged[merged.length - 1];
-    if (timeToMinutes(sorted[i].start) <= timeToMinutes(last.end)) {
-      last.end = timeToMinutes(sorted[i].end) > timeToMinutes(last.end) ? sorted[i].end : last.end;
-    } else {
-      merged.push(sorted[i]);
-    }
-  }
-
-  return merged;
 }

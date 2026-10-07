@@ -450,23 +450,55 @@ export interface SlotInterval {
 const BOOKING_CLEANUP_BUFFER_MINUTES = 10;
 const SLOT_STEP_MINUTES = 15;
 
-export async function getDynamicAvailableSlots(
-  employeeId: string,
-  dateStr: string,
-  totalDurationMinutes: number
-): Promise<SlotInterval[]> {
-  if (totalDurationMinutes <= 0) return [];
-
+/**
+ * Resolve a YYYY-MM-DD string to the DB day-of-week (Monday = 0 … Sunday = 6)
+ * plus the UTC day boundaries used to query bookings.
+ */
+function resolveDateParts(dateStr: string) {
   const [year, month, day] = dateStr.split("-").map(Number);
-  if (isNaN(year) || isNaN(month) || isNaN(day)) return [];
+  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
 
   const date = new Date(Date.UTC(year, month - 1, day));
   const jsDay = date.getUTCDay();
-  const dbDay = jsDay === 0 ? 6 : jsDay - 1;
-  const dayStart = new Date(Date.UTC(year, month - 1, day));
-  const dayEnd = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999));
+  return {
+    dbDay: jsDay === 0 ? 6 : jsDay - 1,
+    dayStart: new Date(Date.UTC(year, month - 1, day)),
+    dayEnd: new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999)),
+  };
+}
 
-  // 1. Get working hours for this employee on this day
+/**
+ * Working windows for an employee on a date (EmployeeAvailability merged with
+ * any AvailabilityOverrides). This is the "universe" of times the employee is
+ * on shift — it still includes times taken by bookings.
+ */
+export async function getWorkingWindows(
+  employeeId: string,
+  dateStr: string
+): Promise<SlotInterval[]> {
+  const parts = resolveDateParts(dateStr);
+  if (!parts) return [];
+  return getWorkingHours(employeeId, parts.dbDay, parts.dayStart);
+}
+
+/**
+ * Free (bookable) gaps for an employee on a date: working windows minus
+ * CONFIRMED/PENDING bookings plus the post-booking cleanup buffer.
+ *
+ * Occupancy must be decided by testing a candidate interval for *containment*
+ * in one of these gaps. Comparing raw start-time strings against a :00/:15
+ * grid silently mislabels free slots as occupied, because the cleanup buffer
+ * shifts the start of every gap that follows a booking (11:00 → 11:10).
+ */
+export async function getFreeGaps(
+  employeeId: string,
+  dateStr: string
+): Promise<SlotInterval[]> {
+  const parts = resolveDateParts(dateStr);
+  if (!parts) return [];
+  const { dbDay, dayStart, dayEnd } = parts;
+
+  // 1. Working hours for this employee on this day
   let windows = await getWorkingHours(employeeId, dbDay, dayStart);
   if (windows.length === 0) return [];
 
@@ -491,17 +523,27 @@ export async function getDynamicAvailableSlots(
     }
   }
 
-  // 3. For each free gap, generate valid start times
+  return windows;
+}
+
+/**
+ * Generate every candidate slot start (SLOT_STEP_MINUTES increments, aligned to
+ * each window start) for the given windows and duration.
+ */
+export function buildSlotGrid(
+  windows: SlotInterval[],
+  totalDurationMinutes: number
+): SlotInterval[] {
   const result: SlotInterval[] = [];
+  if (totalDurationMinutes <= 0) return result;
+
   for (const gap of windows) {
     const gapStart = timeToMinutes(gap.start);
     const gapEnd = timeToMinutes(gap.end);
-    const gapDuration = gapEnd - gapStart;
 
-    // Skip gaps shorter than the requested duration
-    if (gapDuration < totalDurationMinutes) continue;
+    // Skip windows shorter than the requested duration
+    if (gapEnd - gapStart < totalDurationMinutes) continue;
 
-    // Generate every valid start time at SLOT_STEP_MINUTES increments
     for (
       let t = gapStart;
       t + totalDurationMinutes <= gapEnd;
@@ -515,6 +557,33 @@ export async function getDynamicAvailableSlots(
   }
 
   return result;
+}
+
+/** Is [start, end] fully contained in one of the given windows? */
+export function containsInterval(
+  windows: SlotInterval[],
+  start: string,
+  end: string
+): boolean {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  return windows.some(
+    (w) => timeToMinutes(w.start) <= s && e <= timeToMinutes(w.end)
+  );
+}
+
+export async function getDynamicAvailableSlots(
+  employeeId: string,
+  dateStr: string,
+  totalDurationMinutes: number
+): Promise<SlotInterval[]> {
+  if (totalDurationMinutes <= 0) return [];
+
+  // 1 + 2. Working hours minus bookings (plus the cleanup buffer)
+  const gaps = await getFreeGaps(employeeId, dateStr);
+
+  // 3. For each free gap, generate valid start times
+  return buildSlotGrid(gaps, totalDurationMinutes);
 }
 
 /**

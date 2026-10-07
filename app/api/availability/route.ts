@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDynamicAvailableSlots, computeTotalDuration } from "@/lib/scoring-engine";
-import { getAvailableSlots } from "@/lib/availability";
+import {
+  buildSlotGrid,
+  computeTotalDuration,
+  containsInterval,
+  getFreeGaps,
+  getWorkingWindows,
+} from "@/lib/scoring-engine";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,13 +15,16 @@ export const dynamic = "force-dynamic";
  *   &serviceDuration=60                  (legacy: single-service minutes)
  *   &serviceIds=s1,s2,s3                 (new: multi-service array)
  *
- * Returns available time slots computed from EmployeeAvailability windows
- * minus overrides and booked slots (with 10-min cleanup buffer).
+ * Returns every slot in the employee's shift for that date, each flagged with
+ * `isBooked`:
+ *   - `isBooked: false` → free, computed from EmployeeAvailability windows
+ *     minus overrides and booked slots (with 10-min cleanup buffer)
+ *   - `isBooked: true`  → taken by a booking (or its cleanup buffer), so the
+ *     client can offer it as a waitlist option
  *
  * When `serviceIds` is provided, the server computes totalDurationMinutes
- * (sum of durations + transition buffers) and uses the dynamic slot generator.
- * Falls back to the legacy `serviceDuration` parameter when `serviceIds` is
- * not provided.
+ * (sum of durations + transition buffers). Falls back to the legacy
+ * `serviceDuration` parameter when `serviceIds` is not provided.
  */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -47,22 +55,16 @@ export async function GET(request: NextRequest) {
       totalDurationMinutes = serviceDuration;
     }
 
-    // Use the new dynamic slot generator for both paths
-    const dynamicSlots = await getDynamicAvailableSlots(employeeId, dateStr, totalDurationMinutes);
+    // The employee's shift (still includes booked time) and the free gaps
+    // within it. A candidate slot that is not fully inside a free gap is taken
+    // by a booking or its cleanup buffer.
+    const windows = await getWorkingWindows(employeeId, dateStr);
+    const freeGaps = await getFreeGaps(employeeId, dateStr);
 
-    // Also run the legacy generator for backward compatibility —
-    // the client currently uses the `isBooked` flag from the legacy format
-    const legacySlots = await getAvailableSlots(employeeId, dateStr, totalDurationMinutes);
-
-    // Merge: dynamic slots are the primary source; legacy provides isBooked metadata
-    const bookedSet = new Set(
-      legacySlots.filter((s) => s.isBooked).map((s) => s.start)
-    );
-
-    const slots = dynamicSlots.map((s) => ({
+    const slots = buildSlotGrid(windows, totalDurationMinutes).map((s) => ({
       ...s,
       employeeId,
-      isBooked: bookedSet.has(s.start),
+      isBooked: !containsInterval(freeGaps, s.start, s.end),
     }));
 
     // Check waitlist counts for occupied slots
@@ -75,7 +77,7 @@ export async function GET(request: NextRequest) {
           where: {
             employeeId,
             slotStart: slot.start,
-            status: "waiting",
+            status: { in: ["waiting", "notified"] },
           },
         });
         waitlistCounts[slot.start] = count;

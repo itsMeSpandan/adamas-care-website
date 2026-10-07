@@ -29,6 +29,31 @@ interface TimeSlot {
 
 const stepLabels = ["Choose Service", "Pick Date & Time", "Confirm"];
 
+/**
+ * Turn a failed POST /api/waitlist response into something a customer can
+ * act on — raw validation text ("employeeId, slotStart, and slotEnd are
+ * required") is meaningless to them.
+ */
+function waitlistErrorMessage(status: number, apiError?: string): string {
+  if (status === 401) return "Please log in to join the waitlist.";
+  if (status === 409) return "You are already on the waitlist for this slot.";
+  if (status === 400) {
+    if (apiError === "You already have a booking for this slot.") return apiError;
+    return "This slot cannot be waitlisted right now. Please pick another time.";
+  }
+  return "Could not join the waitlist. Please try again.";
+}
+
+/**
+ * Holiday dates arrive as ISO timestamps ("2026-10-16T00:00:00.000Z"),
+ * while calendar dates are plain "yyyy-MM-dd". Appending "T00:00:00" to the
+ * full timestamp produces an Invalid Date, which silently dropped every
+ * holiday from both the calendar modifiers and the upcoming-holidays list.
+ */
+function holidayDate(holiday: Holiday): Date {
+  return new Date(`${holiday.date.slice(0, 10)}T00:00:00`);
+}
+
 export default function BookingPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -234,10 +259,10 @@ export default function BookingPage() {
             employeeId: s.employeeId,
             isBooked: false,
           }));
-          const occupied: TimeSlot[] = (data.occupiedSlots || []).map((s: { start: string; end: string }) => ({
+          const occupied: TimeSlot[] = (data.occupiedSlots || []).map((s: { start: string; end: string; employeeId?: string }) => ({
             start: s.start,
             end: s.end,
-            employeeId: undefined,
+            employeeId: s.employeeId,
             isBooked: true,
           }));
           setAvailableSlots([...slots, ...occupied].sort((a, b) => a.start.localeCompare(b.start)));
@@ -257,6 +282,11 @@ export default function BookingPage() {
             (!user?.gender || e.gender === user.gender)
         )
       : [];
+
+  // Holidays still ahead of today — the API returns them oldest-first.
+  const upcomingHolidays = holidays
+    .filter((h) => holidayDate(h) >= new Date())
+    .slice(0, 6);
 
   const handleBooking = async () => {
     if (selectedServices.length === 0 || !selectedDate || !selectedSlot || isSubmitting) return;
@@ -546,7 +576,7 @@ export default function BookingPage() {
                       }}
                       modifiers={{
                         available: availableDates.map((d) => new Date(d + "T00:00:00")),
-                        holiday: holidays.map((h) => new Date(h.date + "T00:00:00")),
+                        holiday: holidays.map((h) => holidayDate(h)),
                       }}
                       modifiersStyles={{
                         available: { backgroundColor: "var(--color-beige-100, #f5f0eb)", fontWeight: 600 },
@@ -561,25 +591,21 @@ export default function BookingPage() {
                         today: "!font-bold !text-beige-600",
                       }}
                     />
-                    {holidays.length > 0 && (
-                      <div className="mt-3 border-t border-beige-100 pt-3">
-                        <p className="mb-2 text-xs font-medium text-beige-500">Upcoming Holidays</p>
-                        <div className="flex flex-wrap gap-2">
-                          {holidays
-                            .filter((h) => new Date(h.date + "T00:00:00") >= new Date())
-                            .slice(0, 6)
-                            .map((h) => (
-                              <span
-                                key={h.id}
-                                className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs text-red-600"
-                              >
-                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
-                                </svg>
-                                {h.name} ({format(new Date(h.date + "T00:00:00"), "MMM d")})
-                              </span>
-                            ))}
-                        </div>
+                    {upcomingHolidays.length > 0 && (
+                      <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 border-t border-beige-100 pt-3">
+                        <p className="text-xs font-medium text-beige-500">Upcoming Holidays</p>
+                        {upcomingHolidays.map((h) => (
+                          <span
+                            key={h.id}
+                            className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-xs text-red-600"
+                            title={`${h.type} holiday`}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+                            </svg>
+                            {h.name} ({format(holidayDate(h), "MMM d")})
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -873,13 +899,26 @@ export default function BookingPage() {
                         showToast("Please log in to join the waitlist", "error");
                         return;
                       }
+                      // Occupied slots carry the specialist the waitlist should
+                      // target; the fallbacks cover older cached API responses.
+                      const employeeId =
+                        waitlistModal.slot.employeeId ||
+                        selectedEmployee?.id ||
+                        availableEmployees[0]?.id;
+                      if (!employeeId) {
+                        showToast(
+                          "No specialist is available for this slot. Please pick another time.",
+                          "error"
+                        );
+                        return;
+                      }
                       setJoiningWaitlist(true);
                       try {
                         const res = await fetch("/api/waitlist", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
-                            employeeId: waitlistModal.slot.employeeId || selectedEmployee?.id,
+                            employeeId,
                             slotStart: waitlistModal.slot.start,
                             slotEnd: waitlistModal.slot.end,
                             slotDate: selectedDate ? format(selectedDate, "yyyy-MM-dd") : null,
@@ -891,10 +930,10 @@ export default function BookingPage() {
                           showToast("Added to waitlist! We'll notify you if a slot opens.", "success");
                           setWaitlistModal(null);
                         } else {
-                          showToast(data.error || "Failed to join waitlist", "error");
+                          showToast(waitlistErrorMessage(res.status, data.error), "error");
                         }
                       } catch {
-                        showToast("Failed to join waitlist", "error");
+                        showToast("Could not join the waitlist. Please try again.", "error");
                       } finally {
                         setJoiningWaitlist(false);
                       }
