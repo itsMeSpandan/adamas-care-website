@@ -54,6 +54,16 @@ function holidayDate(holiday: Holiday): Date {
   return new Date(`${holiday.date.slice(0, 10)}T00:00:00`);
 }
 
+/**
+ * 24-hour clock hour → the label shown down the side of the time grid
+ * (13 → { h: 1, period: "PM" }), matching the booking page's 12-hour display.
+ */
+function hourParts(hour: number): { h: number; period: "AM" | "PM" } {
+  const period = hour >= 12 ? "PM" : "AM";
+  const h = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return { h, period };
+}
+
 export default function BookingPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -310,6 +320,31 @@ export default function BookingPage() {
         format(holidayDate(h), "yyyy-MM") === currentMonthKey
     )
     .slice(0, 6);
+
+  // Step 2 time grid: group the server's slots into Morning / Afternoon and
+  // then by hour, so times read like a timetable (hours down the side, 15-min
+  // starts across) rather than a flat wall of buttons. Derived from whatever
+  // the API returned, so server-side filtering (booked slots, same-day lead
+  // time) flows through automatically.
+  const slotSections = (() => {
+    const byHour = new Map<number, TimeSlot[]>();
+    for (const slot of availableSlots) {
+      const hour = Number(slot.start.slice(0, 2));
+      const list = byHour.get(hour) ?? [];
+      list.push(slot);
+      byHour.set(hour, list);
+    }
+    const rows = Array.from(byHour.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([hour, slots]) => ({
+        hour,
+        slots: [...slots].sort((a, b) => a.start.localeCompare(b.start)),
+      }));
+    return [
+      { label: "Morning", rows: rows.filter((r) => r.hour < 12) },
+      { label: "Afternoon", rows: rows.filter((r) => r.hour >= 12) },
+    ].filter((section) => section.rows.length > 0);
+  })();
 
   const handleBooking = async () => {
     if (selectedServices.length === 0 || !selectedDate || !selectedSlot || isSubmitting) return;
@@ -664,46 +699,107 @@ export default function BookingPage() {
                         <span className="ml-3 text-sm text-beige-500">Loading available times...</span>
                       </div>
                     ) : availableSlots.length === 0 ? (
-                      <div className="rounded-lg border border-beige-200 bg-beige-50 p-6 text-center">
+                      <div className="rounded-card border border-beige-200 bg-beige-50 p-6 text-center shadow-card">
                         <p className="text-sm text-beige-500">No available time slots for this date. Please try another date.</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                        {availableSlots.map((slot) => {
-                          const isSelected =
-                            selectedSlot?.start === slot.start && selectedSlot?.end === slot.end;
-                          const isBooked = slot.isBooked === true;
-                          const waitlistCount = waitlistCounts[slot.start] || 0;
-                          return (
-                            <div key={slot.start} className="flex flex-col items-center gap-1">
-                              <button
-                                onClick={() => {
-                                  if (isBooked) {
-                                    setWaitlistModal({ slot });
-                                  } else {
-                                    setSelectedSlot(slot);
-                                  }
-                                }}
-                                disabled={false}
-                                className={cn(
-                                  "rounded-full border px-3 py-2 text-sm font-medium transition-all duration-200",
-                                  isBooked
-                                    ? "border-amber-300 bg-amber-50 text-amber-700 cursor-pointer hover:bg-amber-100"
-                                    : isSelected
-                                    ? "border-beige-600 bg-beige-600 text-white"
-                                    : "border-beige-300 bg-white text-beige-700 hover:border-beige-400 hover:bg-beige-50"
-                                )}
-                              >
-                                {displayTime(slot.start)} – {displayTime(slot.end)}
-                              </button>
-                              {isBooked && (
-                                <span className="text-[10px] font-medium text-amber-600">
-                                  {waitlistCount > 0 ? `${waitlistCount} on waitlist` : "Join waitlist"}
-                                </span>
-                              )}
+                      <div className="rounded-card border border-beige-200 bg-white p-5 shadow-card sm:p-6">
+                        {/* Duration + legend */}
+                        <div className="mb-5 flex flex-wrap items-center gap-3">
+                          <span className="rounded-full bg-beige-100 px-3 py-1 text-xs font-semibold text-beige-700">
+                            {formatDuration(totalDuration)}
+                          </span>
+                          <span className="text-xs text-beige-500">Times shown are start times</span>
+                        </div>
+
+                        <div className="space-y-6">
+                          {slotSections.map((section) => (
+                            <div key={section.label}>
+                              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-beige-500">
+                                {section.label}
+                              </p>
+                              <div className="space-y-2">
+                                {section.rows.map(({ hour, slots }) => {
+                                  const { h, period } = hourParts(hour);
+                                  return (
+                                    <div
+                                      key={hour}
+                                      className="grid grid-cols-[2.25rem_1fr] items-center gap-3 border-b border-beige-100 pb-2 last:border-b-0"
+                                    >
+                                      <div className="text-center leading-none">
+                                        <span className="block text-sm font-semibold text-beige-600">{h}</span>
+                                        <span className="mt-0.5 block text-[10px] font-medium uppercase text-beige-400">
+                                          {period}
+                                        </span>
+                                      </div>
+                                      <div className="grid grid-cols-4 gap-2">
+                                        {slots.map((slot) => {
+                                          const isSelected =
+                                            selectedSlot?.start === slot.start && selectedSlot?.end === slot.end;
+                                          const isBooked = slot.isBooked === true;
+                                          const waitlistCount = waitlistCounts[slot.start] || 0;
+                                          const rangeLabel =
+                                            displayTime(slot.start) + " – " + displayTime(slot.end);
+                                          return (
+                                            <button
+                                              key={slot.start}
+                                              type="button"
+                                              onClick={() => {
+                                                if (isBooked) {
+                                                  setWaitlistModal({ slot });
+                                                } else {
+                                                  setSelectedSlot(slot);
+                                                }
+                                              }}
+                                              title={
+                                                isBooked
+                                                  ? rangeLabel +
+                                                    " · " +
+                                                    (waitlistCount > 0
+                                                      ? waitlistCount + " on waitlist"
+                                                      : "join waitlist")
+                                                  : rangeLabel
+                                              }
+                                              className={cn(
+                                                "w-full rounded-lg border px-1 py-2 text-xs font-medium transition-all duration-200",
+                                                isBooked
+                                                  ? "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                                  : isSelected
+                                                  ? "border-beige-600 bg-beige-600 text-white shadow-sm"
+                                                  : "border-beige-300 bg-white text-beige-700 hover:border-beige-400 hover:bg-beige-50"
+                                              )}
+                                            >
+                                              {displayTime(slot.start)}
+                                              {isBooked && (
+                                                <span className="mt-0.5 block text-[9px] font-medium text-amber-600">
+                                                  {waitlistCount > 0 ? waitlistCount + " waiting" : "Waitlist"}
+                                                </span>
+                                              )}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
+
+                        {/* Selected range summary */}
+                        <div
+                          className={cn(
+                            "mt-6 rounded-xl border px-4 py-3 text-center text-sm font-medium",
+                            selectedSlot
+                              ? "border-beige-600 bg-beige-50 text-beige-700"
+                              : "border-dashed border-beige-300 text-beige-400"
+                          )}
+                        >
+                          {selectedSlot
+                            ? displayTime(selectedSlot.start) + " — " + displayTime(selectedSlot.end)
+                            : "Select a start time"}
+                        </div>
                       </div>
                     )}
                   </>

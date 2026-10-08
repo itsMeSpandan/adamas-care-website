@@ -8,6 +8,7 @@ import {
 } from "@/lib/scoring-engine";
 import { db } from "@/lib/db";
 import { mergeWindows } from "@/lib/slots";
+import { isBookableSameDay } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,8 @@ export async function GET(request: NextRequest) {
     >();
     for (const emp of perEmployee) {
       for (const s of buildSlotGrid(emp.gaps, totalDurationMinutes)) {
+        // Same-day notice: skip today's slots starting less than 2 hours out.
+        if (!isBookableSameDay(dateStr, s.start)) continue;
         if (!availableMap.has(s.start)) {
           availableMap.set(s.start, {
             start: s.start,
@@ -105,6 +108,10 @@ export async function GET(request: NextRequest) {
     }> = [];
 
     for (const candidate of buildSlotGrid(mergedWindows, totalDurationMinutes)) {
+      // Same-day notice applies to waitlist options too — a slot that is too
+      // soon is not offered as bookable or waitlistable.
+      if (!isBookableSameDay(dateStr, candidate.start)) continue;
+
       const canServe = perEmployee.some((emp) =>
         containsInterval(emp.gaps, candidate.start, candidate.end)
       );

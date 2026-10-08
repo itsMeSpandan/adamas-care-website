@@ -7,6 +7,7 @@ import {
   getWorkingWindows,
 } from "@/lib/scoring-engine";
 import { db } from "@/lib/db";
+import { isBookableSameDay } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -61,11 +62,15 @@ export async function GET(request: NextRequest) {
     const windows = await getWorkingWindows(employeeId, dateStr);
     const freeGaps = await getFreeGaps(employeeId, dateStr);
 
-    const slots = buildSlotGrid(windows, totalDurationMinutes).map((s) => ({
-      ...s,
-      employeeId,
-      isBooked: !containsInterval(freeGaps, s.start, s.end),
-    }));
+    // Same-day notice: drop slots on today's date that start less than 2 hours
+    // from now — the specialist could not be ready in time.
+    const slots = buildSlotGrid(windows, totalDurationMinutes)
+      .filter((s) => isBookableSameDay(dateStr, s.start))
+      .map((s) => ({
+        ...s,
+        employeeId,
+        isBooked: !containsInterval(freeGaps, s.start, s.end),
+      }));
 
     // Check waitlist counts for occupied slots
     const occupiedSlots = slots.filter((s) => s.isBooked);

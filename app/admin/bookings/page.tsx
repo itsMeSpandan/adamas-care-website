@@ -31,6 +31,7 @@ export default function AdminBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("All");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
 
   const fetchBookings = () => {
     fetch("/api/bookings")
@@ -48,6 +49,7 @@ export default function AdminBookingsPage() {
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
     setUpdatingId(bookingId);
+    setRowError(null);
     try {
       const res = await fetch(`/api/bookings/${bookingId}`, {
         method: "PATCH",
@@ -60,9 +62,19 @@ export default function AdminBookingsPage() {
             b.id === bookingId ? { ...b, status: newStatus } : b
           )
         );
+      } else {
+        // The server rejects some transitions (e.g. completing a booking
+        // before its appointment has started). The <select> is controlled by
+        // booking.status, so a failure snaps it back — show the reason too, or
+        // the change just looks ignored.
+        const data = await res.json().catch(() => ({}));
+        setRowError({
+          id: bookingId,
+          message: data.error || "Could not update this booking.",
+        });
       }
     } catch {
-      // ignore
+      setRowError({ id: bookingId, message: "Could not update this booking." });
     } finally {
       setUpdatingId(null);
     }
@@ -176,6 +188,11 @@ export default function AdminBookingsPage() {
                           <div className="h-3 w-3 animate-spin rounded-full border border-beige-300 border-t-beige-600" />
                           <span className="text-[10px] text-beige-400">Saving...</span>
                         </div>
+                      )}
+                      {rowError?.id === booking.id && (
+                        <p className="mt-1 max-w-[16rem] text-[10px] font-medium text-red-600">
+                          {rowError.message}
+                        </p>
                       )}
                     </td>
                   </tr>

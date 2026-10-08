@@ -14,7 +14,8 @@
  * - permission "default"  → Enable button
  * - permission "denied"   → unblock hint (the browser prompt can never re-fire)
  * - granted / unconfigured / unsupported / iOS-not-installed → hidden
- * - yields the screen to WhatsAppPromptModal (higher priority)
+ * - yields the screen to WhatsAppPromptModal and GenderPromptModal
+ *   (both higher priority)
  */
 
 import { useEffect, useState } from "react";
@@ -30,7 +31,7 @@ import {
 } from "@/lib/notification-prompt";
 
 export default function NotificationPromptModal() {
-  const { whatsappPromptOpen } = useAuth();
+  const { whatsappPromptOpen, genderPromptOpen } = useAuth();
   const { showToast } = useToast();
   const {
     permission,
@@ -55,13 +56,13 @@ export default function NotificationPromptModal() {
           configured,
           isIosStandaloneRequired,
           dismissedThisSession: wasNotificationPromptDismissed(),
-          higherPriorityOpen: whatsappPromptOpen,
+          higherPriorityOpen: whatsappPromptOpen || genderPromptOpen,
         }),
       );
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [permission, configured, isIosStandaloneRequired, whatsappPromptOpen]);
+  }, [permission, configured, isIosStandaloneRequired, whatsappPromptOpen, genderPromptOpen]);
 
   const close = () => setMode(null);
 

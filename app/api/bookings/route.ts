@@ -6,6 +6,12 @@ import { getSessionFromRequest } from "@/lib/auth";
 import { applyRedemptionToBooking, linkRedemptionToBooking } from "@/lib/loyalty";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { notifyBooking } from "@/lib/notify";
+import {
+  canCompleteBooking,
+  isBookableSameDay,
+  SAME_DAY_LEAD_MINUTES,
+  PREMATURE_COMPLETION_MESSAGE,
+} from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -267,6 +273,18 @@ export const POST = requireAuth(async (request: Request) => {
       );
     }
 
+    // Same-day bookings need at least a 2-hour heads-up. The slot grid already
+    // hides earlier slots, but the grid is client-derived — without this check
+    // a crafted request could still book a slot that starts in minutes.
+    if (!isBookableSameDay(date, slotStart, today)) {
+      return NextResponse.json(
+        {
+          error: `Same-day bookings need at least ${SAME_DAY_LEAD_MINUTES / 60} hours' notice. Please choose a later time.`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Reject slots outside the employee's availability windows.
     const within = await isSlotWithinAvailability(employeeId, date, slotStart, slotEnd);
     if (!within) {
@@ -446,6 +464,18 @@ export const PATCH = requireAuth(async (request: Request, context) => {
           { status: 400 }
         );
       }
+
+      // A booking cannot be completed before its appointment has started.
+      if (
+        status === "completed" &&
+        !canCompleteBooking(booking.date, booking.slotStart)
+      ) {
+        return NextResponse.json(
+          { error: PREMATURE_COMPLETION_MESSAGE },
+          { status: 409 }
+        );
+      }
+
       const updated = await db.booking.update({ where: { id }, data: { status } });
 
       // Audit log for admin status changes

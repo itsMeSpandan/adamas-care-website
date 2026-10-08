@@ -9,6 +9,7 @@ import PillNavWrapper from "@/components/layout/PillNavWrapper";
 import Footer from "@/components/layout/Footer";
 import CookieConsent from "@/components/ui/CookieConsent";
 import WhatsAppPromptModal from "@/components/ui/WhatsAppPromptModal";
+import GenderPromptModal from "@/components/ui/GenderPromptModal";
 import NotificationPromptModal from "@/components/ui/NotificationPromptModal";
 import InstallBanner from "@/components/ui/InstallBanner";
 import "./globals.css";
@@ -80,6 +81,9 @@ export default function RootLayout({
             {/* Raised by lib/auth-context after a Google sign-in when the
                 account has no contact number yet. No-ops otherwise. */}
             <WhatsAppPromptModal />
+            {/* Profile gate: returns every visit until the account stores a
+                gender (session-scoped dismiss — see GenderPromptModal). */}
+            <GenderPromptModal />
             {/* Start-of-visit soft-ask: returns every session until
                 notifications are actually enabled (session-scoped dismiss). */}
             <NotificationPromptModal />

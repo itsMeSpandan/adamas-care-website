@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { awardPointsForBooking, clawbackPointsForBooking } from "@/lib/loyalty";
 import { notifyBooking } from "@/lib/notify";
+import { canCompleteBooking, PREMATURE_COMPLETION_MESSAGE } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,7 @@ export const PATCH = requireAuth(async (request: Request, context) => {
 
     const existing = await db.booking.findUnique({
       where: { id },
-      select: { id: true, userId: true },
+      select: { id: true, userId: true, date: true, slotStart: true },
     });
     if (!existing) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
@@ -117,6 +118,17 @@ export const PATCH = requireAuth(async (request: Request, context) => {
         return NextResponse.json(
           { error: "Only staff can set this status" },
           { status: 403 }
+        );
+      }
+
+      // A booking may not be completed before its appointment has started —
+      // doing so would award loyalty points for a service not yet delivered.
+      // This applies to everyone, admins included: it is a business fact, not
+      // a permission.
+      if (status === "completed" && !canCompleteBooking(existing.date, existing.slotStart)) {
+        return NextResponse.json(
+          { error: PREMATURE_COMPLETION_MESSAGE },
+          { status: 409 }
         );
       }
       // Atomic: status update + loyalty + reliability in a single transaction

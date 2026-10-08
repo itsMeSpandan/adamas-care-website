@@ -7,6 +7,11 @@ import {
   wasWhatsAppPromptDismissed,
   rememberWhatsAppPromptDismissed,
 } from "@/lib/whatsapp-prompt";
+import {
+  shouldPromptForGender,
+  wasGenderPromptDismissed,
+  rememberGenderPromptDismissed,
+} from "@/lib/gender-prompt";
 
 export type UserRole = "guest" | "user" | "employee" | "admin";
 
@@ -41,6 +46,10 @@ interface AuthContextType {
   whatsappPromptOpen: boolean;
   /** Close it and remember the dismissal for this device. */
   dismissWhatsAppPrompt: () => void;
+  /** True while the gender profile gate should be up (every visit until set). */
+  genderPromptOpen: boolean;
+  /** Close it for the rest of this browser session. */
+  dismissGenderPrompt: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -141,6 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [whatsappPromptOpen, setWhatsappPromptOpen] = useState(false);
+  const [genderPromptOpen, setGenderPromptOpen] = useState(false);
 
   // Check session on mount — with a silent refresh fallback so login
   // survives browser restarts (access cookie lives only 15 minutes).
@@ -156,6 +166,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, []);
+
+  // Gender profile gate: raise it on every visit while the signed-in account
+  // has no gender stored. The booking wizard matches specialists by gender,
+  // so a missing value sends the wrong pool. "Not now" is remembered for this
+  // session only (lib/gender-prompt.ts) — it returns next visit until set.
+  // Admins are skipped: they never book and are never matched as specialists.
+  // Yield to the post-Google-sign-in number ask, which captures gender too.
+  useEffect(() => {
+    if (!user || user.role === "admin") {
+      setGenderPromptOpen(false);
+      return;
+    }
+    setGenderPromptOpen(
+      shouldPromptForGender({
+        hasGender: !!user.gender,
+        dismissedThisSession: wasGenderPromptDismissed(),
+        higherPriorityOpen: whatsappPromptOpen,
+      }),
+    );
+  }, [user, whatsappPromptOpen]);
 
   // Keep long-lived tabs authenticated: rotate the token pair every
   // 10 minutes (access cookie lasts 15) so API calls never hit a stale
@@ -260,6 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setWhatsappPromptOpen(false);
+      setGenderPromptOpen(false);
     }
   }, []);
 
@@ -267,6 +298,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setWhatsappPromptOpen(false);
     if (user) rememberWhatsAppPromptDismissed(user.id);
   }, [user]);
+
+  const dismissGenderPrompt = useCallback(() => {
+    setGenderPromptOpen(false);
+    rememberGenderPromptDismissed();
+  }, []);
 
   const updateUser = useCallback((data: Partial<AuthUser>) => {
     setUser((prev) => (prev ? { ...prev, ...data } : null));
@@ -300,6 +336,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshSession,
         whatsappPromptOpen,
         dismissWhatsAppPrompt,
+        genderPromptOpen,
+        dismissGenderPrompt,
       }}
     >
       {children}

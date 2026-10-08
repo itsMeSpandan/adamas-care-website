@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { applyOverridesToWindows } from "@/lib/scoring-engine";
 import { timeToMinutes } from "@/lib/slots";
+import { sameDayCutoffMinutes } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,10 @@ export async function GET(request: NextRequest) {
       const jsDay = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
       const dbDay = jsDay === 0 ? 6 : jsDay - 1;
 
+      // Same-day notice: on today we only count remaining room at or after
+      // "now + 2 hours". Null for every other date, so this is a no-op then.
+      const cutoff = sameDayCutoffMinutes(dateStr);
+
       // A date counts as available when ANY requested employee can serve it.
       let hasSlot = false;
 
@@ -137,11 +142,14 @@ export async function GET(request: NextRequest) {
           overridesByEmployeeDate.get(`${id}|${dateStr}`) ?? []
         );
 
-        if (
-          windows.some(
-            (w) => timeToMinutes(w.end) - timeToMinutes(w.start) >= serviceDuration
-          )
-        ) {
+        const canFit = windows.some((w) => {
+          const start = timeToMinutes(w.start);
+          const end = timeToMinutes(w.end);
+          const effectiveStart = cutoff === null ? start : Math.max(start, cutoff);
+          return end - effectiveStart >= serviceDuration;
+        });
+
+        if (canFit) {
           hasSlot = true;
           break;
         }
