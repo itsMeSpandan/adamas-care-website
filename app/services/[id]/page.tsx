@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getServiceById, getEmployees } from "@/lib/queries";
 import { formatPrice, formatDuration } from "@/lib/utils";
+import { audienceLabel } from "@/lib/service-audience";
 import StarIcon from "@/components/ui/StarIcon";
 
 export const dynamic = "force-dynamic";
@@ -67,9 +68,16 @@ export default async function ServiceDetailPage({ params }: Props) {
 
         {/* Right: details */}
         <div>
-          <span className="inline-block rounded-full bg-beige-100 px-3 py-1 text-xs font-medium text-beige-600">
-            {service.category}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-block rounded-full bg-beige-100 px-3 py-1 text-xs font-medium text-beige-600">
+              {service.category}
+            </span>
+            {service.audience !== "unisex" && (
+              <span className="inline-block rounded-full border border-beige-300 bg-white px-3 py-1 text-xs font-medium text-beige-600">
+                {audienceLabel(service.audience)}
+              </span>
+            )}
+          </div>
           <h1 className="mt-3 font-serif text-3xl font-semibold text-beige-700 md:text-4xl lg:text-5xl">
             {service.name}
           </h1>

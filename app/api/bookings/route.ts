@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getBookings } from "@/lib/queries";
 import { requireAuth } from "@/lib/require-auth";
+import { canBookService, audienceBlockedMessage } from "@/lib/service-audience";
 import { getSessionFromRequest } from "@/lib/auth";
 import { applyRedemptionToBooking, linkRedemptionToBooking } from "@/lib/loyalty";
 import { notifyBooking } from "@/lib/notify";
@@ -226,6 +227,18 @@ export const POST = requireAuth(async (request: Request) => {
       //     { status: 403 }
       //   );
       // }
+      // Every service is male-only, female-only or unisex. Enforced here too so
+      // a crafted request can't book a service the client isn't eligible for.
+      const ineligible = services.filter(
+        (s) => !canBookService(s.audience, bookingUser?.gender ?? null)
+      );
+      if (ineligible.length > 0) {
+        return NextResponse.json(
+          { error: audienceBlockedMessage(ineligible[0].audience) },
+          { status: 403 }
+        );
+      }
+
       if (bookingUser?.gender) {
         const employee = await db.employee.findUnique({
           where: { id: employeeId },

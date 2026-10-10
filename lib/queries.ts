@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { BRAND } from "@/lib/brand";
-import { Service, Employee, Testimonial } from "@/lib/types";
+import { Service, Employee, Testimonial, ServiceAudience } from "@/lib/types";
 
 // --- Services ---
 
@@ -18,6 +18,7 @@ export async function getServices(): Promise<Service[]> {
     price: s.price,
     imageUrl: s.imageUrl,
     featured: s.featured,
+    audience: s.audience as ServiceAudience,
     employeeIds: s.employeeServices.map((es) => es.employeeId),
   }));
 }
@@ -38,6 +39,7 @@ export async function getServiceById(id: string): Promise<Service | null> {
     price: s.price,
     imageUrl: s.imageUrl,
     featured: s.featured,
+    audience: s.audience as ServiceAudience,
     employeeIds: s.employeeServices.map((es) => es.employeeId),
   };
 }
@@ -52,6 +54,7 @@ export async function createService(data: {
   price: number;
   imageUrl: string;
   featured?: boolean;
+  audience?: ServiceAudience;
   employeeIds?: string[];
 }) {
   const { employeeIds, ...serviceData } = data;
@@ -82,6 +85,7 @@ export async function updateService(
     price?: number;
     imageUrl?: string;
     featured?: boolean;
+    audience?: ServiceAudience;
     employeeIds?: string[];
   }
 ) {

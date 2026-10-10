@@ -20,6 +20,13 @@ enum Gender {
   other
 }
 
+/// Who may book a service. `unisex` is open to every client.
+enum ServiceAudience {
+  male
+  female
+  unisex
+}
+
 enum BookingStatus {
   confirmed
   pending
@@ -71,6 +78,7 @@ model Service {
   price           Float
   imageUrl        String
   featured        Boolean        @default(false)
+  audience        ServiceAudience @default(unisex)
 
   employeeServices EmployeeService[]
   bookings         Booking[]

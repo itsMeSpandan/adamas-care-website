@@ -8,6 +8,7 @@ import "react-day-picker/style.css";
 import { format } from "date-fns";
 import { Service, Employee } from "@/lib/types";
 import { formatPrice, formatDuration, displayTime, cn } from "@/lib/utils";
+import { canBookService, audienceLabel } from "@/lib/service-audience";
 import StarIcon from "@/components/ui/StarIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
@@ -304,6 +305,17 @@ export default function BookingPage() {
     }
   }, [selectedDate, selectedServices, selectedEmployee, employees, user?.gender]);
 
+  // Step 1 service list. Every service is male-only, female-only or unisex, so
+  // only offer what this client may actually book — the booking API rejects the
+  // rest, and showing a service that 403s at submit is worse than hiding it.
+  const bookableServices = services.filter((s) =>
+    canBookService(s.audience, user?.gender)
+  );
+
+  // True when at least one service is hidden because of the client's gender (or
+  // missing gender), so we can say why the list looks short.
+  const hiddenByAudience = services.length - bookableServices.length;
+
   // Available employees for specialist selection — ONLY same gender
   const availableEmployees =
     selectedServices.length > 0
@@ -493,8 +505,18 @@ export default function BookingPage() {
                   )}
                 </div>
                 <p className="mb-4 text-sm text-beige-500">Tap to select one or more services</p>
+                {hiddenByAudience > 0 && (
+                  <p className="mb-4 rounded-lg border border-beige-200 bg-beige-50 p-3 text-xs text-beige-600">
+                    {hiddenByAudience === 1
+                      ? "1 service is offered to specific clients only."
+                      : `${hiddenByAudience} services are offered to specific clients only.`}{" "}
+                    {user?.gender
+                      ? ""
+                      : "Add your gender to your profile to see the full list."}
+                  </p>
+                )}
                 <div className="mb-8 grid gap-3 sm:grid-cols-2">
-                  {services.map((service) => {
+                  {bookableServices.map((service) => {
                     const isSelected = selectedServiceIds.includes(service.id);
                     return (
                       <button
@@ -514,7 +536,14 @@ export default function BookingPage() {
                             </svg>
                           </div>
                         )}
-                        <span className="text-xs font-medium text-beige-500">{service.category}</span>
+                        <span className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-beige-500">{service.category}</span>
+                          {service.audience !== "unisex" && (
+                            <span className="rounded-full bg-beige-100 px-2 py-0.5 text-[10px] font-medium text-beige-600">
+                              {audienceLabel(service.audience)}
+                            </span>
+                          )}
+                        </span>
                         <span className="mt-1 font-serif text-base font-semibold text-beige-700">{service.name}</span>
                         <span className="mt-1 text-sm text-beige-600">
                           {formatPrice(service.price)} · {formatDuration(service.durationMinutes)}

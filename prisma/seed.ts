@@ -102,6 +102,8 @@ const servicesData = [
   },
   {
     id: "bridal-glam-package",
+    // Bridal services are offered to women only (see lib/service-audience.ts).
+    audience: "female" as const,
     name: "Bridal Glam Package",
     category: "Bridal",
     description: "Complete hair and makeup package for your special day.",
@@ -114,6 +116,7 @@ const servicesData = [
   },
   {
     id: "pre-wedding-skincare",
+    audience: "female" as const,
     name: "Pre-Wedding Skincare",
     category: "Bridal",
     description: "Customized skincare regimen leading up to your wedding.",

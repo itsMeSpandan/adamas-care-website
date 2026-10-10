@@ -3,6 +3,7 @@ import { getServices, createService } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { getSessionFromRequest } from "@/lib/auth";
+import { isServiceAudience } from "@/lib/service-audience";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,20 @@ export async function GET() {
 export const POST = requireRole("admin", async (request: Request) => {
   try {
     const body = await request.json();
-    const { name, category, description, longDescription, durationMinutes, price, imageUrl, featured, employeeIds } = body;
+    const { name, category, description, longDescription, durationMinutes, price, imageUrl, featured, audience, employeeIds } = body;
 
     if (!name || !category || !description || durationMinutes === undefined || price === undefined) {
       return NextResponse.json(
         { error: "Missing required fields: name, category, description, durationMinutes, price" },
+        { status: 400 }
+      );
+    }
+
+    // Every service is male-only, female-only or unisex; anything else is a
+    // client mistake, not something to silently coerce.
+    if (audience !== undefined && !isServiceAudience(audience)) {
+      return NextResponse.json(
+        { error: "audience must be one of: male, female, unisex" },
         { status: 400 }
       );
     }
@@ -42,6 +52,7 @@ export const POST = requireRole("admin", async (request: Request) => {
       price,
       imageUrl: imageUrl || "/images/photo-1560066984-138dadb4c035",
       featured: featured ?? false,
+      audience: audience ?? "unisex",
       employeeIds: employeeIds || [],
     });
 

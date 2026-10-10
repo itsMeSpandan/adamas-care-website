@@ -2,6 +2,12 @@ export type ServiceCategory = 'Hair' | 'Skin' | 'Nails' | 'Body' | 'Bridal';
 
 export type Gender = 'male' | 'female' | 'other';
 
+/**
+ * Which clients may book a service. `unisex` is open to everyone; `male` and
+ * `female` are restricted to clients whose stored gender matches.
+ */
+export type ServiceAudience = 'male' | 'female' | 'unisex';
+
 export interface Service {
   id: string;
   name: string;
@@ -13,6 +19,7 @@ export interface Service {
   imageUrl: string;
   employeeIds: string[];
   featured: boolean;
+  audience: ServiceAudience;
 }
 
 export interface Employee {

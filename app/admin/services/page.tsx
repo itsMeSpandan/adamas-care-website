@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPrice, formatDuration } from "@/lib/utils";
+import { AUDIENCE_LABELS, SERVICE_AUDIENCES } from "@/lib/service-audience";
+import type { ServiceAudience } from "@/lib/types";
 
 interface Service {
   id: string;
@@ -14,6 +16,7 @@ interface Service {
   price: number;
   imageUrl: string;
   featured: boolean;
+  audience: ServiceAudience;
   employeeIds: string[];
 }
 
@@ -42,6 +45,7 @@ const emptyForm = {
   price: 0,
   imageUrl: "",
   featured: false,
+  audience: "unisex" as ServiceAudience,
   employeeIds: [] as string[],
 };
 
@@ -87,6 +91,7 @@ export default function AdminServicesPage() {
       price: svc.price,
       imageUrl: svc.imageUrl,
       featured: svc.featured,
+      audience: svc.audience ?? "unisex",
       employeeIds: svc.employeeIds,
     });
     setModalOpen(true);
@@ -166,9 +171,20 @@ export default function AdminServicesPage() {
               className="group rounded-card border border-beige-200 bg-white p-5 shadow-card transition-all hover:shadow-card-hover"
             >
               <div className="mb-3 flex items-start justify-between">
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColors[service.category] ?? ""}`}>
-                  {service.category}
-                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${categoryColors[service.category] ?? ""}`}>
+                    {service.category}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      service.audience === "unisex"
+                        ? "bg-beige-100 text-beige-600"
+                        : "bg-sage-50 text-sage-600"
+                    }`}
+                  >
+                    {AUDIENCE_LABELS[service.audience] ?? AUDIENCE_LABELS.unisex}
+                  </span>
+                </div>
                 <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                   <button
                     onClick={() => openEdit(service)}
@@ -304,6 +320,21 @@ export default function AdminServicesPage() {
                         ))}
                       </select>
                     </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-beige-700">Available to *</label>
+                      <select
+                        value={form.audience}
+                        onChange={(e) => setForm({ ...form, audience: e.target.value as ServiceAudience })}
+                        className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
+                      >
+                        {SERVICE_AUDIENCES.map((a) => (
+                          <option key={a} value={a}>{AUDIENCE_LABELS[a]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-beige-700">Price (₹) *</label>
                       <input

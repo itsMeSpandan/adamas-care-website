@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Service } from "@/lib/types";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { audienceLabel } from "@/lib/service-audience";
 
 const categoryColors: Record<string, string> = {
   Hair: "bg-sage-50 text-sage-600",
@@ -39,6 +40,11 @@ export default function ServiceCard({ service }: ServiceCardProps) {
         >
           {service.category}
         </span>
+        {service.audience !== "unisex" && (
+          <span className="absolute right-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-beige-700 backdrop-blur">
+            {audienceLabel(service.audience)}
+          </span>
+        )}
       </div>
 
       {/* Content */}

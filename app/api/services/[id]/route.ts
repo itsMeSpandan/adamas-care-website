@@ -3,6 +3,7 @@ import { getServiceById, updateService, deleteService } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { getSessionFromRequest } from "@/lib/auth";
+import { isServiceAudience } from "@/lib/service-audience";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,15 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
     const existing = await getServiceById(id);
     if (!existing) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
+    }
+
+    // The body is spread straight into the update, so validate the enum here
+    // rather than letting an unknown value reach Prisma as a 500.
+    if (body.audience !== undefined && !isServiceAudience(body.audience)) {
+      return NextResponse.json(
+        { error: "audience must be one of: male, female, unisex" },
+        { status: 400 }
+      );
     }
 
     const service = await updateService(id, body);

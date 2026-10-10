@@ -3,6 +3,7 @@ import { rankWaitlist } from "@/lib/scoring-engine";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
+import { canBookService, audienceBlockedMessage } from "@/lib/service-audience";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,21 @@ export const POST = requireAuth(async (request: Request) => {
         { error: "employeeId, slotStart, and slotEnd are required" },
         { status: 400 }
       );
+    }
+
+    // A client can't waitlist for a service they aren't eligible to book —
+    // otherwise they'd be notified about a slot they can never claim.
+    if (serviceId) {
+      const [service, client] = await Promise.all([
+        db.service.findUnique({ where: { id: serviceId }, select: { audience: true } }),
+        db.user.findUnique({ where: { id: session.userId }, select: { gender: true } }),
+      ]);
+      if (service && !canBookService(service.audience, client?.gender ?? null)) {
+        return NextResponse.json(
+          { error: audienceBlockedMessage(service.audience) },
+          { status: 403 }
+        );
+      }
     }
 
     // Check for duplicate waitlist entry

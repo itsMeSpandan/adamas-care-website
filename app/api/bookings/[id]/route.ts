@@ -4,6 +4,7 @@ import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { awardPointsForBooking, clawbackPointsForBooking } from "@/lib/loyalty";
 import { notifyBooking } from "@/lib/notify";
+import { WAITLIST_CLAIM_EXPIRY_MINUTES } from "@/lib/waitlist";
 import {
   bookingStartDate,
   canCompleteBooking,
@@ -32,11 +33,12 @@ async function retryWithBackoff<T>(
   throw lastError!;
 }
 
-const CLAIM_EXPIRY_MINUTES = 30;
-
 /**
  * When a slot opens up (booking cancelled), find the top-ranked waitlisted user
- * and notify them that they have 30 minutes to claim the slot.
+ * and start their claim window.
+ *
+ * The window length comes from lib/waitlist.ts so this path and the expiry
+ * sweep can never disagree about how long a user has to claim.
  */
 async function notifyWaitlistedUser(employeeId: string, slotStart: string) {
   const { rankWaitlist } = await import("@/lib/scoring-engine");
@@ -55,7 +57,9 @@ async function notifyWaitlistedUser(employeeId: string, slotStart: string) {
 
   if (!topEntry || topEntry.status !== "waiting") return;
 
-  const claimExpiresAt = new Date(Date.now() + CLAIM_EXPIRY_MINUTES * 60 * 1000);
+  const claimExpiresAt = new Date(
+    Date.now() + WAITLIST_CLAIM_EXPIRY_MINUTES * 60 * 1000
+  );
 
   await db.waitlist.update({
     where: { id: topEntry.id },
