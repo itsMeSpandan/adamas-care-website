@@ -94,3 +94,91 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getSessionFromRequest(request);
+    if (!session || session.role !== "admin") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const { db } = await import("@/lib/db");
+    const { hashPassword } = await import("@/lib/crypto");
+    const { BRAND } = await import("@/lib/brand");
+    const crypto = await import("crypto");
+
+    const body = await request.json();
+    const { name, role, gender, bio, imageUrl, yearsExperience, instagramHandle, serviceIds } = body;
+
+    if (!name || !role) {
+      return NextResponse.json({ error: "Name and role are required" }, { status: 400 });
+    }
+
+    // Generate base email
+    const cleanName = name.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, ".");
+    let email = `${cleanName}@${BRAND.domain || "gracesalon.com"}`;
+    
+    // Ensure email uniqueness
+    let emailExists = await db.user.findUnique({ where: { email } });
+    let counter = 1;
+    while (emailExists) {
+      email = `${cleanName}${counter}@${BRAND.domain || "gracesalon.com"}`;
+      emailExists = await db.user.findUnique({ where: { email } });
+      counter++;
+    }
+
+    // Generate a secure random password (8 chars)
+    const password = crypto.randomBytes(4).toString("hex");
+    const hashedPassword = await hashPassword(password);
+
+    // 1. Create User
+    const user = await db.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: "employee",
+        gender: gender || null,
+        avatarUrl: imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
+        mustChangePassword: true,
+        emailVerified: true,
+      }
+    });
+
+    // 2. Create Employee
+    const employee = await db.employee.create({
+      data: {
+        id: user.id, // Linking employee id to user id
+        name,
+        email,
+        role,
+        gender: gender || null,
+        bio: bio || "",
+        imageUrl: imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`,
+        yearsExperience: Number(yearsExperience) || 0,
+        instagramHandle: instagramHandle || null,
+        employeeServices: serviceIds && serviceIds.length > 0 ? {
+          create: serviceIds.map((sid: string) => ({
+            serviceId: sid
+          }))
+        } : undefined
+      }
+    });
+
+    // 3. Update User to point to employee
+    await db.user.update({
+      where: { id: user.id },
+      data: { employeeId: employee.id }
+    });
+
+    return NextResponse.json({
+      ...employee,
+      email,
+      password,
+    });
+  } catch (error) {
+    console.error("Employee creation failed:", error);
+    const message = error instanceof Error ? error.message : "Failed to create employee";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
