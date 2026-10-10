@@ -236,28 +236,40 @@ export default function LoggedInHome() {
     <>
       {/* ===== 1. Personalised Greeting Hero ===== */}
       <section className="relative flex min-h-screen items-center overflow-hidden bg-beige-50 px-4 py-20 md:px-8 lg:px-16">
-        {/* Background picture — keyed on the source so a replacement fades in
-            the same way the first hero section's image does. */}
+        {/* Background picture — framed exactly like the first hero section:
+            the picture occupies the right-hand panel (same width ratios, same
+            object-position) instead of stretching across the whole viewport,
+            which is what used to crop it down to a zoomed-in face. Keyed on
+            the source so a replacement fades in. */}
         <motion.div
           key={backgroundSrc}
-          className="absolute inset-0"
+          className="absolute inset-y-0 right-0 w-full md:w-[45%] lg:w-[50%]"
           initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
         >
+          {/* Left edge blends into ivory, as on the home hero */}
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 z-20 hidden w-32 md:block md:w-48 lg:w-64"
+            style={{
+              background:
+                "linear-gradient(to right, var(--bg-primary) 0%, var(--bg-primary) 15%, rgba(245,241,234,0.8) 40%, rgba(245,241,234,0.3) 70%, transparent 100%)",
+            }}
+          />
           <Image
             src={backgroundSrc}
             alt=""
             fill
             priority
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover object-[center_20%]"
           />
         </motion.div>
 
-        {/* Veil: keeps the greeting readable over whatever photograph is set */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-beige-50 via-beige-50/90 to-beige-50/40" />
-        <div className="pointer-events-none absolute inset-0 bg-beige-50/15" />
+        {/* Veil: keeps the greeting readable on mobile, where the picture is
+            still full-bleed rather than confined to the right-hand panel */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-beige-50 via-beige-50/90 to-beige-50/40 md:hidden" />
+        <div className="pointer-events-none absolute inset-0 bg-beige-50/15 md:hidden" />
 
         {/* Soft gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(200,168,130,0.15),transparent_60%)]" />
