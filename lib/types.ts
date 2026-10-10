@@ -1,4 +1,22 @@
-export type ServiceCategory = 'Hair' | 'Skin' | 'Nails' | 'Body' | 'Bridal';
+/**
+ * Service categories, in the order the salon's price list presents them.
+ * `prisma/services-catalog.ts` reads the category straight from the CSV, so a
+ * new section on the menu needs adding here and the catalogue updated.
+ */
+export const SERVICE_CATEGORIES = [
+  'Classic Combos',
+  'Fab Facials',
+  'Grooming Him',
+  'Styling Her',
+  'Bleach',
+  'Waxing',
+  'Threading',
+  'Hands & Feet',
+  'Relaxing Spa',
+  'Mini Massage',
+] as const;
+
+export type ServiceCategory = (typeof SERVICE_CATEGORIES)[number];
 
 export type Gender = 'male' | 'female' | 'other';
 

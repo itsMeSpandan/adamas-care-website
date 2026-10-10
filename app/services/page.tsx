@@ -5,7 +5,7 @@ import ServiceCard from "@/components/cards/ServiceCard";
 export const metadata: Metadata = {
   title: "Services",
   description:
-    "Explore our full range of premium hair, skin, nail, body, and bridal services.",
+    "Explore our full range of massages and body treatments, with prices and durations from our salon menu.",
 };
 
 export const dynamic = "force-dynamic";

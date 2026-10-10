@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import { AUDIENCE_LABELS, SERVICE_AUDIENCES } from "@/lib/service-audience";
+import { SERVICE_CATEGORIES } from "@/lib/types";
 import type { ServiceAudience } from "@/lib/types";
 
 interface Service {
@@ -26,19 +27,24 @@ interface Employee {
   role: string;
 }
 
-const categories = ["Hair", "Skin", "Nails", "Body", "Bridal"];
+const categories = SERVICE_CATEGORIES;
 
 const categoryColors: Record<string, string> = {
-  Hair: "bg-amber-100 text-amber-800",
-  Skin: "bg-rose-100 text-rose-800",
-  Nails: "bg-pink-100 text-pink-800",
-  Body: "bg-emerald-100 text-emerald-800",
-  Bridal: "bg-purple-100 text-purple-800",
+  "Classic Combos": "bg-indigo-100 text-indigo-800",
+  "Fab Facials": "bg-rose-100 text-rose-800",
+  "Grooming Him": "bg-sky-100 text-sky-800",
+  "Styling Her": "bg-fuchsia-100 text-fuchsia-800",
+  Bleach: "bg-yellow-100 text-yellow-800",
+  Waxing: "bg-violet-100 text-violet-800",
+  Threading: "bg-teal-100 text-teal-800",
+  "Hands & Feet": "bg-orange-100 text-orange-800",
+  "Relaxing Spa": "bg-emerald-100 text-emerald-800",
+  "Mini Massage": "bg-amber-100 text-amber-800",
 };
 
 const emptyForm = {
   name: "",
-  category: "Hair",
+  category: "Relaxing Spa" as string,
   description: "",
   longDescription: "",
   durationMinutes: 60,

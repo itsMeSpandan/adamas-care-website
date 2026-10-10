@@ -38,7 +38,7 @@ export const TOKEN_EXPIRY = {
 
 /**
  * Points earned per currency unit spent.
- * 0.1 means 1 point per ₹10 spent (e.g. ₹85 haircut → 8 points).
+ * 0.1 means 1 point per ₹10 spent (e.g. ₹700 Thai Massage → 70 points).
  * Adjust this value to tune the earning rate.
  */
 export const LOYALTY_POINTS_PER_CURRENCY_UNIT = 0.1;

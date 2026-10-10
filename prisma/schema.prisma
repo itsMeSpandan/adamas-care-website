@@ -66,6 +66,7 @@ model User {
   waitlistEntries      Waitlist[]
   reliability          UserReliability?
   refreshTokens        RefreshToken[]
+  notifications        Notification[]
 }
 
 model Service {
@@ -84,6 +85,7 @@ model Service {
   bookings         Booking[]
   loyaltyRewards   LoyaltyReward[]
   bookingServices  BookingService[]
+  waitlist         Waitlist[]
 }
 
 model Employee {
@@ -368,6 +370,10 @@ model Waitlist {
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  // Declared as a relation so the column is actually constrained: without this
+  // the field was a bare String? and deleting a service left waitlist rows
+  // pointing at a service that no longer existed.
+  service  Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
 
   @@index([employeeId, slotStart, status])
   @@index([userId])
@@ -409,11 +415,36 @@ model DeviceToken {
 // One row per (booking, event, channel): a second notifyBooking() call for the
 // same combination is a no-op.
 
+/// In-app notification for a signed-in user — the bell in the header and the
+/// /account/notifications page. Written alongside email and push, so a freed
+/// slot, a confirmation or a reminder still reaches the user when email is not
+/// configured at all (a bare RESEND_API_KEY absence used to mean the message
+/// went nowhere).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  /// CONFIRMED | RESCHEDULED | CANCELLED | REMINDER_24H | REMINDER_6H | WAITLIST_SLOT_OPEN
+  type      String
+  title     String
+  body      String
+  deepLink  String?
+  /// The booking that triggered it — absent for a waitlist cascade, which is
+  /// about the slot rather than any booking the recipient owns.
+  bookingId String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+}
+
 model NotificationLog {
   id        String   @id @default(cuid())
   bookingId String
   event     String   // CONFIRMED | RESCHEDULED | CANCELLED | REMINDER_24H | REMINDER_6H | WAITLIST_SLOT_OPEN
-  channel   String   // "email" | "push"
+  channel   String   // "email" | "push" | "in_app"
   createdAt DateTime @default(now())
 
   booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)

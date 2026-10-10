@@ -7,10 +7,13 @@
  *
  *   - Email ALWAYS (guests without an account get email only).
  *   - Push to every non-revoked DeviceToken of the recipient account.
+ *   - In-app ALWAYS for a recipient with an account: the message is stored in
+ *     the Notification table, so it still arrives when there is no Resend key
+ *     and no registered device.
  *   - NotificationLog is checked before each send and written after a
  *     successful send: (bookingId, event, channel) is unique, so calling
  *     notifyBooking twice sends nothing twice.
- *   - The two channels run independently — one failing never blocks the other.
+ *   - The channels run independently — one failing never blocks another.
  *   - Never throws: failures are logged, bookings are never affected
  *     (call sites invoke this AFTER their transaction commits).
  *
@@ -28,6 +31,7 @@ import { sendTransactionalEmail } from "@/lib/email";
 import { getFirebaseMessaging } from "@/lib/firebase-admin";
 import { buildIcsCalendar } from "@/lib/ics";
 import { rankWaitlist } from "@/lib/scoring-engine";
+import { createNotification } from "@/lib/notifications";
 
 export type BookingEvent =
   | "CONFIRMED"
@@ -60,12 +64,14 @@ interface Recipient {
   claimMinutes?: number;
 }
 
+type NotificationChannel = "email" | "push" | "in_app";
+
 // ─── NotificationLog idempotency ─────────────────────────────────────────────
 
 async function alreadySent(
   bookingId: string,
   event: BookingEvent,
-  channel: "email" | "push"
+  channel: NotificationChannel
 ): Promise<boolean> {
   const row = await db.notificationLog.findUnique({
     where: { bookingId_event_channel: { bookingId, event, channel } },
@@ -77,7 +83,7 @@ async function alreadySent(
 async function markSent(
   bookingId: string,
   event: BookingEvent,
-  channel: "email" | "push"
+  channel: NotificationChannel
 ): Promise<void> {
   try {
     await db.notificationLog.create({ data: { bookingId, event, channel } });
@@ -408,6 +414,37 @@ async function pushChannel(
   }
 }
 
+/**
+ * Store the notification in the database so it reaches the user even when
+ * email isn't configured and no device is registered for push. Same title,
+ * body and destination as the push payload, so all three channels agree.
+ */
+async function inAppChannel(
+  booking: BookingFull,
+  event: BookingEvent,
+  recipient: Recipient
+): Promise<void> {
+  if (!recipient.userId) return; // guests have no inbox
+  if (await alreadySent(booking.id, event, "in_app")) return;
+
+  const { title, body } = pushTitleBody(booking, event, recipient);
+  const stored = await createNotification({
+    userId: recipient.userId,
+    type: event,
+    title,
+    body,
+    deepLink:
+      event === "WAITLIST_SLOT_OPEN"
+        ? "/account/waitlist"
+        : `/bookings/${booking.id}`,
+    bookingId: booking.id,
+  });
+
+  // Only log on success, so a transient write failure can be retried by a
+  // later notifyBooking rather than being swallowed as "already sent".
+  if (stored) await markSent(booking.id, event, "in_app");
+}
+
 // ─── Entry point ─────────────────────────────────────────────────────────────
 
 /**
@@ -428,10 +465,11 @@ export async function notifyBooking(bookingId: string, event: BookingEvent): Pro
       return;
     }
 
-    // Channels run independently — one failing must never block the other.
+    // Channels run independently — one failing must never block another.
     const results = await Promise.allSettled([
       emailChannel(booking, event, recipient),
       pushChannel(booking, event, recipient),
+      inAppChannel(booking, event, recipient),
     ]);
     for (const r of results) {
       if (r.status === "rejected") {

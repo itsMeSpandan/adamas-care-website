@@ -34,11 +34,11 @@ export const metadata: Metadata = {
     template: `%s | ${BRAND.name}`,
   },
   description:
-    `${BRAND.name} — premium hair, skin, nail, body, and bridal services in Kolkata. Expert specialists, online booking, and a loyalty rewards program.`,
+    `${BRAND.name} — massages, body treatments and relaxing spa therapies in Kolkata. Expert therapists, online booking, and a loyalty rewards program.`,
   metadataBase: new URL(BRAND.baseUrl),
   openGraph: {
     title: BRAND.title,
-    description: `${BRAND.name} — premium hair, skin, nail, body, and bridal services in Kolkata.`,
+    description: `${BRAND.name} — massages, body treatments and relaxing spa therapies in Kolkata.`,
     siteName: BRAND.name,
     type: "website",
     locale: "en_IN",

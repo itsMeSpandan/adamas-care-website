@@ -39,6 +39,11 @@ async function retryWithBackoff<T>(
  *
  * The window length comes from lib/waitlist.ts so this path and the expiry
  * sweep can never disagree about how long a user has to claim.
+ *
+ * Deliberately sends nothing itself: the caller follows this with
+ * notifyBooking(id, "WAITLIST_SLOT_OPEN"), which fans the offer out to email,
+ * push and the in-app inbox in one idempotent pass. Delegating to
+ * cascadeToNextWaitlisted here instead would mail the user twice.
  */
 async function notifyWaitlistedUser(employeeId: string, slotStart: string) {
   const { rankWaitlist } = await import("@/lib/scoring-engine");
@@ -199,7 +204,7 @@ export const PATCH = requireAuth(async (request: Request, context) => {
         // ─── Waitlist notification on cancellation ────────────────────────
         // Find waitlisted users for this employee+slot, flip the top-ranked
         // one to "notified" (starts their claim window), then notify them via
-        // the WAITLIST_SLOT_OPEN event (email + push, idempotent).
+        // the WAITLIST_SLOT_OPEN event (email + push + in-app, idempotent).
         if (booking.employeeId && booking.slotStart) {
           try {
             await notifyWaitlistedUser(booking.employeeId, booking.slotStart);

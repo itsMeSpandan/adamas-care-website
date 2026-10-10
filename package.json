@@ -12,6 +12,7 @@
     "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
     "db:seed": "npx tsx prisma/seed.ts",
+    "db:import-services": "npx tsx prisma/import-services.ts",
     "db:push": "npx prisma db push",
     "db:generate": "npx prisma generate",
     "db:studio": "npx prisma studio",

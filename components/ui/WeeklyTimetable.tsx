@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { displayTime, cn } from "@/lib/utils";
+import { categoryColors } from "@/lib/service-category-colors";
 
 interface ScheduleEntry {
   dayOfWeek: number;
@@ -35,13 +36,7 @@ const HOUR_START = 8; // 8 AM
 const HOUR_END = 20; // 8 PM
 const HOUR_HEIGHT = 64; // px per hour
 
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  Hair: { bg: "bg-amber-100", text: "text-amber-800", border: "border-l-amber-400" },
-  Skin: { bg: "bg-rose-100", text: "text-rose-800", border: "border-l-rose-400" },
-  Nails: { bg: "bg-pink-100", text: "text-pink-800", border: "border-l-pink-400" },
-  Body: { bg: "bg-green-100", text: "text-green-800", border: "border-l-green-400" },
-  Bridal: { bg: "bg-purple-100", text: "text-purple-800", border: "border-l-purple-400" },
-};
+
 
 const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
   confirmed: { bg: "bg-emerald-100", text: "text-emerald-700" },
@@ -73,6 +68,10 @@ function formatDateKey(d: Date): string {
 export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
   const [schedules, setSchedules] = useState<ScheduleEntry[]>([]);
   const [bookings, setBookings] = useState<BookingEntry[]>([]);
+
+  const legendCategories = Array.from(
+    new Set(bookings.map((b) => b.service?.category).filter((c): c is string => !!c))
+  );
   const [loading, setLoading] = useState(true);
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
   const [selectedBooking, setSelectedBooking] = useState<BookingEntry | null>(null);
@@ -354,8 +353,7 @@ export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
                         if (startMin < HOUR_START * 60 || startMin > HOUR_END * 60) return null;
                         const top = ((startMin - HOUR_START * 60) / 60) * HOUR_HEIGHT;
                         const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 28);
-                        const cat = booking.service?.category || "Hair";
-                        const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Hair;
+                        const colors = categoryColors(booking.service?.category);
                         const statusColors = STATUS_BADGE[booking.status] || STATUS_BADGE.pending;
 
                         return (
@@ -461,8 +459,7 @@ export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
                       {dayBookings.map((booking) => {
                         const slotStart = booking.slotStart || booking.timeSlot;
                         const slotEnd = booking.slotEnd;
-                        const cat = booking.service?.category || "Hair";
-                        const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Hair;
+                        const colors = categoryColors(booking.service?.category);
                         const statusColors = STATUS_BADGE[booking.status] || STATUS_BADGE.pending;
 
                         return (
@@ -519,18 +516,25 @@ export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
         </>
       )}
 
-      {/* Category legend */}
-      <div className="border-t border-beige-100 px-6 py-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-beige-400">Legend:</span>
-          {Object.entries(CATEGORY_COLORS).map(([cat, colors]) => (
-            <div key={cat} className="flex items-center gap-1.5">
-              <div className={cn("h-2.5 w-2.5 rounded-sm border-l-[2px]", colors.bg, colors.border)} />
-              <span className="text-[10px] text-beige-500">{cat}</span>
-            </div>
-          ))}
+      {/* Category legend — only the categories this employee actually has
+          booked this week, and nothing at all when there are none (a booking
+          whose service was removed has no category to colour). */}
+      {legendCategories.length > 0 && (
+        <div className="border-t border-beige-100 px-6 py-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-[10px] font-medium uppercase tracking-wider text-beige-400">Legend:</span>
+            {legendCategories.map((cat) => {
+              const colors = categoryColors(cat);
+              return (
+                <div key={cat} className="flex items-center gap-1.5">
+                  <div className={cn("h-2.5 w-2.5 rounded-sm border-l-[2px]", colors.bg, colors.borderLeft)} />
+                  <span className="text-[10px] text-beige-500">{cat}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Booking detail drawer */}
       <AnimatePresence>

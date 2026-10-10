@@ -15,6 +15,7 @@
 
 import { db } from "@/lib/db";
 import { sendTransactionalEmail } from "@/lib/email";
+import { createNotification } from "@/lib/notifications";
 import { rankWaitlist } from "@/lib/scoring-engine";
 
 /** How long a notified user has to claim a slot before it moves on. */
@@ -73,6 +74,18 @@ export async function cascadeToNextWaitlisted(
         <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
       </div>
     `,
+  });
+
+  // Same offer in the app. This path deliberately bypasses notifyBooking (see
+  // above), so the in-app notification has to be written here too — otherwise a
+  // cascaded slot would only ever be announced by email, which is the channel
+  // that may not be configured at all.
+  await createNotification({
+    userId: nextEntry.userId,
+    type: "WAITLIST_SLOT_OPEN",
+    title: "A slot opened up! 🎉",
+    body: `${nextEntry.employee?.name || "Your specialist"} has an opening at ${slotStart}. Claim within ${WAITLIST_CLAIM_EXPIRY_MINUTES} minutes.`,
+    deepLink: "/account/waitlist",
   });
 
   console.log(

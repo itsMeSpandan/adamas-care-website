@@ -1,0 +1,67 @@
+﻿category,service,gender,price_inr,duration_minutes,variant,notes
+Classic Combos,Gentleman Combo,Male,310.0,,Hair Cut + Shaving + Shampoo + Head Massage,Head massage is 10 minutes
+Classic Combos,Gentleman Special Combo,Male,1125.0,,Beard Trimming + Hair Colour + Fruit Facial + Head & Feet Massage,Massage is 30 minutes
+Classic Combos,Ladies Combo,Female,400.0,,Hair Trimming + Shampoo + Head Massage,Head massage is 10 minutes
+Classic Combos,Ladies Special Combo,Female,1055.0,,Eyebrows + Manicure + Pedicure + Head & Face Massage,Massage is 20 minutes
+Fab Facials,Clean-up,Unisex,250.0,,,Gender not specified in menu
+Fab Facials,Ubtan,Unisex,300.0,,,Gender not specified in menu
+Fab Facials,De-tan,Unisex,400.0,,,Gender not specified in menu
+Fab Facials,O3+ De-tan,Unisex,500.0,,,Gender not specified in menu
+Fab Facials,Fruit Facial,Unisex,600.0,,,Gender not specified in menu
+Fab Facials,Pearl Facial,Unisex,800.0,,,Gender not specified in menu
+Fab Facials,Gold Facial,Unisex,800.0,,,Gender not specified in menu
+Fab Facials,Gold Facial,Unisex,1200.0,,Handwritten price,Handwritten alternate/updated price shown on menu; confirm with salon
+Grooming Him,Shaving,Male,40.0,,,
+Grooming Him,Beard Trimming,Male,75.0,,,
+Grooming Him,Hair Cut,Male,60.0,,,
+Grooming Him,Shampoo,Male,60.0,,,
+Grooming Him,Special Hair Cut,Male,125.0,,,
+Grooming Him,Hair Colouring,Male,150.0,,Plain Black,
+Grooming Him,Hair Colouring,Male,300.0,,Professional,
+Grooming Him,Hair Spa,Male,400.0,,,
+Styling Her,Hair Trim,Female,150.0,,,
+Styling Her,Special Cut,Female,275.0,,,
+Styling Her,Shampoo,Female,150.0,,Short Hair,
+Styling Her,Shampoo,Female,200.0,,Medium Hair,
+Styling Her,Shampoo,Female,250.0,,Long Hair,
+Styling Her,Hair Colouring,Female,250.0,,Basic,
+Styling Her,Hair Colouring,Female,500.0,,Professional,
+Styling Her,Hair Spa,Female,450.0,,Short Hair,
+Styling Her,Hair Spa,Female,650.0,,Medium Hair,
+Styling Her,Hair Spa,Female,1000.0,,Long Hair,
+Styling Her,Hair Spa,Female,1250.0,,Special,
+Bleach,Face Bleach,Unisex,200.0,,,Gender not specified in menu
+Bleach,Hand Bleach,Unisex,250.0,,,Gender not specified in menu
+Bleach,Neck Bleach,Unisex,400.0,,,Gender not specified in menu
+Waxing,Underarm,Female,100.0,,,Placed under general waxing section; gender assignment inferred from menu context
+Waxing,Half Arm,Female,200.0,,,Placed under general waxing section; gender assignment inferred from menu context
+Waxing,Full Arm,Female,350.0,,,Placed under general waxing section; gender assignment inferred from menu context
+Waxing,Half Leg,Female,400.0,,,Placed under general waxing section; gender assignment inferred from menu context
+Waxing,Full Leg,Female,600.0,,,Placed under general waxing section; gender assignment inferred from menu context
+Threading,Eyebrows/Forehead,Female,30.0,,,Placed under general threading section; gender assignment inferred from menu context
+Threading,Upper/Lower Lip,Female,20.0,,,Placed under general threading section; gender assignment inferred from menu context
+Threading,Chin,Female,25.0,,,Placed under general threading section; gender assignment inferred from menu context
+Hands & Feet,Nail Cut,Unisex,50.0,,,Gender not specified in menu
+Hands & Feet,Nail Polish,Unisex,50.0,,,Gender not specified in menu
+Hands & Feet,Manicure,Unisex,250.0,,,Gender not specified in menu
+Hands & Feet,Pedicure,Unisex,400.0,,,Gender not specified in menu
+Relaxing Spa,Deep Tissue Massage,Unisex,1000.0,60.0,,Gender not specified in menu
+Relaxing Spa,Deep Tissue Massage,Unisex,1500.0,90.0,,Gender not specified in menu
+Relaxing Spa,Swedish Massage,Unisex,900.0,60.0,,Gender not specified in menu
+Relaxing Spa,Swedish Massage,Unisex,1300.0,90.0,,Gender not specified in menu
+Relaxing Spa,Aromatherapy,Unisex,700.0,60.0,,Gender not specified in menu
+Relaxing Spa,Aromatherapy,Unisex,1100.0,90.0,,Gender not specified in menu
+Relaxing Spa,Body Polishing,Unisex,2000.0,60.0,,Gender not specified in menu
+Relaxing Spa,Body Polishing,Unisex,2500.0,90.0,,Gender not specified in menu
+Relaxing Spa,Full Body Scrubbing,Unisex,1500.0,60.0,,Gender not specified in menu
+Relaxing Spa,Full Body Scrubbing,Unisex,1800.0,90.0,,Gender not specified in menu
+Relaxing Spa,Thai Massage,Unisex,700.0,60.0,,Gender not specified in menu
+Relaxing Spa,Thai Massage,Unisex,1000.0,90.0,,Gender not specified in menu
+Mini Massage,Head Massage,Unisex,200.0,30.0,,Gender not specified in menu
+Mini Massage,Head Massage,Unisex,,60.0,,Listed as NA on menu
+Mini Massage,"Head, Neck & Shoulder Massage",Unisex,320.0,30.0,,Gender not specified in menu
+Mini Massage,"Head, Neck & Shoulder Massage",Unisex,450.0,60.0,,Gender not specified in menu
+Mini Massage,Foot Massage,Unisex,200.0,30.0,,Gender not specified in menu
+Mini Massage,Foot Massage,Unisex,400.0,60.0,,Gender not specified in menu
+Mini Massage,Foot Reflexology,Unisex,350.0,30.0,,Gender not specified in menu
+Mini Massage,Foot Reflexology,Unisex,700.0,60.0,,Gender not specified in menu

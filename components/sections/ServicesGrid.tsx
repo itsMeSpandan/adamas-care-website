@@ -5,15 +5,6 @@ import { motion } from "framer-motion";
 import { Service, ServiceCategory } from "@/lib/types";
 import ServiceCard from "@/components/cards/ServiceCard";
 
-const categories: (ServiceCategory | "All")[] = [
-  "All",
-  "Hair",
-  "Skin",
-  "Nails",
-  "Body",
-  "Bridal",
-];
-
 export default function ServicesGrid({ featured = false }: { featured?: boolean }) {
   const [activeCategory, setActiveCategory] = useState<ServiceCategory | "All">("All");
   const [services, setServices] = useState<Service[]>([]);
@@ -35,6 +26,15 @@ export default function ServicesGrid({ featured = false }: { featured?: boolean 
         return featured ? s.featured && matchesCategory : matchesCategory;
       })
     : [];
+
+  // Tabs come from the catalogue itself, so a category the menu empties out
+  // never leaves a filter chip that filters to nothing.
+  const categories: (ServiceCategory | "All")[] = [
+    "All",
+    ...(Array.isArray(services)
+      ? (Array.from(new Set(services.map((s) => s.category))) as ServiceCategory[])
+      : []),
+  ];
 
   if (loading) {
     return (

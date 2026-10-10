@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: `${BRAND.name} — Booking & Rewards`,
     short_name: BRAND.name,
-    description: `${BRAND.name} — book hair, skin, nail, body, and bridal appointments.`,
+    description: `${BRAND.name} — book massages and spa treatments.`,
     id: "/",
     start_url: "/",
     scope: "/",

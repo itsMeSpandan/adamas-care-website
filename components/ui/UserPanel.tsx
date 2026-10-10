@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import NotificationBell from "@/components/ui/NotificationBell";
 
 export default function UserPanel() {
   const { user, isAdmin, isEmployee, isAuthenticated, logout } = useAuth();
@@ -25,7 +26,11 @@ export default function UserPanel() {
   if (!isAuthenticated || !user) return null;
 
   return (
-    <div ref={ref} className="relative">
+    <div className="flex items-center gap-2">
+      {/* In-app inbox — rendered here so it appears wherever the account menu
+          does, signed-in only. */}
+      <NotificationBell />
+      <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 rounded-full border border-beige-200 bg-white p-1 pr-3 transition-all hover:border-beige-300 hover:shadow-sm"
@@ -133,6 +138,7 @@ export default function UserPanel() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

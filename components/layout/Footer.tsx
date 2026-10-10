@@ -9,13 +9,14 @@ const quickLinks = [
   { href: "/contact", label: "Contact" },
 ];
 
+// Real services from the current price list — see prisma/data/grace_salon_services.csv.
 const serviceLinks = [
-  { href: "/services/precision-haircut", label: "Haircuts & Styling" },
-  { href: "/services/color-gloss-treatment", label: "Color & Gloss" },
-  { href: "/services/hydra-facial", label: "Facials & Skincare" },
-  { href: "/services/gel-manicure", label: "Manicure & Nail Art" },
-  { href: "/services/deep-tissue-massage", label: "Massage Therapy" },
-  { href: "/services/bridal-glam-package", label: "Bridal Services" },
+  { href: "/services/deep-tissue-massage-60", label: "Deep Tissue Massage" },
+  { href: "/services/swedish-massage-60", label: "Swedish Massage" },
+  { href: "/services/thai-massage-60", label: "Thai Massage" },
+  { href: "/services/body-polishing-60", label: "Body Polishing" },
+  { href: "/services/head-massage", label: "Head Massage" },
+  { href: "/services/foot-reflexology-60", label: "Foot Reflexology" },
 ];
 
 export default function Footer() {

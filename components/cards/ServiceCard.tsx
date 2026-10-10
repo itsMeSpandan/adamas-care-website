@@ -6,11 +6,16 @@ import { cn } from "@/lib/utils";
 import { audienceLabel } from "@/lib/service-audience";
 
 const categoryColors: Record<string, string> = {
-  Hair: "bg-sage-50 text-sage-600",
-  Skin: "bg-amber-50 text-amber-800",
-  Nails: "bg-orange-50 text-orange-800",
-  Body: "bg-emerald-50 text-emerald-800",
-  Bridal: "bg-rose-50 text-rose-800",
+  "Classic Combos": "bg-indigo-50 text-indigo-800",
+  "Fab Facials": "bg-rose-50 text-rose-800",
+  "Grooming Him": "bg-sky-50 text-sky-800",
+  "Styling Her": "bg-fuchsia-50 text-fuchsia-800",
+  Bleach: "bg-yellow-50 text-yellow-800",
+  Waxing: "bg-violet-50 text-violet-800",
+  Threading: "bg-teal-50 text-teal-800",
+  "Hands & Feet": "bg-orange-50 text-orange-800",
+  "Relaxing Spa": "bg-emerald-50 text-emerald-800",
+  "Mini Massage": "bg-amber-50 text-amber-800",
 };
 
 interface ServiceCardProps {

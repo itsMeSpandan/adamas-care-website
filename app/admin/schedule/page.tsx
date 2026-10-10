@@ -5,6 +5,7 @@ import Image from "next/image";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 import { cn, displayTime, parseDateKey, formatBookingDate } from "@/lib/utils";
+import { categoryColors } from "@/lib/service-category-colors";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -56,14 +57,6 @@ interface BookingRow {
 }
 
 type TabKey = "weekly" | "overrides" | "gantt" | "bookings";
-
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  Hair: { bg: "bg-beige-200", text: "text-beige-800", border: "border-beige-300" },
-  Skin: { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-200" },
-  Nails: { bg: "bg-rose-100", text: "text-rose-800", border: "border-rose-200" },
-  Body: { bg: "bg-green-100", text: "text-green-800", border: "border-green-200" },
-  Bridal: { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-200" },
-};
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   confirmed: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
@@ -776,8 +769,7 @@ export default function ScheduleManagementPage() {
                     <div className="space-y-1 p-2">
                       {dayBookings.length > 0 ? (
                         dayBookings.map((booking) => {
-                          const cat = booking.service?.category || "Hair";
-                          const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Hair;
+                          const colors = categoryColors(booking.service?.category);
                           const statusColors = STATUS_COLORS[booking.status] || STATUS_COLORS.pending;
                           return (
                             <button
@@ -831,8 +823,7 @@ export default function ScheduleManagementPage() {
                   <div className="p-2 space-y-1.5">
                     {dayBookings.length > 0 ? (
                       dayBookings.map((booking) => {
-                        const cat = booking.service?.category || "Hair";
-                        const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Hair;
+                        const colors = categoryColors(booking.service?.category);
                         const statusColors = STATUS_COLORS[booking.status] || STATUS_COLORS.pending;
                         return (
                           <button
@@ -890,8 +881,7 @@ export default function ScheduleManagementPage() {
           </p>
           <div className="space-y-1.5">
             {popover.bookings.map((b) => {
-              const cat = b.service?.category || "Hair";
-              const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS.Hair;
+              const colors = categoryColors(b.service?.category);
               const statusColors = STATUS_COLORS[b.status] || STATUS_COLORS.pending;
               return (
                 <button
