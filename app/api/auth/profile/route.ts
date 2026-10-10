@@ -3,6 +3,7 @@ import { updateUser, findUserById, findUserByEmail } from "@/lib/queries";
 import { hashPassword, comparePassword } from "@/lib/crypto";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
+import { validateImageField } from "@/lib/image-field";
 
 
 
@@ -53,7 +54,16 @@ export const PUT = requireAuth(async (request: Request) => {
 
     if (name) updateData.name = name;
     if (email) updateData.email = email;
-    if (avatarUrl) updateData.avatarUrl = avatarUrl;
+    if (avatarUrl) {
+      // Same rule as an employee photo: this string can come from an upload, so
+      // check the scheme, the size and the bytes before it is stored and later
+      // rendered into an <Image>.
+      const photo = validateImageField(avatarUrl);
+      if (!photo.ok) {
+        return NextResponse.json({ error: photo.error }, { status: 400 });
+      }
+      updateData.avatarUrl = photo.kind === "value" ? photo.value : avatarUrl;
+    }
     if (gender) updateData.gender = gender;
     if (whatsappNumber !== undefined) {
       // Validate phone number format

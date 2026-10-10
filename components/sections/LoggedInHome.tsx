@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Scissors,
@@ -19,6 +20,13 @@ import ServiceCard from "@/components/cards/ServiceCard";
 import TeamCard from "@/components/cards/TeamCard";
 import Skeleton from "@/components/ui/Skeleton";
 import BookingCTA from "@/components/sections/BookingCTA";
+import DashboardBackgroundControl from "@/components/ui/DashboardBackgroundControl";
+
+/**
+ * Shown until (or unless) an admin uploads their own background — the same
+ * picture the public hero opens with, so the dashboard fades in the same way.
+ */
+const DEFAULT_BACKGROUND = "/images/hero-beauty.png";
 
 /* ---------- types ---------- */
 
@@ -101,7 +109,35 @@ const cardChild = {
    ================================================================ */
 
 export default function LoggedInHome() {
-  const { user, refreshSession } = useAuth();
+  const { user, refreshSession, isAdmin } = useAuth();
+
+  /* --- background image chosen by an admin (falls back to the default) --- */
+  const [customBackground, setCustomBackground] = useState(false);
+  const [backgroundVersion, setBackgroundVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/dashboard-background")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        setCustomBackground(Boolean(data.custom));
+        setBackgroundVersion(data.version ?? null);
+      })
+      .catch(() => {
+        /* keep the default picture */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // The version is part of the URL so a replaced image is never served from the
+  // immutable cache entry of the one before it.
+  const backgroundSrc =
+    customBackground && backgroundVersion
+      ? `/dashboard-background/image?v=${backgroundVersion}`
+      : DEFAULT_BACKGROUND;
 
   /* --- greeting hour (client-only to avoid hydration mismatch) --- */
   const [hour, setHour] = useState<number | null>(null);
@@ -200,9 +236,43 @@ export default function LoggedInHome() {
     <>
       {/* ===== 1. Personalised Greeting Hero ===== */}
       <section className="relative flex min-h-screen items-center overflow-hidden bg-beige-50 px-4 py-20 md:px-8 lg:px-16">
+        {/* Background picture — keyed on the source so a replacement fades in
+            the same way the first hero section's image does. */}
+        <motion.div
+          key={backgroundSrc}
+          className="absolute inset-0"
+          initial={{ opacity: 0, scale: 1.04 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <Image
+            src={backgroundSrc}
+            alt=""
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-[center_20%]"
+          />
+        </motion.div>
+
+        {/* Veil: keeps the greeting readable over whatever photograph is set */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-beige-50 via-beige-50/90 to-beige-50/40" />
+        <div className="pointer-events-none absolute inset-0 bg-beige-50/15" />
+
         {/* Soft gradient overlay */}
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(200,168,130,0.15),transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(140,106,72,0.08),transparent_60%)]" />
+
+        {isAdmin && (
+          <DashboardBackgroundControl
+            custom={customBackground}
+            version={backgroundVersion}
+            onChanged={({ custom, version }) => {
+              setCustomBackground(custom);
+              setBackgroundVersion(version);
+            }}
+          />
+        )}
 
         <div className="relative z-10 max-w-3xl text-left">
           {/* Highlighted greeting eyebrow */}

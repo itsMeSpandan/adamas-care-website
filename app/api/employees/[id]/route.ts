@@ -3,6 +3,7 @@ import { getEmployeeById, updateEmployee, deleteEmployee } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { getSessionFromRequest } from "@/lib/auth";
+import { generatedAvatarUrl, validateImageField } from "@/lib/image-field";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,21 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
         { error: "Employee not found" },
         { status: 404 }
       );
+    }
+
+    // An uploaded photo arrives as a data URL, so it is user input like any
+    // other: check the scheme, the size and the actual bytes before storing it.
+    // An empty value means "no photo", which falls back to an initials avatar
+    // rather than an empty src that every <Image> on the site would choke on.
+    const photo = validateImageField((body as { imageUrl?: unknown }).imageUrl);
+    if (!photo.ok) {
+      return NextResponse.json({ error: photo.error }, { status: 400 });
+    }
+    if (photo.kind === "clear") {
+      const name = typeof body.name === "string" && body.name.trim() ? body.name : existing.name;
+      body.imageUrl = generatedAvatarUrl(name);
+    } else if (photo.kind === "value") {
+      body.imageUrl = photo.value;
     }
 
     const employee = await updateEmployee(id, body);

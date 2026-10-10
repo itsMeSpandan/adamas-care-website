@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { BRAND } from "@/lib/brand";
+import {
+  IMAGE_MAX_EDGE,
+  MAX_UPLOAD_BYTES,
+  checkPickedFile,
+  resizeImageToDataUrl,
+} from "@/lib/image-field";
 
 interface Employee {
   id: string;
@@ -49,6 +55,9 @@ export default function AdminEmployeesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [generatedCredentials, setGeneratedCredentials] = useState<{ email: string; password: string } | null>(null);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [processingPhoto, setProcessingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = () => {
     Promise.all([
@@ -69,6 +78,7 @@ export default function AdminEmployeesPage() {
     setEditingId(null);
     setForm(emptyForm);
     setGeneratedCredentials(null);
+    setPhotoError(null);
     setModalOpen(true);
   };
 
@@ -86,7 +96,38 @@ export default function AdminEmployeesPage() {
       serviceIds: emp.serviceIds,
     });
     setGeneratedCredentials(null);
+    setPhotoError(null);
     setModalOpen(true);
+  };
+
+  /**
+   * A picked file never leaves the browser as a file: it is scaled down and
+   * turned into a JPEG data URL, which is what the form (and the API) stores.
+   */
+  const handlePhotoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Allow re-picking the same file after a rejection.
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    if (!file) return;
+
+    const problem = checkPickedFile(file);
+    if (problem) {
+      setPhotoError(problem);
+      return;
+    }
+
+    setPhotoError(null);
+    setProcessingPhoto(true);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      // A photo picked for a brand-new employee is staged on the empty form, so
+      // the name-based fallback is replaced as soon as the name is typed.
+      setForm((previous) => ({ ...previous, imageUrl: dataUrl }));
+    } catch {
+      setPhotoError("That image could not be read. Try a different file.");
+    } finally {
+      setProcessingPhoto(false);
+    }
   };
 
   const handleSave = async () => {
@@ -476,14 +517,68 @@ export default function AdminEmployeesPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-beige-700">Image URL</label>
-                    <input
-                      type="url"
-                      value={form.imageUrl}
-                      onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                      placeholder="https://... (optional, auto-generated from name)"
-                      className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
-                    />
+                    <label className="mb-1 block text-sm font-medium text-beige-700">Photo</label>
+                    <div className="flex items-center gap-4 rounded-xl border border-beige-300 bg-beige-50 p-3">
+                      <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-full border border-beige-200 bg-beige-100">
+                        {form.imageUrl ? (
+                          <Image
+                            src={form.imageUrl}
+                            alt={form.name || "Employee photo"}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-xs font-medium text-beige-500">
+                            No photo
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            disabled={processingPhoto}
+                            className="rounded-full border border-beige-600 bg-white px-4 py-1.5 text-xs font-medium text-beige-700 transition-colors hover:bg-beige-50 disabled:opacity-50"
+                          >
+                            {processingPhoto
+                              ? "Processing..."
+                              : form.imageUrl
+                                ? "Replace photo"
+                                : "Upload photo"}
+                          </button>
+                          {form.imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPhotoError(null);
+                                setForm({ ...form, imageUrl: "" });
+                              }}
+                              className="rounded-full px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <p className="mt-1.5 text-xs text-beige-500">
+                          JPG, PNG, WebP or GIF · up to {(MAX_UPLOAD_BYTES / 1024 / 1024).toFixed(0)} MB ·
+                          resized to {IMAGE_MAX_EDGE} px. Without a photo, initials are shown.
+                        </p>
+                        {photoError && (
+                          <p className="mt-1.5 text-xs font-medium text-red-600">{photoError}</p>
+                        )}
+                      </div>
+
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        onChange={handlePhotoPicked}
+                        className="hidden"
+                      />
+                    </div>
                   </div>
 
                   {services.length > 0 && (
