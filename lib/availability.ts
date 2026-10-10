@@ -15,6 +15,7 @@ import {
   timeToMinutes,
   parseDisplayTime,
 } from "@/lib/slots";
+import { salonDateKey, salonMinutesOfDay } from "@/lib/booking-time";
 
 export interface AvailableSlot {
   start: string;
@@ -128,7 +129,7 @@ export async function getAvailableSlotStrings(
   employeeId: string,
   dateStr: string
 ): Promise<string[]> {
-  const { date, dbDay, dayStart, dayEnd } = resolveDate(dateStr);
+  const { dbDay, dayStart, dayEnd } = resolveDate(dateStr);
 
   const workingWindows = await getWorkingWindows(employeeId, dbDay, dayStart);
   if (workingWindows.length === 0) return [];
@@ -156,15 +157,12 @@ export async function getAvailableSlotStrings(
 
   let availableSlots = uniqueSlots.filter((slot) => !bookedMinutes.has(parseDisplayTime(slot)));
 
-  // Filter past slots if today
+  // Filter past slots if today. Both sides must be in the salon's timezone:
+  // the old check compared a UTC calendar date against LOCAL getHours(), so it
+  // filtered the wrong day (or not at all) depending on the server's TZ.
   const now = new Date();
-  const isToday =
-    date.getUTCFullYear() === now.getFullYear() &&
-    date.getUTCMonth() === now.getMonth() &&
-    date.getUTCDate() === now.getDate();
-
-  if (isToday) {
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  if (dateStr === salonDateKey(now)) {
+    const nowMinutes = salonMinutesOfDay(now);
     availableSlots = availableSlots.filter((slot) => parseDisplayTime(slot) > nowMinutes);
   }
 

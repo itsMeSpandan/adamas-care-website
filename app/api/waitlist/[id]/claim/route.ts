@@ -3,11 +3,9 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { notifyBooking } from "@/lib/notify";
-import { sendTransactionalEmail } from "@/lib/email";
+import { cascadeToNextWaitlisted } from "@/lib/waitlist";
 
 export const dynamic = "force-dynamic";
-
-const CLAIM_EXPIRY_MINUTES = 30;
 
 /**
  * POST /api/waitlist/[id]/claim
@@ -18,6 +16,10 @@ const CLAIM_EXPIRY_MINUTES = 30;
  * 3. Create a booking for the slot
  * 4. Update waitlist entry status to "claimed"
  * 5. Notify (email + push) via notifyBooking(CONFIRMED)
+ *
+ * The cascade for an expired claim lives in lib/waitlist.ts so the cron sweep
+ * (GET /api/cron/waitlist-expiry) enforces the same deadline for entries nobody
+ * ever opens.
  */
 export const POST = requireAuth(async (request: Request, context) => {
   const { id } = await context!.params!;
@@ -145,58 +147,3 @@ export const POST = requireAuth(async (request: Request, context) => {
     return NextResponse.json({ error: "Failed to claim slot" }, { status: 500 });
   }
 });
-
-/**
- * After a waitlisted user's claim expires, notify the next person in line.
- */
-async function cascadeToNextWaitlisted(employeeId: string, slotStart: string) {
-  const { rankWaitlist } = await import("@/lib/scoring-engine");
-  const ranked = await rankWaitlist(employeeId, slotStart);
-
-  if (ranked.length === 0) return;
-
-  // Notify the next person
-  const nextEntry = await db.waitlist.findUnique({
-    where: { id: ranked[0].waitlistId },
-    include: { user: true, employee: true },
-  });
-
-  if (!nextEntry || nextEntry.status !== "waiting") return;
-
-  const claimExpiresAt = new Date(Date.now() + CLAIM_EXPIRY_MINUTES * 60 * 1000);
-
-  await db.waitlist.update({
-    where: { id: nextEntry.id },
-    data: {
-      status: "notified",
-      notifiedAt: new Date(),
-      claimExpiresAt,
-    },
-  });
-
-  // Direct email for the cascade — deliberately NOT notifyBooking():
-  // NotificationLog's (bookingId, event, channel) uniqueness means the
-  // primary WAITLIST_SLOT_OPEN for this slot is already logged, and a
-  // second waitlist member must still be reachable. (Documented in progress.md.)
-  const minutes = CLAIM_EXPIRY_MINUTES;
-  await sendTransactionalEmail({
-    to: nextEntry.user.email,
-    subject: "A Slot Opened Up — Grace Salon",
-    html: `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #3D5A47;">🎉 A Slot Is Available!</h2>
-        <p>Hi ${nextEntry.user.name},</p>
-        <p>An opening with <strong>${nextEntry.employee?.name || "your specialist"}</strong> just came up:</p>
-        <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0;">
-          <p><strong>Time:</strong> ${slotStart}</p>
-        </div>
-        <p style="color: #666; font-size: 14px;">⏰ Claim within <strong>${minutes} minutes</strong> or it goes to the next person in line.</p>
-        <p style="color: #666; font-size: 14px;">Open Grace Salon to claim your slot.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-        <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
-      </div>
-    `,
-  });
-
-  console.log(`[Waitlist] Cascade: notified user ${nextEntry.userId} for slot ${slotStart}`);
-}

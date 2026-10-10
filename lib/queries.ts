@@ -295,16 +295,6 @@ export async function getBookings() {
   });
 }
 
-export async function updateBookingStatus(
-  id: string,
-  status: "pending" | "confirmed" | "completed" | "cancelled"
-) {
-  return db.booking.update({
-    where: { id },
-    data: { status },
-  });
-}
-
 // --- Employee Email Generation ---
 
 function slugifyName(name: string): string {

@@ -4,13 +4,11 @@ import { getBookings } from "@/lib/queries";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { applyRedemptionToBooking, linkRedemptionToBooking } from "@/lib/loyalty";
-import { logAudit, getClientIp } from "@/lib/audit";
 import { notifyBooking } from "@/lib/notify";
 import {
-  canCompleteBooking,
   isBookableSameDay,
+  salonDateKey,
   SAME_DAY_LEAD_MINUTES,
-  PREMATURE_COMPLETION_MESSAGE,
 } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
@@ -248,12 +246,8 @@ export const POST = requireAuth(async (request: Request) => {
         where: { userId: sessionUserId },
       });
       if (reliability?.restrictedUntil && reliability.restrictedUntil > new Date()) {
-        // Parse requested date and compare to today (UTC)
-        const [reqYear, reqMonth, reqDay] = date.split("-").map(Number);
-        const now = new Date();
-        const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-        const requestedDateUTC = new Date(Date.UTC(reqYear, reqMonth - 1, reqDay));
-        const isSameDay = requestedDateUTC.getTime() === todayUTC.getTime();
+        // "Same day" is the salon's calendar day (IST), not the UTC one.
+        const isSameDay = date === salonDateKey(new Date());
         if (isSameDay) {
           return NextResponse.json(
             { error: "Same-day booking temporarily restricted. Please book at least 24 hours ahead." },
@@ -263,9 +257,11 @@ export const POST = requireAuth(async (request: Request) => {
       }
     }
 
-    // Reject past dates (compare as YYYY-MM-DD strings).
+    // Reject past dates (compare as YYYY-MM-DD strings) against the salon's
+    // calendar day, not the UTC one — between 00:00 and 05:30 IST the salon is
+    // still on "yesterday", so a UTC comparison would reject today's dates.
     const today = new Date();
-    const todayKey = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}-${String(today.getUTCDate()).padStart(2, "0")}`;
+    const todayKey = salonDateKey(today);
     if (typeof date !== "string" || date < todayKey) {
       return NextResponse.json(
         { error: "Booking date cannot be in the past" },
@@ -422,113 +418,6 @@ export const POST = requireAuth(async (request: Request) => {
     console.error("Failed to create booking:", error);
     return NextResponse.json(
       { error: "Failed to create booking" },
-      { status: 500 }
-    );
-  }
-});
-
-// ------------------------- PATCH -----------------------
-
-export const PATCH = requireAuth(async (request: Request, context) => {
-  const { id } = await context!.params!;
-
-  const session = await getSessionFromRequest(request);
-  if (!session) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-  }
-
-  try {
-    const booking = await db.booking.findUnique({ where: { id } });
-    if (!booking) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    }
-
-    // Authorization: staff may modify any booking; a customer may only modify
-    // their own (matched by userId or email).
-    const isStaff = session.role === "admin" || session.role === "employee";
-    const isOwner =
-      (booking.userId != null && booking.userId === session.userId) ||
-      booking.email === session.email;
-    if (!isStaff && !isOwner) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { status, rating, review } = body;
-
-    // Handle status updates
-    if (status) {
-      if (!["pending", "confirmed", "completed", "cancelled"].includes(status)) {
-        return NextResponse.json(
-          { error: "Invalid status. Must be one of: pending, confirmed, completed, cancelled" },
-          { status: 400 }
-        );
-      }
-
-      // A booking cannot be completed before its appointment has started.
-      if (
-        status === "completed" &&
-        !canCompleteBooking(booking.date, booking.slotStart)
-      ) {
-        return NextResponse.json(
-          { error: PREMATURE_COMPLETION_MESSAGE },
-          { status: 409 }
-        );
-      }
-
-      const updated = await db.booking.update({ where: { id }, data: { status } });
-
-      // Audit log for admin status changes
-      if (session.role === "admin" || session.role === "employee") {
-        logAudit({
-          action: `booking_${status}`,
-          entityType: "booking",
-          entityId: id,
-          adminId: session.userId,
-          adminName: session.email,
-          details: `Booking status changed to ${status}`,
-          ip: getClientIp(request),
-        });
-      }
-
-      // Notify after the status change committed (idempotent per event).
-      if (status === "confirmed") {
-        await notifyBooking(id, "CONFIRMED");
-      } else if (status === "cancelled") {
-        await notifyBooking(id, "CANCELLED");
-      }
-
-      return NextResponse.json({ booking: updated });
-    }
-
-    // Handle rating/review updates
-    if (rating !== undefined) {
-      const numRating = Number(rating);
-      if (isNaN(numRating) || numRating < 0 || numRating > 5) {
-        return NextResponse.json(
-          { error: "Invalid rating. Must be between 0 and 5" },
-          { status: 400 }
-        );
-      }
-
-      const updated = await db.booking.update({
-        where: { id },
-        data: {
-          rating: Math.round(numRating * 10) / 10,
-          review: review ?? null,
-        },
-      });
-      return NextResponse.json({ booking: updated });
-    }
-
-    return NextResponse.json(
-      { error: "Nothing to update. Provide status, rating, or review." },
-      { status: 400 }
-    );
-  } catch (error) {
-    console.error("Failed to update booking:", error);
-    return NextResponse.json(
-      { error: "Failed to update booking" },
       { status: 500 }
     );
   }

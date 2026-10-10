@@ -189,7 +189,7 @@ export default function AdminLoyaltyPage() {
         discountType: form.discountType,
         discountValue: form.discountValue,
         serviceId: form.serviceId || null,
-        stock: form.stock ? parseInt(form.stock) : null,
+        stock: form.stock ? parseInt(form.stock, 10) : null,
         isActive: form.isActive,
       };
       const method = editingId ? "PATCH" : "POST";
@@ -649,7 +649,7 @@ export default function AdminLoyaltyPage() {
                     <input
                       type="number"
                       value={adjustPoints}
-                      onChange={(e) => setAdjustPoints(parseInt(e.target.value) || 0)}
+                      onChange={(e) => setAdjustPoints(parseInt(e.target.value, 10) || 0)}
                       className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
                     />
                   </div>
@@ -731,7 +731,7 @@ export default function AdminLoyaltyPage() {
                       <input
                         type="number"
                         value={form.pointsCost}
-                        onChange={(e) => setForm({ ...form, pointsCost: parseInt(e.target.value) || 0 })}
+                        onChange={(e) => setForm({ ...form, pointsCost: parseInt(e.target.value, 10) || 0 })}
                         className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-2.5 text-sm text-beige-800 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
                       />
                     </div>

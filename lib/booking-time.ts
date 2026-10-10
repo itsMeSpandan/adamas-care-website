@@ -13,14 +13,26 @@
  *      Completing a future booking would award loyalty points for a service
  *      nobody has received yet.
  *
- * Times follow the convention already used by the availability engine and the
- * cancellation policy (app/api/bookings/[id]/route.ts): `date` is a UTC-midnight
- * day and `slotStart`/`slotEnd` are "HH:MM" wall-clock strings interpreted as
- * UTC. Keep that in sync here or the rules will disagree with the calendar.
+ * ─── Timezone ───────────────────────────────────────────────────────────────
+ * Grace Salon is in India, so its opening hours (and therefore every `slotStart`
+ * the availability engine produces) are IST wall-clock times. The `date` column
+ * is stored as UTC midnight of that calendar day — i.e. it carries a *date*,
+ * not an instant.
+ *
+ * Earlier revisions nevertheless compared those wall-clock times against UTC
+ * `new Date()` values. That silently shifted every rule by 5h30m: "now + 2h"
+ * was really "now + 7h30m", which hid slots a customer could have booked and
+ * let slots through that had already passed. The salon's calendar day and
+ * wall-clock minutes are therefore derived here from a fixed +05:30 offset
+ * (India observes no DST, so a fixed offset is exact — no timezone database
+ * needed). Anything comparing a booking to "now" must go through these helpers.
  */
 
 /** Minimum notice for a same-day booking, in minutes (2 hours). */
 export const SAME_DAY_LEAD_MINUTES = 120;
+
+/** Salon local time is IST: UTC +05:30, with no daylight saving. */
+export const SALON_UTC_OFFSET_MINUTES = 330;
 
 /** "14:30" → 870. Returns null when the string is missing or unparseable. */
 export function parseHmToMinutes(value: string | null | undefined): number | null {
@@ -31,35 +43,52 @@ export function parseHmToMinutes(value: string | null | undefined): number | nul
   return h * 60 + m;
 }
 
-/** The UTC calendar day of `d` as "YYYY-MM-DD". */
-export function utcDateKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
-    d.getUTCDate()
-  ).padStart(2, "0")}`;
+/** `now` shifted into salon-local time. */
+function salonShifted(now: Date): Date {
+  return new Date(now.getTime() + SALON_UTC_OFFSET_MINUTES * 60_000);
 }
 
-/** Seconds elapsed since UTC midnight. */
-function utcSecondsOfDay(d: Date): number {
-  return d.getUTCHours() * 3600 + d.getUTCMinutes() * 60 + d.getUTCSeconds();
+/** The salon's calendar day of `d` as "YYYY-MM-DD". */
+export function salonDateKey(d: Date): string {
+  const local = salonShifted(d);
+  return `${local.getUTCFullYear()}-${String(local.getUTCMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(local.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** Seconds elapsed since salon-local midnight. */
+function salonSecondsOfDay(d: Date): number {
+  const local = salonShifted(d);
+  return local.getUTCHours() * 3600 + local.getUTCMinutes() * 60 + local.getUTCSeconds();
+}
+
+/** Minutes elapsed since salon-local midnight (fractional for the seconds). */
+export function salonMinutesOfDay(d: Date): number {
+  return salonSecondsOfDay(d) / 60;
 }
 
 /**
- * The appointment's scheduled start as a UTC Date. `date` is the booking's
- * UTC-midnight day; `slotStart` ("HH:MM") overrides the time-of-day when
- * present, otherwise the day starts at 00:00.
+ * The appointment's scheduled start as an absolute UTC instant.
+ *
+ * `date` is the booking's UTC-midnight day and `slotStart` ("HH:MM") is a
+ * salon-local wall-clock time, so the instant is that day at that local time
+ * minus the +05:30 offset. When there is no slot time, the stored `date` is the
+ * best available instant and is returned unchanged (it may already carry a
+ * time-of-day for legacy rows).
  */
 export function bookingStartDate(
   date: Date | string,
   slotStart?: string | null
 ): Date {
   const d = new Date(date);
+  const minutes = parseHmToMinutes(slotStart);
+  if (minutes === null) return d;
+
   const start = new Date(
     Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
   );
-  const minutes = parseHmToMinutes(slotStart);
-  if (minutes !== null) {
-    start.setUTCHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-  }
+  start.setUTCMinutes(start.getUTCMinutes() + minutes - SALON_UTC_OFFSET_MINUTES);
   return start;
 }
 
@@ -76,23 +105,23 @@ export function isBookableSameDay(
   slotStart: string | null | undefined,
   now: Date = new Date()
 ): boolean {
-  if (dateKey !== utcDateKey(now)) return true;
+  if (dateKey !== salonDateKey(now)) return true;
   const minutes = parseHmToMinutes(slotStart);
   if (minutes === null) return false;
-  return minutes * 60 >= utcSecondsOfDay(now) + SAME_DAY_LEAD_MINUTES * 60;
+  return minutes * 60 >= salonSecondsOfDay(now) + SAME_DAY_LEAD_MINUTES * 60;
 }
 
 /**
- * Minutes-of-day at/after which a same-day slot may start (now + lead), or
- * null when `dateKey` is not today. Used by the calendar to decide whether
- * today still has any room at all.
+ * Salon-local minutes-of-day at/after which a same-day slot may start (now +
+ * lead), or null when `dateKey` is not today. Used by the calendar to decide
+ * whether today still has any room at all.
  */
 export function sameDayCutoffMinutes(
   dateKey: string,
   now: Date = new Date()
 ): number | null {
-  if (dateKey !== utcDateKey(now)) return null;
-  return utcSecondsOfDay(now) / 60 + SAME_DAY_LEAD_MINUTES;
+  if (dateKey !== salonDateKey(now)) return null;
+  return salonSecondsOfDay(now) / 60 + SAME_DAY_LEAD_MINUTES;
 }
 
 /**

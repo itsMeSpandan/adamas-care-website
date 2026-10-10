@@ -88,7 +88,13 @@ export default function BookingPage() {
   const [datesError, setDatesError] = useState(false);
   const [datesRetryKey, setDatesRetryKey] = useState(0);
   const [waitlistCounts, setWaitlistCounts] = useState<Record<string, number>>({});
-  const [waitlistModal, setWaitlistModal] = useState<{ slot: TimeSlot } | null>(null);
+  const [waitlistModal, setWaitlistModal] = useState<{
+    slot: TimeSlot;
+    /** Set once the join succeeded — the modal switches to the confirmation screen. */
+    joined?: boolean;
+    employeeName?: string;
+    dateLabel?: string;
+  } | null>(null);
   const [joiningWaitlist, setJoiningWaitlist] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Form fields
@@ -746,7 +752,23 @@ export default function BookingPage() {
                                               type="button"
                                               onClick={() => {
                                                 if (isBooked) {
-                                                  setWaitlistModal({ slot });
+                                                  // Capture what the confirmation
+                                                  // screen shows now, while the
+                                                  // selection is still in scope.
+                                                  const owner =
+                                                    availableEmployees.find(
+                                                      (e) => e.id === slot.employeeId
+                                                    ) || selectedEmployee;
+                                                  setWaitlistModal({
+                                                    slot,
+                                                    employeeName: owner?.name,
+                                                    dateLabel: selectedDate
+                                                      ? format(
+                                                          selectedDate,
+                                                          "EEEE, MMMM d, yyyy"
+                                                        )
+                                                      : undefined,
+                                                  });
                                                 } else {
                                                   setSelectedSlot(slot);
                                                 }
@@ -1007,6 +1029,68 @@ export default function BookingPage() {
                 className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
                 onClick={(e) => e.stopPropagation()}
               >
+                {waitlistModal.joined ? (
+                  /* ── Confirmation screen ──────────────────────────────
+                     A toast disappeared before the claim window could be
+                     read, so confirmation gets the modal itself. */
+                  <div className="text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#16a34a"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <h3 className="font-serif text-xl font-semibold text-beige-700">
+                      You&apos;re on the waitlist
+                    </h3>
+                    <p className="mt-1 mb-4 text-sm text-beige-600">
+                      We&apos;ll email and notify you the moment this slot frees up.
+                    </p>
+
+                    <div className="mb-4 rounded-xl border border-beige-200 bg-beige-50 px-4 py-3 text-left">
+                      <p className="text-sm font-medium text-beige-700">
+                        {displayTime(waitlistModal.slot.start)} – {displayTime(waitlistModal.slot.end)}
+                      </p>
+                      {waitlistModal.dateLabel && (
+                        <p className="text-xs text-beige-500">{waitlistModal.dateLabel}</p>
+                      )}
+                      {waitlistModal.employeeName && (
+                        <p className="text-xs text-beige-500">
+                          with {waitlistModal.employeeName}
+                        </p>
+                      )}
+                    </div>
+
+                    <p className="mb-5 text-xs text-beige-500">
+                      If it opens you&apos;ll have 30 minutes to claim it before it goes to
+                      the next person in line.
+                    </p>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setWaitlistModal(null)}
+                        className="flex-1 rounded-lg border border-beige-300 px-4 py-2.5 text-sm font-medium text-beige-700 hover:bg-beige-50"
+                      >
+                        Done
+                      </button>
+                      <a
+                        href="/account/waitlist"
+                        className="flex-1 rounded-lg bg-beige-600 px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-beige-700"
+                      >
+                        View my waitlist
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <>
                 <h3 className="mb-2 font-serif text-xl font-semibold text-beige-700">
                   Slot Occupied
                 </h3>
@@ -1062,8 +1146,17 @@ export default function BookingPage() {
                         });
                         const data = await res.json();
                         if (res.ok) {
-                          showToast("Added to waitlist! We'll notify you if a slot opens.", "success");
-                          setWaitlistModal(null);
+                          // Switch the modal to its confirmation state instead
+                          // of closing it, and bump the visible count so the
+                          // slot button agrees once the modal is dismissed.
+                          setWaitlistModal((prev) =>
+                            prev ? { ...prev, joined: true } : null
+                          );
+                          setWaitlistCounts((prev) => ({
+                            ...prev,
+                            [waitlistModal.slot.start]:
+                              (prev[waitlistModal.slot.start] || 0) + 1,
+                          }));
                         } else {
                           showToast(waitlistErrorMessage(res.status, data.error), "error");
                         }
@@ -1079,6 +1172,8 @@ export default function BookingPage() {
                     {joiningWaitlist ? "Joining..." : "Join Waitlist"}
                   </button>
                 </div>
+                  </>
+                )}
               </motion.div>
             </motion.div>
           )}

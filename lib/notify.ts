@@ -15,7 +15,12 @@
  *     (call sites invoke this AFTER their transaction commits).
  *
  *   Push payload = data-only fields plus title/body:
- *     { type: event, bookingId, deepLink: "/bookings/<id>", title, body }
+ *     { type: event, bookingId, deepLink, title, body }
+ *
+ *   deepLink is "/bookings/<id>" for a booking's own events. WAITLIST_SLOT_OPEN
+ *   is the exception: the booking being notified about is the cancellation that
+ *   *freed* the slot, and the recipient does not own it — so that event links to
+ *   "/account/waitlist", where the claim button lives.
  */
 
 import { db } from "@/lib/db";
@@ -260,7 +265,7 @@ function buildEmail(
           </div>
           <p style="color: #666; font-size: 14px;">⏰ Claim within <strong>${minutes} minutes</strong> or it goes to the next person in line.</p>
           <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center;">
-            <a href="${process.env.NEXT_PUBLIC_BASE_URL || ""}/booking"
+            <a href="${process.env.NEXT_PUBLIC_BASE_URL || ""}/account/waitlist"
                style="display: inline-block; background: #3D5A47; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
               Claim Your Slot
             </a>
@@ -360,10 +365,17 @@ async function pushChannel(
   }
 
   const { title, body } = pushTitleBody(booking, event, recipient);
+  // A waitlist offer is about the SLOT, not this booking: `booking` here is the
+  // cancellation that freed it, so /bookings/<id> would open a booking the
+  // recipient does not own. Send them to the page with the claim button.
+  const deepLink =
+    event === "WAITLIST_SLOT_OPEN"
+      ? "/account/waitlist"
+      : `/bookings/${booking.id}`;
   const data: Record<string, string> = {
     type: event,
     bookingId: booking.id,
-    deepLink: `/bookings/${booking.id}`,
+    deepLink,
     title,
     body,
   };

@@ -3,20 +3,31 @@
 /**
  * InstallBanner — PWA install CTA.
  *
- * Mount point (contract): global — app/layout.tsx, so the user is prompted
- * on EVERY visit until the app is installed.
+ * Mount point (contract): global — app/layout.tsx, where a fixed wrapper
+ * floats it at the BOTTOM CENTRE of the viewport.
  *
- * - Chromium: "Install <brand>" button (beforeinstallprompt deferred prompt).
- * - iOS Safari: 3-step guide (Share → Add to Home Screen → Add).
- * - Dismissal lasts for the CURRENT session only (sessionStorage, not
+ * - Chromium: "Install app" button (beforeinstallprompt deferred prompt).
+ * - iOS Safari: 3-step guide (Share → Add to Home Screen → Add). iOS exposes
+ *   no programmatic install, so there is nothing to click there.
+ * - Only shown on browsers that actually support installing a web app: the
+ *   Chromium branch needs the deferred prompt, the iOS branch needs a WebKit
+ *   mobile UA. Anything else renders nothing.
+ * - The prompt retires itself after AUTO_HIDE_MS (2 minutes) so it never sits
+ *   on screen for the whole visit; the ✕ clears it immediately.
+ * - Closing with the ✕ lasts for the CURRENT session only (sessionStorage, not
  *   localStorage): closing the tab forgets it and the prompt returns next
- *   visit, per the product rule "prompt every time until they have allowed
- *   to install". Accepting the install ends prompting permanently.
+ *   visit, per the product rule "prompt every time until they have allowed to
+ *   install". Accepting the install ends prompting permanently. The 2-minute
+ *   timeout is a softer exit — it hides the banner for the rest of this page's
+ *   life without recording a dismissal.
  */
 
 import { useCallback, useEffect, useState } from "react";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { BRAND } from "@/lib/brand";
+
+/** How long the floating prompt stays on screen before retiring itself. */
+export const AUTO_HIDE_MS = 2 * 60 * 1000;
 
 const DISMISS_KEY = "gracesalon:install-banner-dismissed-this-session";
 
@@ -45,9 +56,10 @@ const IOS_STEPS = [
 export default function InstallBanner() {
   const { canPrompt, isStandalone, isIos, ready, promptInstall } = useInstallPrompt();
   const [dismissed, setDismissed] = useState(true); // hidden until checked
+  const [timedOut, setTimedOut] = useState(false);
   const [installing, setInstalling] = useState(false);
   const [installed, setInstalled] = useState(false);
-  // Docked bottom-right by app/layout.tsx — stay hidden while the cookie bar
+  // Docked bottom-centre by app/layout.tsx — stay hidden while the cookie bar
   // owns the bottom of the screen (it re-checks live via the custom event).
   const [cookiePending, setCookiePending] = useState(true);
 
@@ -79,14 +91,35 @@ export default function InstallBanner() {
     }
   }, [promptInstall, dismiss]);
 
-  // Nothing to show: hydration pending, already installed, dismissed for
-  // this session, or the cookie bar hasn't been answered yet.
-  if (!ready || dismissed || isStandalone || installed || cookiePending) return null;
+  // Show only when there is actually something to offer, and only on a browser
+  // that can install a web app.
+  const visible =
+    ready &&
+    !dismissed &&
+    !timedOut &&
+    !installed &&
+    !isStandalone &&
+    !cookiePending &&
+    (isIos || canPrompt);
+
+  // Retire the prompt after AUTO_HIDE_MS. Restarts if it is re-shown (e.g. the
+  // deferred prompt arrives late), cleared whenever it hides or unmounts.
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(() => setTimedOut(true), AUTO_HIDE_MS);
+    return () => clearTimeout(timer);
+  }, [visible]);
+
+  if (!visible) return null;
 
   // iOS Safari: no programmatic prompt — show the manual guide.
   if (isIos) {
     return (
-      <div className="rounded-card border border-beige-200 bg-white p-5 shadow-card">
+      <div
+        role="dialog"
+        aria-label={`Install ${BRAND.name}`}
+        className="rounded-card border border-beige-200 bg-white p-4 shadow-card sm:p-5"
+      >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h3 className="font-serif text-lg font-semibold text-beige-700">
@@ -98,7 +131,7 @@ export default function InstallBanner() {
           </div>
           <button
             onClick={dismiss}
-            aria-label="Dismiss install prompt"
+            aria-label="Close install prompt"
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-beige-400 transition-colors hover:bg-beige-100 hover:text-beige-600"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -125,38 +158,38 @@ export default function InstallBanner() {
   }
 
   // Chromium (or any browser exposing beforeinstallprompt).
-  if (!canPrompt) return null;
-
   return (
-    <div className="rounded-card border border-beige-200 bg-white p-5 shadow-card">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="font-serif text-lg font-semibold text-beige-700">
-            Install {BRAND.name}
-          </h3>
-          <p className="text-xs text-beige-500">
-            Book faster with the app on your device.
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            onClick={handleInstall}
-            disabled={installing}
-            className="btn-primary px-4 py-2 text-sm"
-          >
-            {installing ? "Installing…" : "Install"}
-          </button>
-          <button
-            onClick={dismiss}
-            aria-label="Dismiss install prompt"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-beige-400 transition-colors hover:bg-beige-100 hover:text-beige-600"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </button>
-        </div>
+    <div
+      role="dialog"
+      aria-label={`Install ${BRAND.name}`}
+      className="flex items-center justify-between gap-3 rounded-card border border-beige-200 bg-white p-4 shadow-card sm:gap-4 sm:p-5"
+    >
+      <div className="min-w-0">
+        <h3 className="font-serif text-base font-semibold text-beige-700 sm:text-lg">
+          Install {BRAND.name}
+        </h3>
+        <p className="text-xs text-beige-500">
+          Book faster with the app on your device.
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          onClick={handleInstall}
+          disabled={installing}
+          className="btn-primary px-3 py-2 text-sm sm:px-4"
+        >
+          {installing ? "Installing…" : "Install app"}
+        </button>
+        <button
+          onClick={dismiss}
+          aria-label="Close install prompt"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-beige-400 transition-colors hover:bg-beige-100 hover:text-beige-600"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
       </div>
     </div>
   );

@@ -4,7 +4,11 @@ import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { awardPointsForBooking, clawbackPointsForBooking } from "@/lib/loyalty";
 import { notifyBooking } from "@/lib/notify";
-import { canCompleteBooking, PREMATURE_COMPLETION_MESSAGE } from "@/lib/booking-time";
+import {
+  bookingStartDate,
+  canCompleteBooking,
+  PREMATURE_COMPLETION_MESSAGE,
+} from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -144,9 +148,10 @@ export const PATCH = requireAuth(async (request: Request, context) => {
           // If cancelled within 4 hours of slot start, count as late cancel.
           // Late cancels accumulate; after 3 in 30 days, restrict same-day booking.
           if (updated.userId && updated.slotStart && updated.date) {
-            const slotDateTime = new Date(updated.date);
-            const [sh, sm] = updated.slotStart.split(":").map(Number);
-            slotDateTime.setUTCHours(sh, sm, 0, 0);
+            // slotStart is a salon-local (IST) wall-clock time — convert it to
+            // a real instant before comparing with now, or the 4-hour window is
+            // off by 5h30m and almost every cancel looks "late".
+            const slotDateTime = bookingStartDate(updated.date, updated.slotStart);
             const hoursUntilSlot = (slotDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
             const isLateCancel = hoursUntilSlot >= 0 && hoursUntilSlot < 4;
 

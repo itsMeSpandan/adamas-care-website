@@ -1,20 +1,10 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { db } from "@/lib/db";
 import { notifyBooking } from "@/lib/notify";
+import { requireCronAuth } from "@/lib/cron-auth";
+import { bookingStartDate } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Constant-time string comparison. A plain `!==` leaks how many leading
- * characters of the secret were guessed via response timing.
- */
-function safeEqual(a: string, b: string): boolean {
-  const bufA = Buffer.from(a, "utf8");
-  const bufB = Buffer.from(b, "utf8");
-  if (bufA.length !== bufB.length) return false;
-  return timingSafeEqual(bufA, bufB);
-}
 
 /**
  * GET /api/cron/reminders
@@ -30,27 +20,10 @@ function safeEqual(a: string, b: string): boolean {
  * A notification failure never affects the booking.
  */
 export async function GET(request: Request) {
-  // Verify cron secret to prevent unauthorized access.
-  //
-  // This must fail CLOSED. The previous check interpolated the env var
-  // directly, so an unset CRON_SECRET turned the expected value into the
-  // literal string "Bearer undefined" — anyone who guessed it could fire the
-  // whole reminder blast. Refuse to run at all when it is missing.
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret) {
-    console.error(
-      "[cron/reminders] CRON_SECRET is not configured — refusing to run."
-    );
-    return NextResponse.json(
-      { error: "Server is not configured" },
-      { status: 500 }
-    );
-  }
-
-  const authHeader = request.headers.get("authorization") ?? "";
-  if (!safeEqual(authHeader, `Bearer ${cronSecret}`)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // Verify the cron secret before doing any work. Fails CLOSED when
+  // CRON_SECRET is unset (see lib/cron-auth.ts).
+  const denied = requireCronAuth(request);
+  if (denied) return denied;
 
   const now = new Date();
   const HOUR = 60 * 60 * 1000;
@@ -74,14 +47,11 @@ export async function GET(request: Request) {
     select: { id: true, date: true, slotStart: true },
   });
 
-  const hoursUntilSlot = (booking: { date: Date; slotStart: string | null }): number => {
-    const slotDateTime = new Date(booking.date);
-    if (booking.slotStart) {
-      const [h, m] = booking.slotStart.split(":").map(Number);
-      slotDateTime.setUTCHours(h, m, 0, 0);
-    }
-    return (slotDateTime.getTime() - now.getTime()) / HOUR;
-  };
+  // slotStart is a salon-local (IST) wall-clock time; bookingStartDate turns
+  // it into the real instant. Reading it as UTC shifted every reminder window
+  // by 5h30m.
+  const hoursUntilSlot = (booking: { date: Date; slotStart: string | null }): number =>
+    (bookingStartDate(booking.date, booking.slotStart).getTime() - now.getTime()) / HOUR;
 
   // ─── 24-hour reminders ──────────────────────────────────────────────────
   for (const booking of candidates) {

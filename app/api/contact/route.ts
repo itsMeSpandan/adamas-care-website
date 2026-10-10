@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { rateLimit, getRateLimitKey } from "@/lib/rate-limit";
+import { rejectCrossOrigin } from "@/lib/csrf";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -7,6 +8,9 @@ export const dynamic = "force-dynamic";
 const limiter = rateLimit({ windowMs: 300_000, max: 5 }); // 5 per 5 minutes
 
 export async function POST(request: Request) {
+  const originError = rejectCrossOrigin(request);
+  if (originError) return originError;
+
   const key = getRateLimitKey(request, "contact");
   const result = await limiter.checkAsync(key);
 

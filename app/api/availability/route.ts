@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   if (!employeeId || !dateStr) {
     return NextResponse.json(
-      { error: "employeeId and date are are required" },
+      { error: "employeeId and date are required" },
       { status: 400 }
     );
   }

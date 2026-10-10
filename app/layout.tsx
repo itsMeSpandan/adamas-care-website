@@ -87,11 +87,11 @@ export default function RootLayout({
             {/* Start-of-visit soft-ask: returns every session until
                 notifications are actually enabled (session-scoped dismiss). */}
             <NotificationPromptModal />
-            {/* Install CTA on every visit until the app is installed
-                (session-scoped dismiss — see InstallBanner). Docked
-                bottom-right; hidden until the cookie bar is answered. */}
-            <div className="pointer-events-none fixed bottom-4 right-4 z-[60] w-[calc(100vw-2rem)] max-w-sm sm:right-6">
-              <div className="pointer-events-auto">
+            {/* Install CTA on browsers that can install a web app, floated at
+                the bottom centre for 2 minutes (see InstallBanner). Hidden
+                until the cookie bar is answered. */}
+            <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[60] flex justify-center px-4 sm:bottom-6">
+              <div className="pointer-events-auto w-full max-w-sm">
                 <InstallBanner />
               </div>
             </div>

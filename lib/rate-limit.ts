@@ -181,24 +181,42 @@ function inMemoryCheck(
 // ─── Key generation helpers (unchanged) ────────────────────────────────────
 
 /**
- * Extract the client IP from trusted proxy headers.
+ * Extract the client IP from proxy headers.
+ *
+ * Only a header the hosting platform sets and *overwrites* is trustworthy.
+ * `x-forwarded-for` and `x-real-ip` are ordinary request headers that a client
+ * can send itself, so trusting the FIRST XFF entry let an attacker rotate that
+ * header and sidestep every per-IP limit (login brute-force, registration
+ * throttle, contact spam).
  *
  * Priority:
- * 1. X-Real-IP (set by Nginx/Reverse proxy — most reliable)
- * 2. X-Forwarded-For first entry (set by load balancers)
- * 3. "unknown" fallback
- *
- * NOTE: We do NOT trust raw client-supplied X-Forwarded-For for spoofing.
- * In production behind a trusted proxy, the first entry is the client IP.
+ * 1. Platform-set headers (Netlify, Cloudflare) — always overwritten
+ * 2. X-Real-IP — set by our own reverse proxy in front of the app
+ * 3. LAST X-Forwarded-For entry — the hop appended by the proxy closest to us,
+ *    which a client cannot control (the attacker-controlled values are on the
+ *    left of the list)
+ * 4. "unknown" fallback (local dev with no proxy)
  */
+const PLATFORM_IP_HEADERS = [
+  "x-nf-client-connection-ip", // Netlify
+  "cf-connecting-ip", // Cloudflare
+  "x-real-ip", // own reverse proxy
+];
+
 export function getTrustedClientIp(request: Request): string {
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
+  for (const header of PLATFORM_IP_HEADERS) {
+    const value = request.headers.get(header);
+    if (value && value.trim()) return value.trim();
+  }
 
   const forwarded = request.headers.get("x-forwarded-for");
   if (forwarded) {
-    const firstIp = forwarded.split(",")[0]?.trim();
-    if (firstIp) return firstIp;
+    const parts = forwarded
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const lastIp = parts[parts.length - 1];
+    if (lastIp) return lastIp;
   }
 
   return "unknown";

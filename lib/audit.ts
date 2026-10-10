@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { getTrustedClientIp } from "@/lib/rate-limit";
 
 export interface AuditLogEntry {
   action: string;
@@ -37,14 +38,10 @@ export async function logAudit(entry: AuditLogEntry): Promise<void> {
 
 /**
  * Extract client IP from request headers.
+ *
+ * Delegates to the single hardened implementation so the audit trail records
+ * the same (unspoofable) address the rate limiter keys on.
  */
 export function getClientIp(request: Request): string {
-  const realIp = request.headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
-  const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) {
-    const firstIp = forwarded.split(",")[0]?.trim();
-    if (firstIp) return firstIp;
-  }
-  return "unknown";
+  return getTrustedClientIp(request);
 }

@@ -134,7 +134,7 @@ model Booking {
   notes       String?
   status      BookingStatus @default(pending)
   price       Float
-  rating      Int?
+  rating      Float?
   review      String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
