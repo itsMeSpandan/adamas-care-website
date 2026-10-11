@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth, AuthUser } from "@/lib/auth-context";
 import PasswordToggle from "@/components/ui/PasswordToggle";
 import StarRating from "@/components/ui/StarRating";
-import { displayTime, formatBookingDate } from "@/lib/utils";
+import { displayTime, formatBookingDate, getBookingServices, formatServiceNames } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
 import NotificationSettings from "@/components/ui/NotificationSettings";
 import CountryCodeSelect from "@/components/ui/CountryCodeSelect";
@@ -55,6 +55,7 @@ interface Booking {
   rating?: number | null;
   review?: string | null;
   service: { name: string };
+  bookingServices?: { service: { name: string } }[];
 }
 
 
@@ -712,13 +713,27 @@ function ProfileContent() {
                       {bookings.map((booking) => (
                         <div key={booking.id} className="px-6 py-5">
                           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                               <div className="flex items-center gap-3">
-                                <h3 className="text-sm font-semibold text-beige-700">{booking.service?.name}</h3>
+                                <h3 className="text-sm font-semibold text-beige-700">
+                                  {formatServiceNames(booking)}
+                                </h3>
                                 <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[booking.status] ?? ""}`}>
                                   {booking.status}
                                 </span>
                               </div>
+                              {getBookingServices(booking).length > 1 && (
+                                <div className="flex flex-wrap gap-1">
+                                  {getBookingServices(booking).map((s, idx) => (
+                                    <span
+                                      key={idx}
+                                      className="inline-block rounded-md bg-beige-100 px-2 py-0.5 text-[11px] font-medium text-beige-700"
+                                    >
+                                      {s.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                               <p className="text-sm text-beige-500">
                                 {formatBookingDate(booking.date)} &middot; {booking.timeSlot}
                               </p>

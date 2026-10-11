@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { Service, Employee } from "@/lib/types";
-import { displayTime, cn } from "@/lib/utils";
+import { displayTime, cn, formatServiceNames, getBookingServices } from "@/lib/utils";
 import ServiceCard from "@/components/cards/ServiceCard";
 import TeamCard from "@/components/cards/TeamCard";
 import Skeleton from "@/components/ui/Skeleton";
@@ -34,6 +34,7 @@ interface Booking {
   id: string;
   userId: string | null;
   service: { name: string; category: string };
+  bookingServices?: { service: { name: string; category: string } }[];
   employee: { name: string };
   date: string;
   slotStart: string | null;
@@ -397,18 +398,32 @@ export default function LoggedInHome() {
             >
 <motion.div variants={cardStagger} initial="hidden" animate="visible" className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-2">
-                  <motion.div variants={cardChild} className="flex items-center gap-3">
-                    <h3 className="font-serif text-2xl font-semibold text-beige-700">
-                      {nextBooking.service.name}
-                    </h3>
-                    <span
-                      className={cn(
-                        "rounded-full px-3 py-0.5 text-xs font-medium capitalize",
-                        statusStyles[nextBooking.status] ?? "bg-beige-100 text-beige-600"
-                      )}
-                    >
-                      {nextBooking.status}
-                    </span>
+                  <motion.div variants={cardChild} className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <h3 className="font-serif text-2xl font-semibold text-beige-700">
+                        {formatServiceNames(nextBooking)}
+                      </h3>
+                      <span
+                        className={cn(
+                          "rounded-full px-3 py-0.5 text-xs font-medium capitalize",
+                          statusStyles[nextBooking.status] ?? "bg-beige-100 text-beige-600"
+                        )}
+                      >
+                        {nextBooking.status}
+                      </span>
+                    </div>
+                    {getBookingServices(nextBooking).length > 1 && (
+                      <div className="flex flex-wrap gap-1.5 mt-1">
+                        {getBookingServices(nextBooking).map((s, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-block rounded-md bg-beige-100 px-2 py-0.5 text-xs font-medium text-beige-700"
+                          >
+                            {s.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </motion.div>
 
                   <motion.p variants={cardChild} className="text-beige-600">

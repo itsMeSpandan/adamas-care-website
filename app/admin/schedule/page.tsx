@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
-import { cn, displayTime, parseDateKey, formatBookingDate } from "@/lib/utils";
+import { cn, displayTime, parseDateKey, formatBookingDate, formatServiceNames } from "@/lib/utils";
 import { categoryColors } from "@/lib/service-category-colors";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -53,6 +53,7 @@ interface BookingRow {
   status: string;
   price: number;
   service: Service;
+  bookingServices?: { service: Service }[];
   employee: Employee;
 }
 
@@ -784,7 +785,7 @@ export default function ScheduleManagementPage() {
                                 {booking.name}
                               </p>
                               <p className={cn("text-[9px] truncate", colors.text, "opacity-70")}>
-                                {booking.service?.name}
+                                {formatServiceNames(booking)}
                               </p>
                               <span className={cn("inline-block mt-1 rounded-full px-1.5 py-0.5 text-[8px] font-medium", statusColors.bg, statusColors.text)}>
                                 {booking.status}
@@ -833,7 +834,7 @@ export default function ScheduleManagementPage() {
                           >
                             <div className="flex items-center justify-between">
                               <p className={cn("text-sm font-medium", colors.text)}>
-                                {booking.name} — {booking.service?.name}
+                                {booking.name} — {formatServiceNames(booking)}
                               </p>
                               <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", statusColors.bg, statusColors.text)}>
                                 {booking.status}
@@ -899,7 +900,7 @@ export default function ScheduleManagementPage() {
                         {b.name}
                       </p>
                       <p className={cn("text-[9px] leading-tight truncate", colors.text)}>
-                        {b.service?.name}
+                        {formatServiceNames(b)}
                       </p>
                     </div>
                     <span className={cn("flex-shrink-0 rounded-full px-1 py-0.5 text-[8px] font-medium", statusColors.bg, statusColors.text)}>
@@ -938,7 +939,7 @@ export default function ScheduleManagementPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-beige-700">{selectedBooking.employee.name}</p>
-                  <p className="text-xs text-beige-500">{selectedBooking.service.name}</p>
+                  <p className="text-xs text-beige-500">{formatServiceNames(selectedBooking)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">

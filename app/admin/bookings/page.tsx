@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { formatBookingDate } from "@/lib/utils";
+import { formatBookingDate, formatServiceNames, getBookingServices } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
 
 interface Booking {
@@ -19,6 +19,7 @@ interface Booking {
   price: number;
   createdAt: string;
   service: { name: string; category: string };
+  bookingServices?: { service: { name: string; category: string } }[];
   user: { name: string; email: string } | null;
 }
 
@@ -150,8 +151,22 @@ export default function AdminBookingsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-beige-700">{booking.service?.name}</p>
-                      <p className="text-xs text-beige-400 sm:hidden">
+                      <div className="space-y-1">
+                        <p className="font-medium text-beige-700">{formatServiceNames(booking)}</p>
+                        {getBookingServices(booking).length > 1 && (
+                          <div className="flex flex-wrap gap-1">
+                            {getBookingServices(booking).map((s, idx) => (
+                              <span
+                                key={idx}
+                                className="inline-block rounded bg-beige-100 px-1.5 py-0.5 text-[10px] font-medium text-beige-600"
+                              >
+                                {s.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-beige-400 sm:hidden mt-1">
                         {formatBookingDate(booking.date)} &middot; {booking.timeSlot}
                       </p>
                     </td>

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/auth-context";
-import { parseDateKey } from "@/lib/utils";
+import { parseDateKey, formatServiceNames } from "@/lib/utils";
 
 const WeeklyTimetable = dynamic(() => import("@/components/ui/WeeklyTimetable"), {
   ssr: false,
@@ -27,6 +27,7 @@ interface BookingWithService {
   rating: number | null;
   review: string | null;
   service: { name: string; category: string };
+  bookingServices?: { service: { name: string; category: string } }[];
   name: string;
   date: string;
   slotStart: string | null;
@@ -197,7 +198,7 @@ export default function EmployeePage() {
               <div key={r.id} className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-beige-700">{r.service?.name}</p>
+                    <p className="text-sm font-medium text-beige-700">{formatServiceNames(r)}</p>
                     <p className="text-xs text-beige-500">Client: {r.name}</p>
                   </div>
                   <div className="text-right">

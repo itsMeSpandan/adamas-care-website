@@ -138,7 +138,15 @@ export const GET = requireAuth(async (request: Request) => {
       where: {
         OR: [{ userId: session.userId }, { email: session.email }],
       },
-      include: { service: true, user: true, employee: true },
+      include: {
+        service: true,
+        user: true,
+        employee: true,
+        bookingServices: {
+          include: { service: true },
+          orderBy: { position: "asc" },
+        },
+      },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ bookings });
@@ -379,8 +387,8 @@ export const POST = requireAuth(async (request: Request) => {
           },
         });
 
-        // Create BookingService junction rows for multi-service bookings
-        if (resolvedServiceIds.length > 1) {
+        // Create BookingService junction rows for all services
+        if (resolvedServiceIds.length > 0) {
           for (let i = 0; i < resolvedServiceIds.length; i++) {
             await tx.bookingService.create({
               data: { bookingId: booking.id, serviceId: resolvedServiceIds[i], position: i },

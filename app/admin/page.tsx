@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import nextDynamic from "next/dynamic";
 import { getBookings, getServices } from "@/lib/queries";
-import { formatPrice, formatBookingDate } from "@/lib/utils";
+import { formatPrice, formatBookingDate, formatServiceNames } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
 import { db } from "@/lib/db";
 
@@ -84,8 +84,8 @@ export default async function AdminPage() {
     .slice(0, 5)
     .map((s) => ({
       name: s.name,
-      bookings: completedBookings.filter((b) => b.serviceId === s.id).length,
-      revenue: formatPrice(completedBookings.filter((b) => b.serviceId === s.id).reduce((sum, b) => sum + b.price, 0)),
+      bookings: completedBookings.filter((b) => b.serviceId === s.id || b.bookingServices?.some((bs) => bs.serviceId === s.id)).length,
+      revenue: formatPrice(completedBookings.filter((b) => b.serviceId === s.id || b.bookingServices?.some((bs) => bs.serviceId === s.id)).reduce((sum, b) => sum + b.price, 0)),
     }));
 
   
@@ -221,7 +221,7 @@ export default async function AdminPage() {
               {recentBookings.map((booking) => (
                 <tr key={booking.id} className="transition-colors hover:bg-beige-50">
                   <td className="px-6 py-4 font-medium text-beige-700">{booking.name}</td>
-                  <td className="px-6 py-4 text-beige-600">{booking.service?.name ?? "—"}</td>
+                  <td className="px-6 py-4 text-beige-600">{formatServiceNames(booking)}</td>
                   <td className="px-6 py-4 text-beige-600">
                     {formatBookingDate(booking.date.toISOString())}
                   </td>

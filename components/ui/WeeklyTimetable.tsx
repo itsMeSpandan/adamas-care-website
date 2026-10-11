@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { displayTime, cn } from "@/lib/utils";
+import { displayTime, cn, formatServiceNames } from "@/lib/utils";
 import { categoryColors } from "@/lib/service-category-colors";
 
 interface ScheduleEntry {
@@ -22,6 +22,7 @@ interface BookingEntry {
   name: string;
   status: string;
   service: { name: string; category: string };
+  bookingServices?: { service: { name: string; category: string } }[];
   price?: number;
 }
 
@@ -382,7 +383,7 @@ export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
                             )}
                             {height > 52 && (
                               <p className={cn("text-[9px] leading-tight truncate opacity-70", colors.text)}>
-                                {booking.service?.name}
+                                {formatServiceNames(booking)}
                               </p>
                             )}
                             <span className={cn(
@@ -488,7 +489,7 @@ export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
                               {booking.name}
                             </p>
                             <p className={cn("text-xs opacity-70 mt-0.5", colors.text)}>
-                              {booking.service?.name}
+                              {formatServiceNames(booking)}
                             </p>
                           </button>
                         );
@@ -636,7 +637,7 @@ export default function WeeklyTimetable({ employeeId }: WeeklyTimetableProps) {
                       </div>
                       <div>
                         <p className="text-[10px] font-medium uppercase tracking-wider text-beige-400">Service</p>
-                        <p className="text-sm font-medium text-beige-700">{selectedBooking.service?.name}</p>
+                        <p className="text-sm font-medium text-beige-700">{formatServiceNames(selectedBooking)}</p>
                         <p className="text-xs text-beige-500">{selectedBooking.service?.category}</p>
                       </div>
                     </div>

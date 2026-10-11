@@ -52,4 +52,25 @@ export function formatDiscount(type: string, value: number): string {
   return `${value} off`;
 }
 
+/** Get all services associated with a booking, accounting for both multi-service junction rows and legacy single serviceId. */
+export function getBookingServices<T extends { name: string }>(booking: {
+  service?: T | null;
+  bookingServices?: { service: T }[];
+}): T[] {
+  if (booking.bookingServices && booking.bookingServices.length > 0) {
+    return booking.bookingServices.map((bs) => bs.service);
+  }
+  return booking.service ? [booking.service] : [];
+}
+
+/** Format all service names of a booking into a comma-separated string. */
+export function formatServiceNames(booking: {
+  service?: { name: string } | null;
+  bookingServices?: { service: { name: string } }[];
+}): string {
+  const services = getBookingServices(booking);
+  if (services.length === 0) return "—";
+  return services.map((s) => s.name).join(", ");
+}
+
 

@@ -294,7 +294,15 @@ export async function createBooking(data: {
 
 export async function getBookings() {
   return db.booking.findMany({
-    include: { service: true, user: true, employee: true },
+    include: {
+      service: true,
+      user: true,
+      employee: true,
+      bookingServices: {
+        include: { service: true },
+        orderBy: { position: "asc" },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
