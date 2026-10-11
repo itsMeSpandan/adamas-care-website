@@ -46,11 +46,30 @@ export interface RankedWaitlistEntry {
  */
 export async function rankWaitlist(
   employeeId: string,
-  slotStart: string
+  slotStart: string,
+  dateKey?: string
 ): Promise<RankedWaitlistEntry[]> {
-  // Fetch all waiting entries for this employee + slot
+  // Fetch all waiting entries for this employee + slot.
+  //
+  // `dateKey` ("YYYY-MM-DD") scopes the ranking to one day: the same 11:30
+  // slot opens on many dates, and a slot freed on the 21st must not be offered
+  // to somebody who asked about the 14th. Rows without a slotDate are kept —
+  // that member never picked a day, so any day can serve them.
   const entries = await db.waitlist.findMany({
-    where: { employeeId, slotStart, status: "waiting" },
+    where: {
+      employeeId,
+      slotStart,
+      status: "waiting",
+      ...(dateKey
+        ? {
+            OR: [
+              // slotDate is stored as UTC midnight of the salon's calendar day.
+              { slotDate: new Date(`${dateKey}T00:00:00.000Z`) },
+              { slotDate: null },
+            ],
+          }
+        : {}),
+    },
     orderBy: { createdAt: "asc" },
   });
 

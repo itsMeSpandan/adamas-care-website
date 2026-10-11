@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
+import { expireStaleClaims } from "@/lib/waitlist";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,35 @@ export const GET = requireAuth(async (request: Request) => {
   try {
     const userId = session.userId;
 
-    // Fetch all waitlist entries for this user with employee + service info
-    const entries = await db.waitlist.findMany({
-      where: { userId },
-      include: {
-        employee: { select: { id: true, name: true, imageUrl: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const fetchEntries = () =>
+      // All waitlist entries for this user, with employee info for display.
+      db.waitlist.findMany({
+        where: { userId },
+        include: {
+          employee: { select: { id: true, name: true, imageUrl: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+    let entries = await fetchEntries();
+
+    // A claim window that lapses has to move on to the next person in line, and
+    // the entry has to stop showing a countdown that can never be claimed. The
+    // scheduled sweep (/api/cron/waitlist-expiry) does that in the background,
+    // but that depends on the host running the declared cron — so opening this
+    // page also closes this member's own dead windows.
+    //
+    // It is decided from the rows already fetched: no extra query in the
+    // normal case, and re-fetched only when a sweep actually had work to do,
+    // so what this response renders is what the sweep left behind.
+    const now = new Date();
+    const hasOverdueClaim = entries.some(
+      (e) => e.status === "notified" && !!e.claimExpiresAt && e.claimExpiresAt < now
+    );
+    if (hasOverdueClaim) {
+      await expireStaleClaims();
+      entries = await fetchEntries();
+    }
 
     // Fetch user's own reliability data
     const reliability = await db.userReliability.findUnique({
@@ -61,6 +83,9 @@ export const GET = requireAuth(async (request: Request) => {
         employee: e.employee,
         slotStart: e.slotStart,
         slotEnd: e.slotEnd,
+        // The day the member is waiting for. Without it "11:30 – 13:30" is
+        // meaningless on the account pages.
+        slotDate: e.slotDate,
         serviceId: e.serviceId,
         status: e.status,
         createdAt: e.createdAt,

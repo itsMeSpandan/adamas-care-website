@@ -21,6 +21,8 @@ interface WaitlistEntry {
   employee: { id: string; name: string; imageUrl: string };
   slotStart: string;
   slotEnd: string;
+  /** UTC midnight of the salon's calendar day, as stored. */
+  slotDate: string | null;
   serviceId: string | null;
   status: "waiting" | "notified" | "claimed" | "expired";
   createdAt: string;
@@ -43,6 +45,24 @@ function formatTime(time: string): string {
   const ampm = h >= 12 ? "PM" : "AM";
   const hour = h % 12 || 12;
   return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+/**
+ * The day a slot is on, in the salon's calendar. slotDate is stored as UTC
+ * midnight, so it is formatted in UTC — local time would show the previous day
+ * for anybody west of Greenwich.
+ */
+function formatSlotDate(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return null;
+  return date.toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function getTimeRemaining(expiresAt: string): string {
@@ -259,6 +279,7 @@ function WaitlistContent() {
                   <AnimatePresence>
                     {activeEntries.map((entry) => {
                       const config = statusConfig[entry.status];
+                      const dateLabel = formatSlotDate(entry.slotDate);
                       const canClaim =
                         entry.status === "notified" &&
                         entry.claimExpiresAt &&
@@ -284,6 +305,9 @@ function WaitlistContent() {
                               <p className="text-sm text-beige-500">
                                 {formatTime(entry.slotStart)} – {formatTime(entry.slotEnd)}
                               </p>
+                              {dateLabel && (
+                                <p className="text-xs text-beige-400">{dateLabel}</p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
@@ -340,6 +364,7 @@ function WaitlistContent() {
                     >
                       {historyEntries.map((entry) => {
                         const config = statusConfig[entry.status];
+                        const dateLabel = formatSlotDate(entry.slotDate);
                         return (
                           <div
                             key={entry.id}
@@ -357,6 +382,7 @@ function WaitlistContent() {
                                 </p>
                                 <p className="text-xs text-beige-400">
                                   {formatTime(entry.slotStart)} – {formatTime(entry.slotEnd)}
+                                  {dateLabel && ` · ${dateLabel}`}
                                 </p>
                               </div>
                             </div>

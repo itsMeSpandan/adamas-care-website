@@ -4,10 +4,14 @@ import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { awardPointsForBooking, clawbackPointsForBooking } from "@/lib/loyalty";
 import { notifyBooking } from "@/lib/notify";
-import { WAITLIST_CLAIM_EXPIRY_MINUTES } from "@/lib/waitlist";
+import {
+  offerFreedWaitlistWindows,
+  offerRemainingWindows,
+} from "@/lib/waitlist";
 import {
   bookingStartDate,
   canCompleteBooking,
+  salonDateKey,
   PREMATURE_COMPLETION_MESSAGE,
 } from "@/lib/booking-time";
 
@@ -31,51 +35,6 @@ async function retryWithBackoff<T>(
     }
   }
   throw lastError!;
-}
-
-/**
- * When a slot opens up (booking cancelled), find the top-ranked waitlisted user
- * and start their claim window.
- *
- * The window length comes from lib/waitlist.ts so this path and the expiry
- * sweep can never disagree about how long a user has to claim.
- *
- * Deliberately sends nothing itself: the caller follows this with
- * notifyBooking(id, "WAITLIST_SLOT_OPEN"), which fans the offer out to email,
- * push and the in-app inbox in one idempotent pass. Delegating to
- * cascadeToNextWaitlisted here instead would mail the user twice.
- */
-async function notifyWaitlistedUser(employeeId: string, slotStart: string) {
-  const { rankWaitlist } = await import("@/lib/scoring-engine");
-  const ranked = await rankWaitlist(employeeId, slotStart);
-
-  if (ranked.length === 0) {
-    console.log(`[Waitlist] No waitlisted users for employee ${employeeId} at ${slotStart}`);
-    return;
-  }
-
-  // Notify the top-ranked user
-  const topEntry = await db.waitlist.findUnique({
-    where: { id: ranked[0].waitlistId },
-    include: { user: true, employee: true },
-  });
-
-  if (!topEntry || topEntry.status !== "waiting") return;
-
-  const claimExpiresAt = new Date(
-    Date.now() + WAITLIST_CLAIM_EXPIRY_MINUTES * 60 * 1000
-  );
-
-  await db.waitlist.update({
-    where: { id: topEntry.id },
-    data: {
-      status: "notified",
-      notifiedAt: new Date(),
-      claimExpiresAt,
-    },
-  });
-
-  console.log(`[Waitlist] Notified user ${topEntry.userId} for slot ${slotStart}`);
 }
 
 export const PATCH = requireAuth(async (request: Request, context) => {
@@ -202,13 +161,42 @@ export const PATCH = requireAuth(async (request: Request, context) => {
         await notifyBooking(id, "CANCELLED");
 
         // ─── Waitlist notification on cancellation ────────────────────────
-        // Find waitlisted users for this employee+slot, flip the top-ranked
-        // one to "notified" (starts their claim window), then notify them via
-        // the WAITLIST_SLOT_OPEN event (email + push + in-app, idempotent).
-        if (booking.employeeId && booking.slotStart) {
+        // Cancelling is what frees the time, but not necessarily the exact
+        // window somebody asked about: the booking page calls a slot occupied
+        // as soon as the requested interval overlaps a booking, so dropping
+        // 13:15–15:15 is what frees a member's 11:30–13:30.
+        //
+        // offerFreedWaitlistWindows() re-checks every window those members
+        // asked for against the availability engine and starts the claim
+        // window for the best one; notifyBooking(id, "WAITLIST_SLOT_OPEN") then
+        // fans that offer out to email, push and the in-app inbox in one
+        // idempotent pass (keyed on this cancelled booking). Any further window
+        // the same cancellation freed is offered straight after, so a single
+        // cancellation cannot leave somebody waiting on a slot that is now
+        // genuinely bookable.
+        if (booking.employeeId && booking.slotStart && booking.slotEnd) {
           try {
-            await notifyWaitlistedUser(booking.employeeId, booking.slotStart);
-            await notifyBooking(id, "WAITLIST_SLOT_OPEN");
+            const dateKey = salonDateKey(booking.date);
+            const freed = { start: booking.slotStart, end: booking.slotEnd };
+
+            const offer = await offerFreedWaitlistWindows(
+              booking.employeeId,
+              dateKey,
+              freed
+            );
+
+            // Exactly one entry is inside its claim window at this point, which
+            // is what lets notifyBooking resolve the recipient on its own.
+            if (offer.primary) {
+              await notifyBooking(id, "WAITLIST_SLOT_OPEN");
+            }
+            if (offer.remaining.length > 0) {
+              await offerRemainingWindows(
+                booking.employeeId,
+                dateKey,
+                offer.remaining
+              );
+            }
           } catch (err) {
             console.error("[Waitlist] Notification failed:", err);
           }

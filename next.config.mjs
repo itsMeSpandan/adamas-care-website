@@ -95,6 +95,18 @@ const nextConfig = {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
       },
+      // Service photos the owner pasted from Unsplash. lib/image-field.ts
+      // accepts any https:// address on an image field, so rows can legitimately
+      // hold third-party URLs; without this entry the optimizer answers 400
+      // ("url parameter is not allowed", a warning in a production build and a
+      // thrown render error in dev) and those cards render as empty boxes.
+      // Listed host-by-host on purpose: a wildcard would let any https URL —
+      // including a member-supplied avatar — make this server fetch an
+      // arbitrary address. Add a host here only when real data needs it.
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
     ],
   },
 };

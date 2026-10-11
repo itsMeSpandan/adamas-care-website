@@ -235,7 +235,14 @@ export default function LoggedInHome() {
   return (
     <>
       {/* ===== 1. Personalised Greeting Hero ===== */}
-      <section className="relative flex min-h-screen items-center overflow-hidden bg-beige-50 px-4 py-20 md:px-8 lg:px-16">
+      {/* Same geometry as the marketing hero (HeroSection): `-mt-24` cancels the
+          96px reserved for the fixed header and `min-h-[calc(100vh+6rem)]` grows
+          the section back by the same amount. That is what makes the picture
+          span a right-hand panel of the same proportions as the home hero
+          (50% wide, full viewport height) instead of being smeared across the
+          whole viewport, which cropped it down to a zoomed-in face. The extra
+          top padding keeps the greeting itself exactly where it was. */}
+      <section className="relative -mt-24 flex min-h-[calc(100vh+6rem)] items-center overflow-hidden bg-beige-50 px-4 pb-20 pt-44 md:px-8 lg:px-16">
         {/* Background picture — framed exactly like the first hero section:
             the picture occupies the right-hand panel (same width ratios, same
             object-position) instead of stretching across the whole viewport,

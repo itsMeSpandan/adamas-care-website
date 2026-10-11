@@ -32,6 +32,8 @@ import { getFirebaseMessaging } from "@/lib/firebase-admin";
 import { buildIcsCalendar } from "@/lib/ics";
 import { rankWaitlist } from "@/lib/scoring-engine";
 import { createNotification } from "@/lib/notifications";
+import { salonDateKey } from "@/lib/booking-time";
+import { WAITLIST_CLAIM_EXPIRY_MINUTES } from "@/lib/waitlist";
 
 export type BookingEvent =
   | "CONFIRMED"
@@ -62,6 +64,18 @@ interface Recipient {
   userId: string | null;
   /** For WAITLIST_SLOT_OPEN: how long the claim window is (minutes). */
   claimMinutes?: number;
+  /**
+   * For WAITLIST_SLOT_OPEN: the window being offered, which belongs to the
+   * waitlist entry — not to the cancellation that freed the slot. A member
+   * waiting for 11:30–13:30 is offered exactly that, even though the booking
+   * that opened it up was 13:15–15:15, so the message must not describe the
+   * cancelled appointment instead.
+   */
+  offerStart?: string | null;
+  offerEnd?: string | null;
+  offerDate?: Date | null;
+  /** The service the member asked about, when the entry names one. */
+  offerService?: string | null;
 }
 
 type NotificationChannel = "email" | "push" | "in_app";
@@ -109,16 +123,29 @@ async function resolveRecipient(
 
   if (!booking.employeeId || !booking.slotStart) return null;
 
+  const dateKey = salonDateKey(booking.date);
+
   // Prefer the entry currently inside its claim window (status "notified"),
   // so this resolves correctly whether called before or after the waitlist
   // status flip. Otherwise the top-ranked "waiting" entry.
+  //
+  // Deliberately NOT filtered by slotStart: the window a cancellation frees can
+  // differ from the cancelled appointment's own start (see lib/waitlist.ts), and
+  // the entry that was just flipped to "notified" for this employee and day is
+  // the offer being announced. The newest flip wins, so this can only resolve to
+  // the offer the caller just started. The day filter keeps a stale offer from
+  // another date out of it; entries without a slotDate stay eligible.
   const notified = await db.waitlist.findFirst({
-    where: { employeeId: booking.employeeId, slotStart: booking.slotStart, status: "notified" },
+    where: {
+      employeeId: booking.employeeId,
+      status: "notified",
+      OR: [{ slotDate: booking.date }, { slotDate: null }],
+    },
     orderBy: { notifiedAt: "desc" },
-    include: { user: true },
+    include: { user: true, service: true },
   });
 
-  const CLAIM_DEFAULT_MINUTES = 30;
+  const CLAIM_DEFAULT_MINUTES = WAITLIST_CLAIM_EXPIRY_MINUTES;
 
   if (notified) {
     const minutes = notified.claimExpiresAt
@@ -129,14 +156,18 @@ async function resolveRecipient(
       name: notified.user.name,
       userId: notified.user.id,
       claimMinutes: minutes,
+      offerStart: notified.slotStart,
+      offerEnd: notified.slotEnd,
+      offerDate: notified.slotDate,
+      offerService: notified.service?.name ?? null,
     };
   }
 
-  const ranked = await rankWaitlist(booking.employeeId, booking.slotStart);
+  const ranked = await rankWaitlist(booking.employeeId, booking.slotStart, dateKey);
   if (ranked.length === 0) return null;
   const top = await db.waitlist.findUnique({
     where: { id: ranked[0].waitlistId },
-    include: { user: true },
+    include: { user: true, service: true },
   });
   if (!top) return null;
   return {
@@ -144,6 +175,10 @@ async function resolveRecipient(
     name: top.user.name,
     userId: top.user.id,
     claimMinutes: CLAIM_DEFAULT_MINUTES,
+    offerStart: top.slotStart,
+    offerEnd: top.slotEnd,
+    offerDate: top.slotDate,
+    offerService: top.service?.name ?? null,
   };
 }
 
@@ -198,9 +233,6 @@ function buildEmail(
   event: BookingEvent,
   recipient: Recipient
 ): { subject: string; html: string; attachIcs: boolean } {
-  const dateStr = booking.date.toISOString().split("T")[0];
-  const timeStr = `${booking.slotStart || booking.timeSlot}${booking.slotEnd ? ` — ${booking.slotEnd}` : ""}`;
-
   switch (event) {
     case "CONFIRMED":
       return {
@@ -258,6 +290,14 @@ function buildEmail(
 
     case "WAITLIST_SLOT_OPEN": {
       const minutes = recipient.claimMinutes ?? 30;
+      // The offered window wins over the cancelled booking's: they are not the
+      // same thing when a cancellation frees an overlapping slot.
+      const offerDate = (recipient.offerDate ?? booking.date)
+        .toISOString()
+        .split("T")[0];
+      const offerTime = `${recipient.offerStart ?? booking.slotStart ?? booking.timeSlot}${
+        recipient.offerEnd ? ` — ${recipient.offerEnd}` : ""
+      }`;
       return {
         subject: "A Slot Opened Up — Grace Salon",
         html: wrap(`
@@ -265,9 +305,9 @@ function buildEmail(
           <p>Hi ${recipient.name},</p>
           <p>An opening with <strong>${booking.employee?.name || "your specialist"}</strong> just came up:</p>
           <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0;">
-            <p><strong>Service:</strong> ${serviceNames(booking)}</p>
-            <p><strong>Date:</strong> ${dateStr}</p>
-            <p><strong>Time:</strong> ${timeStr}</p>
+            <p><strong>Service:</strong> ${recipient.offerService ?? serviceNames(booking)}</p>
+            <p><strong>Date:</strong> ${offerDate}</p>
+            <p><strong>Time:</strong> ${offerTime}</p>
           </div>
           <p style="color: #666; font-size: 14px;">⏰ Claim within <strong>${minutes} minutes</strong> or it goes to the next person in line.</p>
           <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center;">
@@ -317,10 +357,14 @@ function pushTitleBody(
       return { title: "Appointment tomorrow ⏰", body: `Reminder: your appointment is tomorrow at ${timeStr}.` };
     case "REMINDER_6H":
       return { title: "Appointment in 6 hours ⏰", body: `Your appointment starts in about 6 hours (${timeStr}).` };
-    case "WAITLIST_SLOT_OPEN":
+    case "WAITLIST_SLOT_OPEN": // the offered window, not the cancelled appointment
       return {
         title: "A slot opened up! 🎉",
-        body: `${booking.employee?.name || "Your specialist"} has an opening at ${timeStr}. Claim within ${recipient.claimMinutes ?? 30} minutes.`,
+        body: `${booking.employee?.name || "Your specialist"} has an opening at ${
+          recipient.offerStart ?? timeStr
+        }${recipient.offerEnd ? ` — ${recipient.offerEnd}` : ""}. Claim within ${
+          recipient.claimMinutes ?? 30
+        } minutes.`,
       };
   }
 }

@@ -89,6 +89,16 @@ export default function UserPanel() {
               My Bookings
             </Link>
             <Link
+              href="/profile?tab=waitlist"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 text-sm text-beige-700 transition-colors hover:bg-beige-50"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-beige-400">
+                <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" />
+              </svg>
+              My Waitlist
+            </Link>
+            <Link
               href="/profile"
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-2.5 text-sm text-beige-700 transition-colors hover:bg-beige-50"

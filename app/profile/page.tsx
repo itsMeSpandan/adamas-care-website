@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useAuth, AuthUser } from "@/lib/auth-context";
 import PasswordToggle from "@/components/ui/PasswordToggle";
 import StarRating from "@/components/ui/StarRating";
-import { formatBookingDate } from "@/lib/utils";
+import { displayTime, formatBookingDate } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
 import NotificationSettings from "@/components/ui/NotificationSettings";
 import CountryCodeSelect from "@/components/ui/CountryCodeSelect";
@@ -19,7 +19,25 @@ import {
 } from "@/lib/countries";
 import { validateWhatsAppNumber } from "@/lib/whatsapp-prompt";
 
-type Tab = "profile" | "security" | "bookings";
+type Tab = "profile" | "security" | "bookings" | "waitlist";
+
+interface WaitlistEntry {
+  id: string;
+  employee: { name: string; imageUrl: string };
+  slotStart: string;
+  slotEnd: string;
+  /** UTC midnight of the salon's calendar day, as stored. */
+  slotDate: string | null;
+  status: "waiting" | "notified" | "claimed" | "expired";
+  claimExpiresAt: string | null;
+}
+
+const waitlistStatusStyles: Record<string, string> = {
+  waiting: "bg-amber-50 text-amber-700",
+  notified: "bg-emerald-50 text-emerald-700",
+  claimed: "bg-blue-50 text-blue-700",
+  expired: "bg-beige-100 text-beige-500",
+};
 
 interface Booking {
   id: string;
@@ -71,6 +89,12 @@ function ProfileContent() {
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
+  // Waitlist state
+  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
+  const [loadingWaitlist, setLoadingWaitlist] = useState(false);
+  const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [waitlistNotice, setWaitlistNotice] = useState("");
+
   // Mobile tab
   const [mobileTabOpen, setMobileTabOpen] = useState(false);
 
@@ -105,6 +129,41 @@ function ProfileContent() {
         .catch(() => setLoadingBookings(false));
     }
   }, [activeTab, user]);
+
+  // Waitlist entries are only fetched when the tab is opened — the same
+  // on-demand pattern as My Bookings, so the account page stays cheap.
+  useEffect(() => {
+    if (activeTab !== "waitlist" || !user) return;
+    setLoadingWaitlist(true);
+    fetch("/api/waitlist/me")
+      .then((res) => res.json())
+      .then((data) => {
+        setWaitlistEntries(data.entries || []);
+        setLoadingWaitlist(false);
+      })
+      .catch(() => setLoadingWaitlist(false));
+  }, [activeTab, user]);
+
+  const handleClaimWaitlist = async (entryId: string) => {
+    setClaimingId(entryId);
+    setWaitlistNotice("");
+    try {
+      const res = await fetch(`/api/waitlist/${entryId}/claim`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setWaitlistNotice("Slot claimed — your appointment is confirmed.");
+        setWaitlistEntries((prev) =>
+          prev.map((e) => (e.id === entryId ? { ...e, status: "claimed" } : e))
+        );
+      } else {
+        setWaitlistNotice(data.error || "Could not claim that slot.");
+      }
+    } catch {
+      setWaitlistNotice("Could not claim that slot. Please try again.");
+    } finally {
+      setClaimingId(null);
+    }
+  };
 
   const handleProfileSave = async () => {
     if (!user) return;
@@ -305,6 +364,17 @@ function ProfileContent() {
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" />
+        </svg>
+      ),
+    },
+    {
+      // A member who joins a waitlist had no way back to it: the entry was only
+      // reachable from the confirmation modal and from a notification deep link.
+      key: "waitlist",
+      label: "My Waitlist",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" />
         </svg>
       ),
     },
@@ -709,6 +779,107 @@ function ProfileContent() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {activeTab === "waitlist" && (
+                <motion.div
+                  key="waitlist"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.2 }}
+                  className="rounded-card border border-beige-200 bg-white shadow-card"
+                >
+                  <div className="flex items-center justify-between gap-4 border-b border-beige-100 px-6 py-4">
+                    <h2 className="font-serif text-xl font-semibold text-beige-700">
+                      My Waitlist
+                    </h2>
+                    <a
+                      href="/account/waitlist"
+                      className="text-xs font-medium text-beige-500 transition-colors hover:text-beige-700"
+                    >
+                      Full waitlist page
+                    </a>
+                  </div>
+
+                  {waitlistNotice && (
+                    <div className="border-b border-beige-100 bg-beige-50 px-6 py-3 text-sm text-beige-700">
+                      {waitlistNotice}
+                    </div>
+                  )}
+
+                  {loadingWaitlist ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-beige-300 border-t-beige-600" />
+                    </div>
+                  ) : waitlistEntries.length === 0 ? (
+                    <div className="px-6 py-12 text-center">
+                      <p className="text-beige-500">
+                        You are not on any waitlist. When a slot you want is taken,
+                        join the waitlist and we will notify you the moment it opens
+                        up.
+                      </p>
+                      <a href="/booking" className="btn-primary mt-4 inline-flex">
+                        Find a slot
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-beige-100">
+                      {waitlistEntries.map((entry) => {
+                        const canClaim =
+                          entry.status === "notified" &&
+                          !!entry.claimExpiresAt &&
+                          new Date(entry.claimExpiresAt) > new Date();
+                        return (
+                          <div
+                            key={entry.id}
+                            className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-3">
+                                <h3 className="text-sm font-semibold text-beige-700">
+                                  {entry.employee?.name}
+                                </h3>
+                                <span
+                                  className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                                    waitlistStatusStyles[entry.status] ??
+                                    "bg-beige-100 text-beige-600"
+                                  }`}
+                                >
+                                  {entry.status === "notified" ? "slot available" : entry.status}
+                                </span>
+                              </div>
+                              <p className="text-sm text-beige-500">
+                                {entry.slotDate ? `${formatBookingDate(entry.slotDate)} · ` : ""}
+                                {displayTime(entry.slotStart)} – {displayTime(entry.slotEnd)}
+                              </p>
+                              {canClaim && entry.claimExpiresAt && (
+                                <p className="text-xs font-medium text-emerald-600">
+                                  Claim by{" "}
+                                  {new Date(entry.claimExpiresAt).toLocaleTimeString("en-US", {
+                                    hour: "numeric",
+                                    minute: "2-digit",
+                                  })}
+                                </p>
+                              )}
+                            </div>
+
+                            {canClaim && (
+                              <button
+                                type="button"
+                                onClick={() => handleClaimWaitlist(entry.id)}
+                                disabled={claimingId === entry.id}
+                                className="btn-primary shrink-0 gap-2 disabled:opacity-50"
+                              >
+                                {claimingId === entry.id ? "Claiming..." : "Claim Slot"}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </motion.div>

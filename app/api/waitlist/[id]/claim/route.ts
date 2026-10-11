@@ -4,6 +4,8 @@ import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { notifyBooking } from "@/lib/notify";
 import { cascadeToNextWaitlisted } from "@/lib/waitlist";
+import { getFreeGaps, containsInterval } from "@/lib/scoring-engine";
+import { canCompleteBooking, salonDateKey } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -60,8 +62,13 @@ export const POST = requireAuth(async (request: Request, context) => {
         data: { status: "expired" },
       });
 
-      // Notify next person in line
-      await cascadeToNextWaitlisted(entry.employeeId, entry.slotStart);
+      // Notify next person in line for the same window on the same day.
+      await cascadeToNextWaitlisted(
+        entry.employeeId,
+        entry.slotStart,
+        entry.slotDate ? salonDateKey(entry.slotDate) : undefined,
+        entry.slotEnd
+      );
 
       return NextResponse.json(
         { error: "Claim window expired. The slot has been offered to the next person." },
@@ -109,6 +116,59 @@ export const POST = requireAuth(async (request: Request, context) => {
       if (recentBooking) {
         bookingDate = recentBooking.date;
       }
+    }
+
+    // A claim has to turn the offer into an appointment that can still happen.
+    // An entry with no `slotDate` falls back to today, whose start time may
+    // already be gone, so the offer would "successfully" book a slot in the
+    // past — an appointment nobody can attend and nobody can complete.
+    const claimDateKey = salonDateKey(bookingDate);
+    if (canCompleteBooking(bookingDate, entry.slotStart)) {
+      await db.waitlist.update({
+        where: { id },
+        data: { status: "expired" },
+      });
+      await cascadeToNextWaitlisted(
+        entry.employeeId,
+        entry.slotStart,
+        claimDateKey,
+        entry.slotEnd
+      );
+
+      return NextResponse.json(
+        { error: "That appointment time has already passed. It has been offered to the next person in line." },
+        { status: 410 }
+      );
+    }
+
+    // The claim window is 30 minutes wide, and a window can be offered to more
+    // than one member in sequence — so re-check that the slot is still free
+    // before turning the offer into a real appointment. Without this, claiming a
+    // slot somebody else took in the meantime would double-book the specialist.
+    const stillFree = containsInterval(
+      await getFreeGaps(entry.employeeId, claimDateKey),
+      entry.slotStart,
+      entry.slotEnd
+    );
+    if (!stillFree) {
+      await db.waitlist.update({
+        where: { id },
+        data: { status: "expired" },
+      });
+      await cascadeToNextWaitlisted(
+        entry.employeeId,
+        entry.slotStart,
+        claimDateKey,
+        entry.slotEnd
+      );
+
+      return NextResponse.json(
+        {
+          error:
+            "That slot has already been taken. It has been offered to the next person in line.",
+        },
+        { status: 409 }
+      );
     }
 
     // Create the booking

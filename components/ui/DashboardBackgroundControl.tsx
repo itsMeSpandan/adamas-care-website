@@ -100,7 +100,12 @@ export default function DashboardBackgroundControl({ custom, version, onChanged 
   };
 
   return (
-    <div className="absolute right-4 top-4 z-30 md:right-8 md:top-8">
+    // The dashboard hero cancels <main>'s 96px top padding (`-mt-24`) so its
+    // picture spans the full viewport height like the home hero, which means
+    // this button's offsets are measured from under the fixed header. 7rem /
+    // 8rem keeps it where it always was on screen: 112px down on mobile and
+    // 128px on md+, i.e. 16px / 32px below the header.
+    <div className="absolute right-4 top-28 z-30 md:right-8 md:top-32">
       <button
         type="button"
         onClick={() => setOpen((previous) => !previous)}
