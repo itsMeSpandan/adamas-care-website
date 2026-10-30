@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#F5F1EA" />
+    <meta name="robots" content="noindex" />
+    <title>You're offline | Grace Salon</title>
+    <style>
+      /* Inline only: this page must render with the network down. */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background-color: #f5f1ea;
+        color: #1f1f1f;
+        font-family: "Jost", system-ui, -apple-system, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        text-align: center;
+      }
+
+      main {
+        width: 100%;
+        max-width: 26rem;
+      }
+
+      img {
+        width: 96px;
+        height: 96px;
+        display: block;
+        margin: 0 auto 1.75rem;
+        border-radius: 16px;
+        box-shadow: 0 2px 16px rgba(31, 31, 31, 0.06);
+      }
+
+      .eyebrow {
+        margin: 0 0 0.5rem;
+        font-size: 0.75rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: #c97b5c;
+      }
+
+      h1 {
+        margin: 0 0 0.75rem;
+        font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+        font-weight: 500;
+        font-size: 2rem;
+        line-height: 1.2;
+      }
+
+      p {
+        margin: 0 0 1.75rem;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: #7a7168;
+      }
+
+      a {
+        display: inline-block;
+        padding: 0.85rem 1.85rem;
+        border: 1px solid #1f1f1f;
+        border-radius: 999px;
+        color: #1f1f1f;
+        font-size: 0.9rem;
+        letter-spacing: 0.06em;
+        text-decoration: none;
+        text-transform: uppercase;
+      }
+
+      a:active {
+        background-color: #ede8df;
+      }
+
+      .fineprint {
+        margin: 2.5rem 0 0;
+        font-size: 0.75rem;
+        color: #b8afa3;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icons/icon-192.png" alt="" width="96" height="96" />
+      <p class="eyebrow">Grace Salon</p>
+      <h1>You're offline</h1>
+      <p>
+        We can't reach the salon right now. Check your connection, then try
+        again — your bookings and rewards are safe.
+      </p>
+      <a href="/">Try again</a>
+      <p class="fineprint">Luxury Beauty &amp; Wellness</p>
+    </main>
+  </body>
+</html>

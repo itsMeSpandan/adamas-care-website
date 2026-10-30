@@ -12,6 +12,7 @@ import WhatsAppPromptModal from "@/components/ui/WhatsAppPromptModal";
 import GenderPromptModal from "@/components/ui/GenderPromptModal";
 import NotificationPromptModal from "@/components/ui/NotificationPromptModal";
 import InstallBanner from "@/components/ui/InstallBanner";
+import PwaRegistration from "@/components/PwaRegistration";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -73,6 +74,7 @@ export default function RootLayout({
     <html lang="en" className={`${cormorant.variable} ${jost.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         <AuthProvider>
+          <PwaRegistration />
           <ToastProvider>
             <PillNavWrapper />
             <main className="pt-24">{children}</main>

@@ -111,7 +111,18 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all paths except static files and images
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Match all paths except static files and images.
+    //
+    // Also excluded, because none of these need this middleware and all of them
+    // must be served as a clean 200 with no redirect:
+    //   .well-known/            — Digital Asset Links for the Android TWA. A
+    //                             redirect chain here silently breaks TWA link
+    //                             handling, and every request would otherwise
+    //                             pay an edge invocation for nothing.
+    //   manifest.webmanifest    — PWA manifest
+    //   sw.js                   — service worker
+    //   firebase-messaging-sw.js — push worker, imported by sw.js
+    //   offline.html            — precached offline fallback
+    "/((?!_next/static|_next/image|favicon.ico|\\.well-known/|manifest\\.webmanifest|firebase-messaging-sw\\.js|sw\\.js|offline\\.html|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
