@@ -5,7 +5,7 @@
       "namespace": "android_app",
       "package_name": "com.adamascare.app",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_UPLOAD_KEY_SHA256",
+        "3D:E6:BD:57:37:FF:5E:34:71:21:82:1C:BF:43:3A:B9:37:C3:8B:4F:9E:6E:60:2A:D5:EE:2E:6F:67:CE:A7:EE",
         "REPLACE_WITH_PLAY_APP_SIGNING_SHA256"
       ]
     }
