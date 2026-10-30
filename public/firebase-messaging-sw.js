@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 /**
- * firebase-messaging-sw.js — push notifications for the Grace Salon PWA.
+ * firebase-messaging-sw.js — push notifications for the Adamas Care PWA.
  *
  * Handles raw Web Push events (FCM data-only messages), so no Firebase
  * config is needed in this file (NEXT_PUBLIC_* config lives in the page
@@ -14,7 +14,7 @@
  */
 
 function showPush(data) {
-  const title = data.title || "Grace Salon";
+  const title = data.title || "Adamas Care";
   const body = data.body || "You have a new update.";
   return self.registration.showNotification(title, {
     body,

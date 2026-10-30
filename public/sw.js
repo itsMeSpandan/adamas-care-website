@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 /**
- * sw.js — Grace Salon service worker (root scope).
+ * sw.js — Adamas Care service worker (root scope).
  *
  * Job: keep the static shell usable offline. Nothing else.
  *

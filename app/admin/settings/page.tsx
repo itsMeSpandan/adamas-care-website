@@ -15,7 +15,7 @@ const PREDEFINED_SETTINGS = [
     key: "salon_name",
     label: "Salon Display Name",
     description: "The name shown in notifications and emails",
-    placeholder: "Grace Salon",
+    placeholder: "Adamas Care",
   },
   {
     key: "booking_reminder_hours",

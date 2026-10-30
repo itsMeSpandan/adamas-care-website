@@ -3,7 +3,7 @@
  * Change the brand name here and it updates everywhere.
  */
 export const BRAND = {
-  name: "Grace Salon",
+  name: "Adamas Care",
   tagline: "Luxury Beauty & Wellness",
   domain: "gracesalon.com",
   baseUrl: "https://gracesalon.com",

@@ -6,7 +6,7 @@ name: Booking reminders
 # NotificationLog idempotency guard makes double runs harmless.
 #
 # Requires (Repository → Settings → Secrets and variables → Actions):
-#   variable APP_URL      e.g. https://gracesalon.com
+#   variable APP_URL      e.g. https://adamas-care.netlify.app
 #   secret   CRON_SECRET  same value as the app's CRON_SECRET env var
 # Without them the workflow is a harmless no-op.
 

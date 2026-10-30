@@ -1,4 +1,4 @@
-# Netlify configuration — Aurelia/Grace Salon, Next.js 14 App Router.
+# Netlify configuration — Adamas Care, Next.js 14 App Router.
 #
 # Netlify detects Next.js and auto-installs its OpenNext adapter (do NOT pin
 # a version — Netlify updates it per build). The adapter provisions:

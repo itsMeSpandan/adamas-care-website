@@ -1,4 +1,4 @@
-# Grace Salon — Salon & Spa Booking Platform
+# Adamas Care — Salon & Spa Booking Platform
 
 A full-stack salon/spa appointment-booking web app built with **Next.js 14 (App Router)**,
 **TypeScript**, **Prisma + PostgreSQL**, **Tailwind CSS**, and **JWT authentication**.
@@ -11,8 +11,6 @@ and employees get a portal with their own schedule, reviews, and weekly bookings
 ---
 
 ## ✨ Features
-
-> 📄 **Full feature documentation:** See [FEATURES.md](./FEATURES.md) for comprehensive details.
 
 - **Public site** — home, services catalog, team/specialists, about, contact.
 - **Booking flow** — 3-step wizard: pick service(s) → pick specialist/date/time → confirm.
@@ -32,6 +30,8 @@ and employees get a portal with their own schedule, reviews, and weekly bookings
 - **Cancellation policy** — late cancellation tracking, automatic restrictions for repeat offenders.
 - **Security headers** — HSTS, CSP, frame-options, nosniff, referrer-policy.
 - **Redis-backed rate limiting** — Upstash Redis for distributed rate limiting across serverless instances.
+- **Installable PWA** — web app manifest, a root-scope service worker with an offline fallback,
+  and Digital Asset Links for Android TWA packaging. See [PWA & Android](#-pwa--android-twa).
 
 ---
 
@@ -48,14 +48,16 @@ and employees get a portal with their own schedule, reviews, and weekly bookings
 | Email | Resend (transactional: confirmations, reminders, password reset, verification) |
 | Error Tracking | Sentry |
 | Animation | Framer Motion, animejs |
-| CI | GitHub Actions (lint, typecheck, test, build) |
+| PWA / Android | Web app manifest + service worker, packaged as a Trusted Web Activity (Bubblewrap) |
+| CI | GitHub Actions (lint, typecheck, build). The Vitest suite is local-only — `tests/` is gitignored |
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 22 — matches `netlify.toml`; `firebase-admin` and its Google auth dependencies
+  require ≥ 22
 - A PostgreSQL database (a free [Neon](https://neon.tech) instance works well)
 
 ### 1. Install dependencies
@@ -64,10 +66,11 @@ npm install
 ```
 
 ### 2. Configure environment
-Copy `.env.example` to `.env` and fill in the values:
+Create a `.env` in the project root with the values below. No `.env.example` is committed —
+and `.env` must never be committed:
 
 ```bash
-cp .env.example .env
+touch .env
 ```
 
 | Variable | Required | Description |
@@ -110,12 +113,15 @@ app/
   employee/       employee portal
   api/            Route handlers (auth, bookings, services, employees, availability, cron, health)
   account/        user account pages (loyalty, waitlist)
+  manifest.ts     PWA manifest (served at /manifest.webmanifest)
 components/        UI: layout (PillNav/Footer), sections, cards, ui primitives
 lib/               auth, db, queries, require-auth, rate-limit, email, csrf, refresh-tokens, scoring-engine
 prisma/            schema.prisma + seed.ts + migrations/
 scripts/           utility scripts
-middleware.ts      security headers + HTTPS redirect
-vercel.json        cron configuration for reminder emails
+middleware.ts      admin/employee shell guard + HTTPS redirect
+next.config.mjs    security headers, CSP, image remote patterns
+public/            static assets; PWA files: sw.js, offline.html, icons/, .well-known/assetlinks.json
+vercel.json        LEGACY — cron schedules only; production runs on Netlify (see Deployment)
 ```
 
 ---
@@ -140,14 +146,67 @@ Passwords are `<email-prefix>123`. Use these to explore each role:
 | `npm run dev` | Start the dev server |
 | `npm run build` / `npm run start` | Production build / serve |
 | `npm run lint` | ESLint |
-| `npm run test` | Run test suite (64 tests) |
+| `npm run test` | Run the Vitest suite (`test:watch` to watch) |
 | `npm run db:seed` | Seed services, team, demo accounts |
 | `npm run db:seed-holidays` | Seed Indian public & festive holidays |
 | `npm run db:seed-test-user` | Create test customer with loyalty data |
 | `npm run db:backfill-loyalty` | Award points for historical completed bookings |
 | `npx prisma migrate dev` | Create and apply migrations (development) |
 | `npx prisma migrate deploy` | Apply pending migrations (production) |
-| `npx prisma db studio` | Open Prisma GUI |
+| `npm run db:studio` | Open Prisma Studio GUI |
+
+---
+
+## 🚀 Deployment
+
+Production runs on **Netlify** using its Next.js adapter (auto-installed; do not pin it).
+`netlify.toml` pins Node 22 and keeps the secrets scanner active while omitting three
+variable **names**.
+
+`vercel.json` is legacy: it holds only the reminder cron schedules, which are inert on
+Netlify. Reminders are driven by `.github/workflows/reminders.yml`, which needs the `APP_URL`
+repository variable and the `CRON_SECRET` secret (a harmless no-op without them).
+
+---
+
+## 📱 PWA & Android (TWA)
+
+The site installs as a PWA and is packaged for Google Play as a Trusted Web Activity.
+
+| File | Purpose |
+|------|---------|
+| `app/manifest.ts` | Manifest source → `/manifest.webmanifest` (linked automatically by Next) |
+| `public/sw.js` | Root-scope service worker: offline fallback + static-asset caching |
+| `public/offline.html` | Static, JS-free offline page, precached at install |
+| `components/PwaRegistration.tsx` | Registers `/sw.js` in production only |
+| `public/.well-known/assetlinks.json` | Digital Asset Links for the Android app |
+
+Service worker rules — do not relax these:
+
+- Only `/offline.html` and the launcher icons are precached.
+- Navigations are network-first and their responses are **never written to a cache**, because
+  every page can render differently per session.
+- `/api/*`, `/admin/*`, `/employee/*`, `/profile`, `/account/*`, `/rewards`, `/booking` and
+  `/verify-email` are never intercepted or cached.
+- Only `/_next/static/*` and `/icons/*` are served cache-first.
+- `sw.js` ends with `importScripts("/firebase-messaging-sw.js")`. Only one worker can own the
+  `/` scope, so it replaces the FCM worker's registration — the import is what keeps push
+  notifications working. Do not add a second root-scope worker.
+
+Before publishing to Play:
+
+1. Replace both placeholders in `public/.well-known/assetlinks.json` with real SHA-256
+   fingerprints: `REPLACE_WITH_UPLOAD_KEY_SHA256` (your local keystore, from
+   `bubblewrap fingerprint`) and `REPLACE_WITH_PLAY_APP_SIGNING_SHA256` (Play Console →
+   App integrity). Never commit a keystore or its passwords. Until both are real, the app
+   opens with a browser URL bar because verification fails.
+2. Redeploy, then confirm `/.well-known/assetlinks.json` returns **200** as
+   `application/json` with **no redirect**, and the same for `/manifest.webmanifest`,
+   `/sw.js` and `/offline.html`.
+3. Android package name: `com.adamascare.app`; start URL `https://adamas-care.netlify.app/`;
+   display `standalone`; theme and background `#F5F1EA`.
+4. Known gap: Play requires in-app account deletion **and** a web deletion URL for apps that
+   let users create accounts. There is no delete-account flow yet.
 
 ---
 

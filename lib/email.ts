@@ -8,7 +8,7 @@
 import { Resend } from "resend";
 
 const resendApiKey = process.env.RESEND_API_KEY;
-const emailFrom = process.env.EMAIL_FROM || "Grace Salon <noreply@gracesalon.com>";
+const emailFrom = process.env.EMAIL_FROM || "Adamas Care <noreply@gracesalon.com>";
 
 let resendClient: Resend | null = null;
 
@@ -85,19 +85,19 @@ export async function sendVerificationOtpEmail(data: VerificationOtpData): Promi
     await client.emails.send({
       from: emailFrom,
       to: data.email,
-      subject: `Your Verification Code — Grace Salon`,
+      subject: `Your Verification Code — Adamas Care`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #3D5A47;">Verify Your Email</h2>
           <p>Hi ${data.name},</p>
-          <p>Use this 6-digit code to verify your Grace Salon account:</p>
+          <p>Use this 6-digit code to verify your Adamas Care account:</p>
           <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center;">
             <span style="font-size: 28px; font-weight: 700; letter-spacing: 0.3em; color: #1F1F1F;">${data.otp}</span>
           </div>
           <p style="color: #666; font-size: 14px;">This code expires in <strong>15 minutes</strong>. Do not share it with anyone.</p>
           <p style="color: #666; font-size: 14px;">If you didn't create an account, you can safely ignore this email.</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-          <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
+          <p style="color: #999; font-size: 12px;">Adamas Care — Hair That Moves. Skin That Glows.</p>
         </div>
       `,
     });
@@ -133,12 +133,12 @@ export async function sendPasswordResetEmail(data: PasswordResetData): Promise<b
     await client.emails.send({
       from: emailFrom,
       to: data.email,
-      subject: "Reset Your Password — Grace Salon",
+      subject: "Reset Your Password — Adamas Care",
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #3D5A47;">Reset Your Password</h2>
           <p>Hi ${data.name},</p>
-          <p>We received a request to reset the password for your Grace Salon account.</p>
+          <p>We received a request to reset the password for your Adamas Care account.</p>
           <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center;">
             <a href="${data.resetUrl}"
                style="display: inline-block; background: #3D5A47; color: #ffffff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
@@ -152,7 +152,7 @@ export async function sendPasswordResetEmail(data: PasswordResetData): Promise<b
             If you didn't request this, you can safely ignore this email — your password will not change.
           </p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-          <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
+          <p style="color: #999; font-size: 12px;">Adamas Care — Hair That Moves. Skin That Glows.</p>
         </div>
       `,
     });

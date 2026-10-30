@@ -36,7 +36,7 @@ interface PillNavProps {
 
 const PillNav = ({
   logo = "/logo.svg",
-  logoAlt = "Grace Salon",
+  logoAlt = "Adamas Care",
   items,
 }: PillNavProps) => {
   const { isAuthenticated } = useAuth();

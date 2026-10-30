@@ -49,7 +49,7 @@ export default function HeroSection() {
                 color: "var(--accent-primary)",
               }}
             >
-              Grace Salon
+              Adamas Care
             </span>
 
             {/* Headline — staggered word reveal */}

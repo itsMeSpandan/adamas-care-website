@@ -53,7 +53,7 @@ export function buildIcsCalendar(opts: IcsEventOptions): string {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Grace Salon//Booking//EN",
+    "PRODID:-//Adamas Care//Booking//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
@@ -63,7 +63,7 @@ export function buildIcsCalendar(opts: IcsEventOptions): string {
     `DTEND:${formatIcsDate(end)}`,
     `SUMMARY:${escapeIcsText(opts.title)}`,
     `DESCRIPTION:${escapeIcsText(opts.description)}`,
-    opts.location ? `LOCATION:${escapeIcsText(opts.location)}` : "LOCATION:Grace Salon",
+    opts.location ? `LOCATION:${escapeIcsText(opts.location)}` : "LOCATION:Adamas Care",
     "END:VEVENT",
     "END:VCALENDAR",
   ].join("\r\n");

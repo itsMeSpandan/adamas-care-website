@@ -186,7 +186,7 @@ async function resolveRecipient(
 
 const BRAND_FOOTER = `
   <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-  <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
+  <p style="color: #999; font-size: 12px;">Adamas Care — Hair That Moves. Skin That Glows.</p>
 </div>`;
 
 function wrap(html: string): string {
@@ -236,11 +236,11 @@ function buildEmail(
   switch (event) {
     case "CONFIRMED":
       return {
-        subject: "Booking Confirmed — Grace Salon",
+        subject: "Booking Confirmed — Adamas Care",
         html: wrap(`
           <h2 style="color: #3D5A47;">Booking Confirmed ✅</h2>
           <p>Hi ${recipient.name},</p>
-          <p>Your appointment at <strong>Grace Salon</strong> has been confirmed.</p>
+          <p>Your appointment at <strong>Adamas Care</strong> has been confirmed.</p>
           ${detailsBox(booking)}
           <p style="color: #666; font-size: 14px;">Booking ID: ${booking.id}</p>
           <p style="color: #666; font-size: 14px;">Need to cancel? Please do so at least 4 hours before your appointment.</p>`),
@@ -249,11 +249,11 @@ function buildEmail(
 
     case "RESCHEDULED":
       return {
-        subject: "Booking Rescheduled — Grace Salon",
+        subject: "Booking Rescheduled — Adamas Care",
         html: wrap(`
           <h2 style="color: #3D5A47;">Booking Rescheduled 📅</h2>
           <p>Hi ${recipient.name},</p>
-          <p>Your appointment at <strong>Grace Salon</strong> has been rescheduled.</p>
+          <p>Your appointment at <strong>Adamas Care</strong> has been rescheduled.</p>
           ${detailsBox(booking)}
           <p style="color: #666; font-size: 14px;">Booking ID: ${booking.id}</p>`),
         attachIcs: true,
@@ -261,11 +261,11 @@ function buildEmail(
 
     case "CANCELLED":
       return {
-        subject: "Booking Cancelled — Grace Salon",
+        subject: "Booking Cancelled — Adamas Care",
         html: wrap(`
           <h2 style="color: #3D5A47;">Booking Cancelled</h2>
           <p>Hi ${recipient.name},</p>
-          <p>Your appointment at <strong>Grace Salon</strong> has been cancelled.</p>
+          <p>Your appointment at <strong>Adamas Care</strong> has been cancelled.</p>
           ${detailsBox(booking)}
           <p style="color: #666; font-size: 14px;">We hope to see you again soon — rebook anytime from your account.</p>`),
         attachIcs: false,
@@ -275,11 +275,11 @@ function buildEmail(
     case "REMINDER_6H": {
       const isDayBefore = event === "REMINDER_24H";
       return {
-        subject: `Appointment Reminder — Grace Salon`,
+        subject: `Appointment Reminder — Adamas Care`,
         html: wrap(`
           <h2 style="color: #3D5A47;">Appointment Reminder ⏰</h2>
           <p>Hi ${recipient.name},</p>
-          <p>This is a friendly reminder that your appointment at <strong>Grace Salon</strong> is ${
+          <p>This is a friendly reminder that your appointment at <strong>Adamas Care</strong> is ${
             isDayBefore ? "tomorrow" : "starting in about 6 hours"
           }.</p>
           ${detailsBox(booking)}
@@ -299,7 +299,7 @@ function buildEmail(
         recipient.offerEnd ? ` — ${recipient.offerEnd}` : ""
       }`;
       return {
-        subject: "A Slot Opened Up — Grace Salon",
+        subject: "A Slot Opened Up — Adamas Care",
         html: wrap(`
           <h2 style="color: #3D5A47;">🎉 A Slot Is Available!</h2>
           <p>Hi ${recipient.name},</p>
@@ -327,9 +327,9 @@ function buildIcsFor(booking: BookingFull): string | undefined {
   if (!needsIcs) return undefined;
   return buildIcsCalendar({
     uid: booking.id, // same UID for CONFIRMED/RESCHEDULED → calendars treat reschedule as an update
-    title: `Grace Salon — ${serviceNames(booking)}`,
+    title: `Adamas Care — ${serviceNames(booking)}`,
     description: `Booking ID: ${booking.id}\nSpecialist: ${booking.employee?.name || "TBD"}\nServices: ${serviceNames(booking)}\nTotal: ₹${booking.price.toFixed(0)}`,
-    location: "Grace Salon",
+    location: "Adamas Care",
     date: booking.date.toISOString().split("T")[0],
     slotStart: booking.slotStart!,
     slotEnd: booking.slotEnd || undefined,
@@ -381,7 +381,7 @@ async function emailChannel(
   const { subject, html, attachIcs } = buildEmail(booking, event, recipient);
   const attachments =
     attachIcs && booking.slotStart
-      ? [{ filename: `grace-salon-booking.ics`, content: Buffer.from(buildIcsFor(booking) || "", "utf8") }]
+      ? [{ filename: `adamas-care-booking.ics`, content: Buffer.from(buildIcsFor(booking) || "", "utf8") }]
       : undefined;
 
   const ok = await sendTransactionalEmail({ to: recipient.email, subject, html, attachments });

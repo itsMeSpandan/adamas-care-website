@@ -1,6 +1,6 @@
 # Mobile App Integration Guide
 
-**Backend ↔ Flutter (and any native client) contract** for Grace Salon / Aurelia.
+**Backend ↔ Flutter (and any native client) contract** for Adamas Care.
 Last aligned: **2026-09-29** — after the WhatsApp removal, the new notification
 system, and the Netlify deployment setup. Anything marked ⚠️ **CHANGED** is a
 breaking change mobile must adopt.

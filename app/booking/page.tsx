@@ -869,7 +869,7 @@ export default function BookingPage() {
               >
                 <div className="rounded-card border border-beige-200 bg-white p-6 shadow-card">
                   <h2 className="mb-2 font-serif text-lg font-semibold text-beige-700">
-                    Grace Salon — Appointment Summary
+                    Adamas Care — Appointment Summary
                   </h2>
                   <div className="my-4 h-px bg-beige-200" />
 

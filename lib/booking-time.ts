@@ -14,7 +14,7 @@
  *      nobody has received yet.
  *
  * ─── Timezone ───────────────────────────────────────────────────────────────
- * Grace Salon is in India, so its opening hours (and therefore every `slotStart`
+ * Adamas Care is in India, so its opening hours (and therefore every `slotStart`
  * the availability engine produces) are IST wall-clock times. The `date` column
  * is stored as UTC midnight of that calendar day — i.e. it carries a *date*,
  * not an instant.

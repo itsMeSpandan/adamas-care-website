@@ -135,7 +135,7 @@ async function offerEntry(
   // member must still be reachable.
   await sendTransactionalEmail({
     to: entry.user.email,
-    subject: "A Slot Opened Up — Grace Salon",
+    subject: "A Slot Opened Up — Adamas Care",
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #3D5A47;">🎉 A Slot Is Available!</h2>
@@ -154,7 +154,7 @@ async function offerEntry(
           </a>
         </div>
         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
-        <p style="color: #999; font-size: 12px;">Grace Salon — Hair That Moves. Skin That Glows.</p>
+        <p style="color: #999; font-size: 12px;">Adamas Care — Hair That Moves. Skin That Glows.</p>
       </div>
     `,
   });
