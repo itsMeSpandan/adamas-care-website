@@ -84,11 +84,11 @@ export default function Footer() {
               <li className="whitespace-pre-line leading-relaxed">{BRAND.address}</li>
               <li className="pt-2">
                 <a
-                  href="tel:+919238381831"
+                  href="tel:+919830080129"
                   className="transition-colors hover:opacity-80"
                   style={{ color: 'var(--footer-link)' }}
                 >
-                  +91 9238381831
+                  +91 9830080129
                 </a>
               </li>
               <li>
@@ -136,7 +136,7 @@ export default function Footer() {
           <div className="flex items-center gap-4">
             {/* WhatsApp — links to chat with the salon */}
             <a
-              href="https://wa.me/919238381831"
+              href="https://wa.me/919830080129"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Chat on WhatsApp"

@@ -67,7 +67,7 @@ export default function ContactPage() {
                         href="tel:+919238381831"
                         className="text-sm text-beige-600 transition-colors hover:text-beige-700"
                       >
-                        +91 9238381831
+                        +91 9830080129
                       </a>
                   </div>
                 </div>
