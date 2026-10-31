@@ -95,7 +95,7 @@ export default function NotificationPromptModal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-beige-900/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto overscroll-contain bg-beige-900/50 p-3 backdrop-blur-sm sm:items-center sm:p-4"
           role="dialog"
           aria-modal="true"
           aria-labelledby="notif-prompt-title"
@@ -104,14 +104,14 @@ export default function NotificationPromptModal() {
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="w-full max-w-md overflow-hidden rounded-card border border-beige-200 bg-white shadow-xl"
+            className="my-auto flex max-h-[calc(100svh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-card border border-beige-200 bg-white shadow-xl sm:max-h-[calc(100svh-2rem)]"
           >
             {/* Header */}
-            <div className="border-b border-beige-100 px-6 py-5 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
+            <div className="min-h-0 grow overflow-y-auto border-b border-beige-100 px-4 py-4 text-center sm:px-6 sm:py-5">
+              <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 sm:mb-3 sm:h-12 sm:w-12">
                 <svg
-                  width="24"
-                  height="24"
+                  width="20"
+                  height="20"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -127,13 +127,13 @@ export default function NotificationPromptModal() {
               </div>
               <h2
                 id="notif-prompt-title"
-                className="font-serif text-xl font-semibold text-beige-700"
+                className="font-serif text-lg font-semibold leading-snug text-beige-700 sm:text-xl"
               >
                 {mode === "enable"
                   ? "Turn on booking reminders"
                   : "Notifications are blocked"}
               </h2>
-              <p className="mt-1 text-sm text-beige-500">
+              <p className="mt-1 text-[13px] leading-relaxed text-beige-500 sm:text-sm">
                 {mode === "enable" ? (
                   <>
                     Get your appointment reminders the day before and 6 hours
@@ -152,7 +152,7 @@ export default function NotificationPromptModal() {
             </div>
 
             {/* Actions */}
-            <div className="px-6 py-5">
+            <div className="min-h-0 flex-shrink-0 px-4 py-4 sm:px-6 sm:py-5">
               {mode === "enable" ? (
                 <>
                   <button
