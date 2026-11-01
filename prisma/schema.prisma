@@ -68,6 +68,20 @@ model User {
   refreshTokens        RefreshToken[]
   notifications        Notification[]
   feedbacks            Feedback[]
+  identities           AuthIdentity[]
+}
+
+model AuthIdentity {
+  id          String   @id @default(cuid())
+  userId      String
+  provider    String
+  providerUid String
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUid])
+  @@index([userId])
 }
 
 model Service {
@@ -88,6 +102,15 @@ model Service {
   bookingServices  BookingService[]
   waitlist         Waitlist[]
   feedbackRatings  FeedbackServiceRating[]
+
+  groupKey        String?
+  groupName       String?
+  variantLabel    String?
+  groupType       String          @default("duration")
+  isActive        Boolean         @default(true)
+
+  @@index([groupKey])
+  @@index([isActive])
 }
 
 model Employee {

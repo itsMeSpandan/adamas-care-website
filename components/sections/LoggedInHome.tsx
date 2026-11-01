@@ -16,6 +16,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Service, Employee } from "@/lib/types";
 import { displayTime, cn, formatServiceNames, getBookingServices } from "@/lib/utils";
 import ServiceCard from "@/components/cards/ServiceCard";
+import { groupServicesIntoTreatments, isTreatmentGroup } from "@/lib/service-legacy-map";
 import TeamCard from "@/components/cards/TeamCard";
 import Skeleton from "@/components/ui/Skeleton";
 import BookingCTA from "@/components/sections/BookingCTA";
@@ -207,7 +208,8 @@ export default function LoggedInHome() {
   const recommendedServices = useMemo(() => {
     if (services.length === 0) return [];
     // Shuffle deterministically from the list
-    const shuffled = [...services].sort(() => 0.5 - Math.random());
+    const grouped = groupServicesIntoTreatments(services);
+    const shuffled = [...grouped].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, 3);
   }, [services]);
 
@@ -545,13 +547,13 @@ export default function LoggedInHome() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {recommendedServices.map((service, i) => (
                 <motion.div
-                  key={service.id}
+                  key={isTreatmentGroup(service) ? service.groupKey : service.id}
                   initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-50px" }}
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                 >
-                  <ServiceCard service={service} />
+                  <ServiceCard item={service} />
                 </motion.div>
               ))}
             </div>

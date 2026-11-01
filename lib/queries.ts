@@ -4,8 +4,9 @@ import { Service, Employee, Testimonial, ServiceAudience } from "@/lib/types";
 
 // --- Services ---
 
-export async function getServices(): Promise<Service[]> {
+export async function getServices(options?: { includeInactive?: boolean }): Promise<Service[]> {
   const services = await db.service.findMany({
+    where: options?.includeInactive ? {} : { isActive: true },
     include: { employeeServices: { select: { employeeId: true } } },
   });
   return services.map((s) => ({
@@ -19,6 +20,11 @@ export async function getServices(): Promise<Service[]> {
     imageUrl: s.imageUrl,
     featured: s.featured,
     audience: s.audience as ServiceAudience,
+    groupKey: (s as any).groupKey ?? null,
+    groupName: (s as any).groupName ?? null,
+    variantLabel: (s as any).variantLabel ?? null,
+    groupType: (s as any).groupType ?? "duration",
+    isActive: (s as any).isActive ?? true,
     employeeIds: s.employeeServices.map((es) => es.employeeId),
   }));
 }
@@ -40,6 +46,11 @@ export async function getServiceById(id: string): Promise<Service | null> {
     imageUrl: s.imageUrl,
     featured: s.featured,
     audience: s.audience as ServiceAudience,
+    groupKey: (s as any).groupKey ?? null,
+    groupName: (s as any).groupName ?? null,
+    variantLabel: (s as any).variantLabel ?? null,
+    groupType: (s as any).groupType ?? "duration",
+    isActive: (s as any).isActive ?? true,
     employeeIds: s.employeeServices.map((es) => es.employeeId),
   };
 }
@@ -55,6 +66,11 @@ export async function createService(data: {
   imageUrl: string;
   featured?: boolean;
   audience?: ServiceAudience;
+  groupKey?: string | null;
+  groupName?: string | null;
+  variantLabel?: string | null;
+  groupType?: string;
+  isActive?: boolean;
   employeeIds?: string[];
 }) {
   const { employeeIds, ...serviceData } = data;
@@ -86,6 +102,11 @@ export async function updateService(
     imageUrl?: string;
     featured?: boolean;
     audience?: ServiceAudience;
+  groupKey?: string | null;
+  groupName?: string | null;
+  variantLabel?: string | null;
+  groupType?: string;
+  isActive?: boolean;
     employeeIds?: string[];
   }
 ) {

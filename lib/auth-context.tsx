@@ -39,6 +39,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   loginWithGoogle: (idToken: string) => Promise<{ ok: boolean; error?: string }>;
+  loginWithMicrosoft: (idToken: string) => Promise<{ ok: boolean; error?: string }>;
   updateUser: (data: Partial<AuthUser>) => void;
   logout: () => void;
   refreshSession: () => Promise<boolean>;
@@ -275,6 +276,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
+  const loginWithMicrosoft = useCallback(
+    async (idToken: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const res = await fetch("/api/auth/microsoft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential: idToken }),
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (!res.ok || !data.user) {
+          return {
+            ok: false,
+            error: data.error || "Microsoft sign-in failed. Please try again.",
+          };
+        }
+        setUser(data.user);
+        setWhatsappPromptOpen(
+          shouldPromptForWhatsApp(
+            data.user,
+            wasWhatsAppPromptDismissed(data.user.id),
+          ),
+        );
+        return { ok: true };
+      } catch {
+        return { ok: false, error: "Something went wrong. Please try again." };
+      }
+    },
+    []
+  );
+
   const logout = useCallback(async () => {
     try {
       // Revoke the push device FIRST, while the session cookie is still valid.
@@ -331,6 +363,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: loading,
         login,
         loginWithGoogle,
+        loginWithMicrosoft,
         updateUser,
         logout,
         refreshSession,

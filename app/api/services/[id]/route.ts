@@ -4,6 +4,8 @@ import { requireRole } from "@/lib/require-auth";
 import { logAudit, getClientIp } from "@/lib/audit";
 import { getSessionFromRequest } from "@/lib/auth";
 import { isServiceAudience } from "@/lib/service-audience";
+import { LEGACY_SERVICE_ID_MAP } from "@/lib/service-legacy-map";
+import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +15,11 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const service = await getServiceById(id);
+    const resolvedId = LEGACY_SERVICE_ID_MAP[id] || id;
+    let service = await getServiceById(resolvedId);
+    if (!service && resolvedId !== id) {
+      service = await getServiceById(id);
+    }
     if (!service) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
@@ -33,13 +39,45 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
 
-    // The body is spread straight into the update, so validate the enum here
-    // rather than letting an unknown value reach Prisma as a 500.
     if (body.audience !== undefined && !isServiceAudience(body.audience)) {
       return NextResponse.json(
         { error: "audience must be one of: male, female, unisex" },
         { status: 400 }
       );
+    }
+
+    // Treatment group validation
+    const targetGroupKey = body.groupKey !== undefined ? body.groupKey : existing.groupKey;
+    const targetCategory = body.category !== undefined ? body.category : existing.category;
+    const targetDuration = body.durationMinutes !== undefined ? body.durationMinutes : existing.durationMinutes;
+    const targetGroupType = body.groupType !== undefined ? body.groupType : existing.groupType || "duration";
+
+    if (targetGroupKey) {
+      const existingGroupVariants = await db.service.findMany({
+        where: {
+          groupKey: targetGroupKey,
+          id: { not: id },
+        },
+      });
+
+      if (existingGroupVariants.length > 0) {
+        // 1. Must share category
+        if (existingGroupVariants.some((s) => s.category !== targetCategory)) {
+          return NextResponse.json(
+            { error: `All variants in group "${body.groupName || targetGroupKey}" must have category "${existingGroupVariants[0].category}"` },
+            { status: 400 }
+          );
+        }
+        // 2. If duration group, no duplicate durationMinutes
+        if (targetGroupType === "duration") {
+          if (existingGroupVariants.some((s) => s.durationMinutes === targetDuration)) {
+            return NextResponse.json(
+              { error: `A variant with duration ${targetDuration} minutes already exists in group "${body.groupName || targetGroupKey}"` },
+              { status: 400 }
+            );
+          }
+        }
+      }
     }
 
     const service = await updateService(id, body);

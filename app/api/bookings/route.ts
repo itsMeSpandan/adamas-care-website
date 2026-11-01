@@ -9,6 +9,7 @@ import { notifyBooking } from "@/lib/notify";
 import {
   isBookableSameDay,
   salonDateKey,
+  addDaysToDateKey,
   SAME_DAY_LEAD_MINUTES,
 } from "@/lib/booking-time";
 
@@ -207,6 +208,24 @@ export const POST = requireAuth(async (request: Request) => {
       return NextResponse.json({ error: "One or more invalid service IDs" }, { status: 400 });
     }
 
+    // Inactive/hidden services cannot be newly booked
+    const inactive = services.filter((s) => (s as any).isActive === false);
+    if (inactive.length > 0) {
+      return NextResponse.json(
+        { error: `The following service(s) are no longer available for booking: ${inactive.map((s) => s.name).join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    // Never allow two variants of the same treatment group in one booking
+    const groupKeys = services.map((s) => (s as any).groupKey).filter(Boolean);
+    if (new Set(groupKeys).size !== groupKeys.length) {
+      return NextResponse.json(
+        { error: "Cannot book multiple duration variants of the same treatment in a single visit" },
+        { status: 400 }
+      );
+    }
+
     const assignments = await db.employeeService.findMany({
       where: { serviceId: { in: resolvedServiceIds }, employeeId },
     });
@@ -220,7 +239,9 @@ export const POST = requireAuth(async (request: Request) => {
     }
 
     // Email verification check: unverified users cannot book
-    const sessionUserId = (await getSessionFromRequest(request))?.userId;
+    const session = await getSessionFromRequest(request);
+    const sessionUserId = session?.userId;
+    const isStaff = session?.role === "admin" || session?.role === "employee";
     if (sessionUserId) {
       const bookingUser = await db.user.findUnique({
         where: { id: sessionUserId },
@@ -280,12 +301,22 @@ export const POST = requireAuth(async (request: Request) => {
 
     // Reject past dates (compare as YYYY-MM-DD strings) against the salon's
     // calendar day, not the UTC one — between 00:00 and 05:30 IST the salon is
-    // still on "yesterday", so a UTC comparison would reject today's dates.
+    // already on the new day, so a UTC comparison would reject today's dates.
     const today = new Date();
     const todayKey = salonDateKey(today);
     if (typeof date !== "string" || date < todayKey) {
       return NextResponse.json(
         { error: "Booking date cannot be in the past" },
+        { status: 400 }
+      );
+    }
+
+    // Upper bound (+14 days inclusive): enforce ONLY for customer bookings.
+    // Staff/admin walk-in or manual bookings may legitimately need dates beyond 14 days.
+    const maxBookingKey = addDaysToDateKey(todayKey, 13);
+    if (!isStaff && date > maxBookingKey) {
+      return NextResponse.json(
+        { error: `Online bookings can only be made up to 14 days in advance (latest: ${maxBookingKey})` },
         { status: 400 }
       );
     }

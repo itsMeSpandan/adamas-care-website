@@ -38,6 +38,27 @@ export interface Service {
   employeeIds: string[];
   featured: boolean;
   audience: ServiceAudience;
+  groupKey?: string | null;
+  groupName?: string | null;
+  variantLabel?: string | null;
+  groupType?: 'duration' | 'hair_length' | string;
+  isActive?: boolean;
+}
+
+export interface TreatmentGroup {
+  groupKey: string;
+  groupName: string;
+  category: ServiceCategory;
+  description: string;
+  imageUrl: string;
+  featured: boolean;
+  audience: ServiceAudience;
+  groupType: 'duration' | 'hair_length' | string;
+  variants: Service[];
+  minPrice: number;
+  maxPrice: number;
+  minDuration: number;
+  maxDuration: number;
 }
 
 export interface Employee {

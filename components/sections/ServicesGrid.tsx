@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Service, ServiceCategory } from "@/lib/types";
 import ServiceCard from "@/components/cards/ServiceCard";
+import { groupServicesIntoTreatments, isTreatmentGroup } from "@/lib/service-legacy-map";
 
 export default function ServicesGrid({ featured = false }: { featured?: boolean }) {
   const [activeCategory, setActiveCategory] = useState<ServiceCategory | "All">("All");
@@ -27,8 +28,9 @@ export default function ServicesGrid({ featured = false }: { featured?: boolean 
       })
     : [];
 
-  // Tabs come from the catalogue itself, so a category the menu empties out
-  // never leaves a filter chip that filters to nothing.
+  const groupedTreatments = groupServicesIntoTreatments(displayedServices);
+
+  // Tabs come from the catalogue itself
   const categories: (ServiceCategory | "All")[] = [
     "All",
     ...(Array.isArray(services)
@@ -94,18 +96,21 @@ export default function ServicesGrid({ featured = false }: { featured?: boolean 
           layout
           className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
         >
-          {displayedServices.map((service, i) => (
-            <motion.div
-              key={service.id}
-              layout
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-            >
-              <ServiceCard service={service} />
-            </motion.div>
-          ))}
+          {groupedTreatments.map((item, i) => {
+            const key = isTreatmentGroup(item) ? item.groupKey : item.id;
+            return (
+              <motion.div
+                key={key}
+                layout
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: i * 0.05 }}
+              >
+                <ServiceCard item={item} />
+              </motion.div>
+            );
+          })}
         </motion.div>
       </div>
     </section>

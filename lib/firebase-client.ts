@@ -61,6 +61,8 @@ export type GoogleSignInResult =
   | { error: string }
   | null; // user closed the popup — not an error
 
+export type OAuthSignInResult = GoogleSignInResult;
+
 export async function signInWithGoogle(): Promise<GoogleSignInResult> {
   if (!isFirebaseClientConfigured()) {
     return { error: "Google sign-in is not configured yet." };
@@ -95,8 +97,71 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult> {
     if (code === "auth/popup-blocked") {
       return { error: "Pop-up blocked. Allow pop-ups for this site and try again." };
     }
+    if (code === "auth/account-exists-with-different-credential") {
+      return {
+        error: "An account already exists with this email using another sign-in method. Please sign in using your original method.",
+      };
+    }
     console.warn("[GoogleAuth] sign-in failed:", err);
     return { error: "Google sign-in failed. Please try again." };
+  }
+}
+
+/**
+ * Microsoft sign-in popup using OAuthProvider("microsoft.com") with openid, profile, email scopes.
+ *
+ * Prompts user for account selection ("select_account") to support both personal Microsoft
+ * accounts and work/school organizational accounts.
+ */
+export async function signInWithMicrosoft(): Promise<OAuthSignInResult> {
+  if (!isFirebaseClientConfigured()) {
+    return { error: "Microsoft sign-in is not configured yet." };
+  }
+  try {
+    const { initializeApp, getApps } = await import("firebase/app");
+    const { getAuth, OAuthProvider, signInWithPopup } = await import(
+      "firebase/auth"
+    );
+    const app =
+      getApps()[0] ??
+      initializeApp({
+        apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+        authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+        messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+        appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      });
+
+    const provider = new OAuthProvider("microsoft.com");
+    provider.addScope("openid");
+    provider.addScope("profile");
+    provider.addScope("email");
+    provider.setCustomParameters({
+      prompt: "select_account",
+    });
+
+    const credential = await signInWithPopup(getAuth(app), provider);
+    const idToken = await credential.user.getIdToken();
+    return { idToken };
+  } catch (err) {
+    const code = (err as { code?: string })?.code;
+    // User dismissed the popup — silently ignore.
+    if (
+      code === "auth/popup-closed-by-user" ||
+      code === "auth/cancelled-popup-request"
+    ) {
+      return null;
+    }
+    if (code === "auth/popup-blocked") {
+      return { error: "Pop-up blocked. Allow pop-ups for this site and try again." };
+    }
+    if (code === "auth/account-exists-with-different-credential") {
+      return {
+        error: "An account already exists with this email using another sign-in method. Please sign in using your original method.",
+      };
+    }
+    console.warn("[MicrosoftAuth] sign-in failed:", err);
+    return { error: "Microsoft sign-in failed. Please try again." };
   }
 }
 

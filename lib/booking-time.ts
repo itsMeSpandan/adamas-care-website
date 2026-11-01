@@ -57,6 +57,75 @@ export function salonDateKey(d: Date): string {
   )}-${String(local.getUTCDate()).padStart(2, "0")}`;
 }
 
+/**
+ * Add an integer number of days to a "YYYY-MM-DD" date key.
+ *
+ * Uses Date.UTC to guarantee exact day addition with zero DST or local timezone
+ * interference, correctly handling month lengths, leap years, and year rollovers.
+ */
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const d = new Date(Date.UTC(year, month - 1, day + days));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(
+    d.getUTCDate()
+  ).padStart(2, "0")}`;
+}
+
+export interface SalonBookingWindow {
+  /** "YYYY-MM-DD" of today in salon local time (IST). */
+  startKey: string;
+  /** "YYYY-MM-DD" of the last allowed booking date (startKey + windowDays - 1). */
+  endKey: string;
+  /** Local midnight Date representing startKey for calendar month boundaries. */
+  startDate: Date;
+  /** Local midnight Date representing endKey for calendar month boundaries. */
+  endDate: Date;
+  /** All unique "YYYY-MM" months the window touches (e.g. ["2026-10", "2026-11"]). */
+  months: string[];
+  /** All unique 4-digit years the window touches (e.g. [2026] or [2026, 2027]). */
+  years: number[];
+  /** All consecutive date keys in the window. */
+  dates: string[];
+}
+
+/**
+ * Derives the active customer booking window in salon local time (IST).
+ *
+ * Defaults to 14 days inclusive (today through today + 13 days).
+ * Clock is injectable via `now` for unit testing without system time mutation.
+ */
+export function getSalonBookingWindow(
+  now: Date = new Date(),
+  windowDays = 14
+): SalonBookingWindow {
+  const startKey = salonDateKey(now);
+  const endKey = addDaysToDateKey(startKey, windowDays - 1);
+
+  const dates: string[] = [];
+  const monthsSet = new Set<string>();
+  const yearsSet = new Set<number>();
+
+  for (let i = 0; i < windowDays; i++) {
+    const k = addDaysToDateKey(startKey, i);
+    dates.push(k);
+    monthsSet.add(k.slice(0, 7)); // "YYYY-MM"
+    yearsSet.add(Number(k.slice(0, 4)));
+  }
+
+  const [sY, sM, sD] = startKey.split("-").map(Number);
+  const [eY, eM, eD] = endKey.split("-").map(Number);
+
+  return {
+    startKey,
+    endKey,
+    startDate: new Date(sY, sM - 1, sD, 0, 0, 0, 0),
+    endDate: new Date(eY, eM - 1, eD, 0, 0, 0, 0),
+    months: Array.from(monthsSet),
+    years: Array.from(yearsSet),
+    dates,
+  };
+}
+
 /** Seconds elapsed since salon-local midnight. */
 function salonSecondsOfDay(d: Date): number {
   const local = salonShifted(d);

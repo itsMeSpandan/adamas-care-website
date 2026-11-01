@@ -226,3 +226,117 @@ export const adminFeedbackUpdateSchema = z.object({
   status: z.enum(["NEW", "REVIEWED", "FOLLOW_UP", "RESOLVED"]).optional(),
   adminNotes: z.string().max(2000).optional().nullable(),
 });
+
+// ─── Feedback & Analytics GroupKey Roll-up ───────────────────────────────────
+
+export interface ServiceRatingRollup {
+  groupKey: string;
+  groupName: string;
+  totalRatings: number;
+  averageRating: number | null;
+  tagCounts: Record<string, number>;
+  variantBreakdown: Array<{
+    serviceId: string;
+    variantLabel?: string;
+    count: number;
+    averageRating: number;
+  }>;
+}
+
+/**
+ * Resolves the analytics group key for a service ID.
+ * Combines legacy 'aromatherapy' with 'aromatherapy-90' and 'aromatherapy-60' under 'aromatherapy'.
+ */
+export function getServiceFeedbackGroupKey(service: { id: string; groupKey?: string | null }): string {
+  if (service.id === "aromatherapy") return "aromatherapy";
+  return service.groupKey || service.id;
+}
+
+/**
+ * Rolls up service feedback ratings by treatment groupKey.
+ * Enables reports and analytics to show one aggregated rating per treatment across all its variants,
+ * while preserving breakdown per individual variant.
+ */
+export function rollupServiceFeedback(
+  serviceRatings: Array<{ serviceId: string; rating: number; tags?: string[] }>,
+  servicesMap: Map<string, { id: string; name: string; groupKey?: string | null; groupName?: string | null; variantLabel?: string | null }>
+): ServiceRatingRollup[] {
+  const groups = new Map<
+    string,
+    {
+      groupKey: string;
+      groupName: string;
+      ratings: number[];
+      tags: Record<string, number>;
+      variants: Map<string, number[]>;
+    }
+  >();
+
+  for (const sr of serviceRatings) {
+    const s = servicesMap.get(sr.serviceId);
+    const key = sr.serviceId === "aromatherapy" ? "aromatherapy" : (s?.groupKey || sr.serviceId);
+    const name = s?.groupName || s?.name || sr.serviceId;
+
+    if (!groups.has(key)) {
+      groups.set(key, {
+        groupKey: key,
+        groupName: name,
+        ratings: [],
+        tags: {},
+        variants: new Map(),
+      });
+    }
+
+    const g = groups.get(key)!;
+    g.ratings.push(sr.rating);
+
+    if (sr.tags) {
+      for (const t of sr.tags) {
+        g.tags[t] = (g.tags[t] || 0) + 1;
+      }
+    }
+
+    if (!g.variants.has(sr.serviceId)) {
+      g.variants.set(sr.serviceId, []);
+    }
+    g.variants.get(sr.serviceId)!.push(sr.rating);
+  }
+
+  const results: ServiceRatingRollup[] = [];
+  groups.forEach((g, key) => {
+    const avg =
+      g.ratings.length > 0
+        ? Number((g.ratings.reduce((a: number, b: number) => a + b, 0) / g.ratings.length).toFixed(2))
+        : null;
+
+    const variantBreakdown: Array<{
+      serviceId: string;
+      variantLabel?: string;
+      count: number;
+      averageRating: number;
+    }> = [];
+
+    g.variants.forEach((vRatings: number[], sid: string) => {
+      const vService = servicesMap.get(sid);
+      variantBreakdown.push({
+        serviceId: sid,
+        variantLabel: vService?.variantLabel || undefined,
+        count: vRatings.length,
+        averageRating: Number(
+          (vRatings.reduce((a: number, b: number) => a + b, 0) / vRatings.length).toFixed(2)
+        ),
+      });
+    });
+
+    results.push({
+      groupKey: key,
+      groupName: g.groupName,
+      totalRatings: g.ratings.length,
+      averageRating: avg,
+      tagCounts: g.tags,
+      variantBreakdown,
+    });
+  });
+
+  return results.sort((a, b) => b.totalRatings - a.totalRatings);
+}

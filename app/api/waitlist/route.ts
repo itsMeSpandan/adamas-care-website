@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/require-auth";
 import { getSessionFromRequest } from "@/lib/auth";
 import { canBookService, audienceBlockedMessage } from "@/lib/service-audience";
+import { salonDateKey, addDaysToDateKey } from "@/lib/booking-time";
 
 export const dynamic = "force-dynamic";
 
@@ -69,13 +70,33 @@ export const POST = requireAuth(async (request: Request) => {
       );
     }
 
+    // Upper bound (+14 days inclusive): enforce ONLY for customer waitlist entries.
+    const isStaff = session.role === "admin" || session.role === "employee";
+    if (slotDate && !isStaff) {
+      const todayKey = salonDateKey(new Date());
+      const maxBookingKey = addDaysToDateKey(todayKey, 13);
+      const slotDateKey = typeof slotDate === "string" ? slotDate.slice(0, 10) : salonDateKey(new Date(slotDate));
+      if (slotDateKey < todayKey || slotDateKey > maxBookingKey) {
+        return NextResponse.json(
+          { error: `Waitlist slots must be within the 14-day booking window (${todayKey} to ${maxBookingKey})` },
+          { status: 400 }
+        );
+      }
+    }
+
     // A client can't waitlist for a service they aren't eligible to book —
     // otherwise they'd be notified about a slot they can never claim.
     if (serviceId) {
       const [service, client] = await Promise.all([
-        db.service.findUnique({ where: { id: serviceId }, select: { audience: true } }),
+        db.service.findUnique({ where: { id: serviceId }, select: { audience: true, isActive: true } }),
         db.user.findUnique({ where: { id: session.userId }, select: { gender: true } }),
       ]);
+      if (service && (service as any).isActive === false) {
+        return NextResponse.json(
+          { error: "This service is no longer available for waitlist" },
+          { status: 400 }
+        );
+      }
       if (service && !canBookService(service.audience, client?.gender ?? null)) {
         return NextResponse.json(
           { error: audienceBlockedMessage(service.audience) },

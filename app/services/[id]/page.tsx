@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { LEGACY_SERVICE_ID_MAP } from "@/lib/service-legacy-map";
 import Image from "next/image";
 import Link from "next/link";
 import { getServiceById, getEmployees } from "@/lib/queries";
@@ -14,6 +15,9 @@ interface Props {
 
 export async function generateMetadata({ params }: Props) {
   const { id } = await params;
+  if (LEGACY_SERVICE_ID_MAP[id]) {
+    redirect(`/services/${LEGACY_SERVICE_ID_MAP[id]}`);
+  }
   const service = await getServiceById(id);
   if (!service) return { title: "Service Not Found" };
   return {
@@ -24,8 +28,11 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function ServiceDetailPage({ params }: Props) {
   const { id } = await params;
+  if (LEGACY_SERVICE_ID_MAP[id]) {
+    redirect(`/services/${LEGACY_SERVICE_ID_MAP[id]}`);
+  }
   const service = await getServiceById(id);
-  if (!service) notFound();
+  if (!service || service.isActive === false) notFound();
 
   const allEmployees = await getEmployees();
   const specialists = service.employeeIds
@@ -136,7 +143,7 @@ export default async function ServiceDetailPage({ params }: Props) {
 
           {/* Book button */}
           <div className="mt-10 sticky top-24">
-            <Link href="/booking" className="btn-primary w-full py-4 text-base">
+            <Link href={`/booking?service=${service.id}`} className="btn-primary w-full py-4 text-base">
               Book this service
             </Link>
           </div>

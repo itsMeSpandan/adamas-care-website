@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getServices } from "@/lib/queries";
 import ServiceCard from "@/components/cards/ServiceCard";
+import { groupServicesIntoTreatments, isTreatmentGroup } from "@/lib/service-legacy-map";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ServicesPage() {
   const services = await getServices();
+  const groupedTreatments = groupServicesIntoTreatments(services);
 
   return (
     <section className="section-padding bg-beige-50">
@@ -25,8 +27,11 @@ export default async function ServicesPage() {
         </p>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
-            <ServiceCard key={service.id} service={service} />
+          {groupedTreatments.map((item) => (
+            <ServiceCard
+              key={isTreatmentGroup(item) ? item.groupKey : item.id}
+              item={item}
+            />
           ))}
         </div>
       </div>

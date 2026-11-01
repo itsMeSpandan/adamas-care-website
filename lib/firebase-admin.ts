@@ -67,7 +67,7 @@ export function getFirebaseMessaging(): Messaging | null {
 }
 
 /** Auth instance, or null when Firebase is not configured. */
-function getFirebaseAuth(): Auth | null {
+export function getFirebaseAuth(): Auth | null {
   if (cachedAuth !== undefined) return cachedAuth;
   const app = getFirebaseApp();
   cachedAuth = app ? getAuth(app) : null;

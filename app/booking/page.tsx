@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format } from "date-fns";
-import { Service, Employee } from "@/lib/types";
+import { Service, Employee, TreatmentGroup } from "@/lib/types";
 import { formatPrice, formatDuration, displayTime, cn } from "@/lib/utils";
 import { canBookService, audienceLabel } from "@/lib/service-audience";
+import { groupServicesIntoTreatments, isTreatmentGroup, resolveActiveServiceId } from "@/lib/service-legacy-map";
+import { getSalonBookingWindow } from "@/lib/booking-time";
 import StarIcon from "@/components/ui/StarIcon";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
@@ -65,9 +68,11 @@ function hourParts(hour: number): { h: number; period: "AM" | "PM" } {
   return { h, period };
 }
 
-export default function BookingPage() {
+function BookingContent() {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const searchParams = useSearchParams();
+  const preselectServiceId = searchParams.get("service");
   const [services, setServices] = useState<Service[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +80,7 @@ export default function BookingPage() {
   // Wizard state
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>({});
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
@@ -112,11 +118,16 @@ export default function BookingPage() {
   const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
   const selectedServiceIds = selectedServices.map((s) => s.id);
 
-  // 14-day booking window from today (today + 13 = 14 days inclusive)
-  const bookingWindowStart = new Date();
-  bookingWindowStart.setHours(0, 0, 0, 0);
-  const bookingWindowEnd = new Date(bookingWindowStart);
-  bookingWindowEnd.setDate(bookingWindowEnd.getDate() + 13);
+  // 14-day booking window derived in salon time (Asia/Kolkata)
+  const bookingWindow = useMemo(() => getSalonBookingWindow(), []);
+  const {
+    startKey: bookingStartKey,
+    endKey: bookingEndKey,
+    startDate: bookingWindowStart,
+    endDate: bookingWindowEnd,
+    months: bookingWindowMonths,
+    years: bookingWindowYears,
+  } = bookingWindow;
 
   // Helper: toggle a service in/out of the selection
   const toggleService = (service: Service) => {
@@ -135,6 +146,44 @@ export default function BookingPage() {
       setSelectedSlot(null);
       return [...prev, service];
     });
+  };
+
+  const handleSelectVariant = (group: TreatmentGroup, variant: Service) => {
+    setSelectedVariants((prev) => ({ ...prev, [group.groupKey]: variant.id }));
+
+    // If any variant from this group is in cart, swap it for the newly chosen variant
+    const inCart = selectedServices.find((s) => group.variants.some((v) => v.id === s.id));
+    if (inCart) {
+      if (inCart.id !== variant.id) {
+        setSelectedServices((prev) => prev.map((s) => (s.id === inCart.id ? variant : s)));
+        // Reset specialist and slot if already chosen, notify customer
+        if (selectedEmployee || selectedSlot) {
+          setSelectedEmployee(null);
+          setSelectedSlot(null);
+          showToast("Duration/variant changed — please re-select your preferred specialist or time slot.", "error");
+        }
+      }
+    }
+  };
+
+  const handleToggleTreatment = (group: TreatmentGroup) => {
+    const activeVariantId = selectedVariants[group.groupKey] || group.variants[0].id;
+    const activeVariant = group.variants.find((v) => v.id === activeVariantId) || group.variants[0];
+
+    const inCart = selectedServices.find((s) => group.variants.some((v) => v.id === s.id));
+    if (inCart) {
+      // Remove from cart
+      setSelectedServices((prev) => prev.filter((s) => s.id !== inCart.id));
+      setSelectedEmployee(null);
+      setSelectedDate(null);
+      setSelectedSlot(null);
+    } else {
+      // Add active variant to cart
+      setSelectedServices((prev) => [...prev, activeVariant]);
+      setSelectedEmployee(null);
+      setSelectedDate(null);
+      setSelectedSlot(null);
+    }
   };
 
   useEffect(() => {
@@ -163,36 +212,46 @@ export default function BookingPage() {
     return empIds;
   };
 
-  // Fetch services, employees, and holidays
+  // Fetch services, employees, and holidays (across all years spanned by booking window)
   useEffect(() => {
-    const year = new Date().getFullYear();
     Promise.all([
       fetch("/api/services").then((res) => res.json()),
       fetch("/api/employees").then((res) => res.json()),
-      fetch(`/api/holidays?year=${year}`).then((res) => res.json()),
+      Promise.all(
+        bookingWindowYears.map((y) =>
+          fetch(`/api/holidays?year=${y}`)
+            .then((res) => res.json())
+            .then((data) => data.holidays || [])
+            .catch(() => [])
+        )
+      ).then((holidayLists) => holidayLists.flat()),
     ])
-      .then(([servicesData, employeesData, holidaysData]) => {
-        setServices(servicesData);
+      .then(([servicesData, employeesData, allHolidays]) => {
+        const validServices: Service[] = Array.isArray(servicesData) ? servicesData : [];
+        setServices(validServices);
+        if (preselectServiceId) {
+          const targetId = resolveActiveServiceId(preselectServiceId);
+          const matched = validServices.find((s) => s.id === targetId && s.isActive !== false);
+          if (matched) {
+            if (matched.groupKey) {
+              setSelectedVariants((prev) => ({ ...prev, [matched.groupKey!]: matched.id }));
+            }
+            setSelectedServices([matched]);
+          }
+        }
         setEmployees(Array.isArray(employeesData) ? employeesData : employeesData.employees || []);
-        setHolidays(holidaysData.holidays || []);
+        setHolidays(allHolidays);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }, [bookingWindowYears, preselectServiceId]);
 
   // Fetch available dates when entering step 2
   useEffect(() => {
     if (step !== 2 || selectedServices.length === 0) return;
 
-    // Collect unique year-month strings that the 14-day window spans
-    const monthsSet = new Set<string>();
-    const cursor = new Date(bookingWindowStart);
-    while (cursor <= bookingWindowEnd) {
-      monthsSet.add(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
-      cursor.setMonth(cursor.getMonth() + 1);
-      cursor.setDate(1);
-    }
-    const months = Array.from(monthsSet);
+    // The 14-day window derived in salon time touches 1 or at most 2 calendar months
+    const months = bookingWindowMonths;
 
     const empIds = selectedEmployee
       ? [selectedEmployee.id]
@@ -309,8 +368,12 @@ export default function BookingPage() {
   // only offer what this client may actually book — the booking API rejects the
   // rest, and showing a service that 403s at submit is worse than hiding it.
   const bookableServices = services.filter((s) =>
-    canBookService(s.audience, user?.gender)
+    s.isActive !== false && canBookService(s.audience, user?.gender)
   );
+
+  const treatmentCards = useMemo(() => {
+    return groupServicesIntoTreatments(bookableServices);
+  }, [bookableServices]);
 
   // True when at least one service is hidden because of the client's gender (or
   // missing gender), so we can say why the list looks short.
@@ -330,13 +393,11 @@ export default function BookingPage() {
   // booking window can reach into the next month, but showing next month's
   // festivals under this month's grid is just noise. The API returns holidays
   // oldest-first, so the slice keeps the soonest ones.
-  const currentMonthKey = format(new Date(), "yyyy-MM");
   const upcomingHolidays = holidays
-    .filter(
-      (h) =>
-        holidayDate(h) >= new Date() &&
-        format(holidayDate(h), "yyyy-MM") === currentMonthKey
-    )
+    .filter((h) => {
+      const hDateKey = typeof h.date === "string" ? h.date.slice(0, 10) : format(holidayDate(h), "yyyy-MM-dd");
+      return hDateKey >= bookingStartKey && hDateKey <= bookingEndKey;
+    })
     .slice(0, 6);
 
   // Step 2 time grid: group the server's slots into Morning / Afternoon and
@@ -516,16 +577,119 @@ export default function BookingPage() {
                   </p>
                 )}
                 <div className="mb-8 grid gap-3 sm:grid-cols-2">
-                  {bookableServices.map((service) => {
+                  {treatmentCards.map((item) => {
+                    if (isTreatmentGroup(item)) {
+                      const groupKey = item.groupKey;
+                      const activeVariantId = selectedVariants[groupKey] || item.variants[0].id;
+                      const activeVariant = item.variants.find((v) => v.id === activeVariantId) || item.variants[0];
+                      const isSelected = selectedServices.some((s) => item.variants.some((v) => v.id === s.id));
+
+                      return (
+                        <div
+                          key={groupKey}
+                          onClick={() => handleToggleTreatment(item)}
+                          className={cn(
+                            "relative flex flex-col justify-between rounded-card border p-4 text-left transition-all duration-200 cursor-pointer",
+                            isSelected
+                              ? "border-beige-600 bg-beige-50 ring-2 ring-beige-200 shadow-sm"
+                              : "border-beige-200 bg-white hover:border-beige-300 hover:shadow-sm"
+                          )}
+                        >
+                          <div>
+                            {isSelected && (
+                              <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-beige-600">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              </div>
+                            )}
+
+                            <div className="flex items-center gap-2 pr-6">
+                              <span className="text-xs font-medium text-beige-500">{item.category}</span>
+                              {item.audience !== "unisex" && (
+                                <span className="rounded-full bg-beige-100 px-2 py-0.5 text-[10px] font-medium text-beige-600">
+                                  {audienceLabel(item.audience)}
+                                </span>
+                              )}
+                            </div>
+
+                            <span className="mt-1 font-serif text-base font-semibold text-beige-700 block">
+                              {item.groupName}
+                            </span>
+                            <p className="mt-1 text-xs text-beige-600 line-clamp-2">
+                              {item.description}
+                            </p>
+                          </div>
+
+                          {/* Duration / Variant Selector */}
+                          <div className="mt-3 pt-3 border-t border-beige-100" onClick={(e) => e.stopPropagation()}>
+                            {item.variants.length <= 3 ? (
+                              <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={`Duration options for ${item.groupName}`}>
+                                {item.variants.map((v) => {
+                                  const isVariantActive = v.id === activeVariant.id;
+                                  const label =
+                                    item.groupType === "hair_length" && v.variantLabel
+                                      ? `${v.variantLabel.replace(/ hair$/i, "")} · ${formatPrice(v.price)}`
+                                      : `${v.durationMinutes} min · ${formatPrice(v.price)}`;
+
+                                  return (
+                                    <button
+                                      key={v.id}
+                                      type="button"
+                                      role="radio"
+                                      aria-checked={isVariantActive}
+                                      onClick={() => handleSelectVariant(item, v)}
+                                      className={cn(
+                                        "min-h-[44px] min-w-[44px] rounded-lg px-3 py-2 text-xs font-medium transition-all flex items-center justify-center",
+                                        isVariantActive
+                                          ? "bg-beige-600 text-white shadow-xs font-semibold"
+                                          : "border border-beige-300 bg-white text-beige-700 hover:bg-beige-100"
+                                      )}
+                                    >
+                                      {label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <div>
+                                <label htmlFor={`select-booking-${item.groupKey}`} className="sr-only">
+                                  Choose option for {item.groupName}
+                                </label>
+                                <select
+                                  id={`select-booking-${item.groupKey}`}
+                                  value={activeVariant.id}
+                                  onChange={(e) => {
+                                    const targetV = item.variants.find((v) => v.id === e.target.value);
+                                    if (targetV) handleSelectVariant(item, targetV);
+                                  }}
+                                  className="h-[44px] w-full rounded-lg border border-beige-300 bg-white px-3 py-2 text-xs font-medium text-beige-700 outline-none focus:border-beige-500"
+                                >
+                                  {item.variants.map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                      {v.variantLabel || `${v.durationMinutes} min`} — {formatPrice(v.price)}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // Standalone service
+                    const service = item;
                     const isSelected = selectedServiceIds.includes(service.id);
                     return (
                       <button
                         key={service.id}
+                        type="button"
                         onClick={() => toggleService(service)}
                         className={cn(
                           "relative flex flex-col items-start rounded-card border p-4 text-left transition-all duration-200",
                           isSelected
-                            ? "border-beige-600 bg-beige-50 ring-2 ring-beige-200"
+                            ? "border-beige-600 bg-beige-50 ring-2 ring-beige-200 shadow-sm"
                             : "border-beige-200 bg-white hover:border-beige-300 hover:shadow-sm"
                         )}
                       >
@@ -548,6 +712,29 @@ export default function BookingPage() {
                         <span className="mt-1 text-sm text-beige-600">
                           {formatPrice(service.price)} · {formatDuration(service.durationMinutes)}
                         </span>
+                        {(service.category === "Classic Combos" || service.name.toLowerCase().includes("combo") || service.description?.includes("+")) && service.description ? (
+                          <div className="mt-2.5 w-full">
+                            <span className="text-[11px] font-medium uppercase tracking-wider text-beige-500 block mb-1">
+                              Included services:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {service.description
+                                .split("+")
+                                .map((item) => item.trim())
+                                .filter(Boolean)
+                                .map((item, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center rounded-md bg-beige-100/90 px-2 py-0.5 text-xs text-beige-700 font-medium border border-beige-200/70"
+                                  >
+                                    ✓ {item}
+                                  </span>
+                                ))}
+                            </div>
+                          </div>
+                        ) : service.description ? (
+                          <p className="mt-1 text-xs text-beige-600 line-clamp-2">{service.description}</p>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -678,9 +865,8 @@ export default function BookingPage() {
                       startMonth={bookingWindowStart}
                       endMonth={bookingWindowEnd}
                       disabled={(date) => {
-                        if (date < bookingWindowStart) return true;
-                        if (date > bookingWindowEnd) return true;
                         const dateKey = format(date, "yyyy-MM-dd");
+                        if (dateKey < bookingStartKey || dateKey > bookingEndKey) return true;
                         return !availableDates.includes(dateKey);
                       }}
                       modifiers={{
@@ -882,7 +1068,14 @@ export default function BookingPage() {
                       <div className="space-y-1">
                         {selectedServices.map((s) => (
                           <div key={s.id} className="flex items-center justify-between">
-                            <span className="text-beige-700">{s.name}</span>
+                            <div>
+                              <span className="text-beige-700">{s.groupName && s.variantLabel ? `${s.groupName} (${s.variantLabel})` : s.name}</span>
+                              {(s.category === "Classic Combos" || s.name.toLowerCase().includes("combo") || s.description?.includes("+")) && s.description && (
+                                <p className="mt-0.5 text-xs text-beige-500 pl-2 border-l-2 border-beige-300">
+                                  Includes: {s.description.split("+").map((item) => item.trim()).filter(Boolean).join(" + ")}
+                                </p>
+                              )}
+                            </div>
                             <span className="text-beige-500">{formatDuration(s.durationMinutes)} · {formatPrice(s.price)}</span>
                           </div>
                         ))}
@@ -1248,5 +1441,20 @@ export default function BookingPage() {
         )}
       </div>
     </div>
+  );
+}
+
+
+export default function BookingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="section-padding bg-beige-50 flex items-center justify-center min-h-[60vh]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-beige-300 border-t-beige-600" />
+        </div>
+      }
+    >
+      <BookingContent />
+    </Suspense>
   );
 }

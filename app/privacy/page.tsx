@@ -45,6 +45,13 @@ export default function PrivacyPage() {
                 payment-related information.
               </p>
               <p className="leading-relaxed">
+                <strong className="text-beige-700">Third-Party Sign-In Information:</strong>{" "}
+                When you sign in or register through a third-party authentication
+                provider (such as Google or Microsoft), we receive basic profile
+                details including your name, verified email address, and avatar image
+                in accordance with your permissions with that provider.
+              </p>
+              <p className="leading-relaxed">
                 <strong className="text-beige-700">Booking Data:</strong>{" "}
                 Service selections, appointment dates and times, specialist
                 preferences, and any notes you provide.
@@ -120,6 +127,11 @@ export default function PrivacyPage() {
               parties. We may share information with:
             </p>
             <ul className="mt-3 space-y-2 text-beige-600">
+              <li className="flex gap-2">
+                <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-beige-400" />
+                Third-party authentication providers (Google LLC and Microsoft
+                Corporation) for processing secure sign-in requests
+              </li>
               <li className="flex gap-2">
                 <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-beige-400" />
                 Service providers who assist in operating our website and

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
 import {
   signInWithGoogle,
+  signInWithMicrosoft,
   isFirebaseClientConfigured,
 } from "@/lib/firebase-client";
 import PasswordToggle from "@/components/ui/PasswordToggle";
@@ -52,7 +53,7 @@ function validateWhatsappNumber(number: string): string | null {
 }
 
 export default function LoginModal({ open, onClose, initialMode = "signin" }: LoginModalProps) {
-  const { login, loginWithGoogle } = useAuth();
+  const { login, loginWithGoogle, loginWithMicrosoft } = useAuth();
   const { showToast } = useToast();
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [name, setName] = useState("");
@@ -66,6 +67,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [microsoftLoading, setMicrosoftLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -235,6 +237,30 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
       }
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  // Microsoft popup → Firebase ID token → POST /api/auth/microsoft
+  const handleMicrosoftSignIn = async () => {
+    setFormError(null);
+    setMicrosoftLoading(true);
+    try {
+      const result = await signInWithMicrosoft();
+      if (result === null) return; // popup closed — no error to show
+      if ("error" in result) {
+        setFormError(result.error);
+        return;
+      }
+      const { ok, error } = await loginWithMicrosoft(result.idToken);
+      if (ok) {
+        resetForm();
+        showToast("Signed in with Microsoft", "success");
+        onClose();
+      } else {
+        setFormError(error || "Microsoft sign-in failed. Please try again.");
+      }
+    } finally {
+      setMicrosoftLoading(false);
     }
   };
 
@@ -529,7 +555,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
 
                 <button
                   type="submit"
-                  disabled={loading || googleLoading || (mode === "signup" && !gender)}
+                  disabled={loading || googleLoading || microsoftLoading || (mode === "signup" && !gender)}
                   className="btn-primary mt-6 w-full py-3"
                 >
                   {loading ? (
@@ -545,9 +571,9 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                   )}
                 </button>
 
-                {/* Google sign-in — shown only when Firebase env is configured */}
+                {/* Social sign-in options — shown only when Firebase env is configured */}
                 {isFirebaseClientConfigured() && (
-                  <div className="mt-4">
+                  <div className="mt-4 space-y-2.5">
                     <div className="relative my-4">
                       <div className="absolute inset-0 flex items-center">
                         <div className="w-full border-t border-beige-200" />
@@ -556,11 +582,14 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                         <span className="bg-white px-3 text-xs text-beige-400">or</span>
                       </div>
                     </div>
+
+                    {/* Google */}
                     <button
                       type="button"
                       onClick={handleGoogleSignIn}
-                      disabled={loading || googleLoading}
-                      className="flex w-full items-center justify-center gap-3 rounded-xl border border-beige-300 bg-white px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-50 disabled:opacity-60"
+                      disabled={loading || googleLoading || microsoftLoading}
+                      aria-label="Continue with Google"
+                      className="flex min-h-[44px] w-full items-center justify-center gap-3 rounded-xl border border-beige-300 bg-white px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-50 focus:outline-none focus:ring-2 focus:ring-beige-200 disabled:opacity-60"
                     >
                       {googleLoading ? (
                         <span className="flex items-center gap-2">
@@ -568,7 +597,7 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                           </svg>
-                          Signing in…
+                          Signing in with Google…
                         </span>
                       ) : (
                         <>
@@ -579,6 +608,35 @@ export default function LoginModal({ open, onClose, initialMode = "signin" }: Lo
                             <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
                           </svg>
                           Continue with Google
+                        </>
+                      )}
+                    </button>
+
+                    {/* Microsoft */}
+                    <button
+                      type="button"
+                      onClick={handleMicrosoftSignIn}
+                      disabled={loading || googleLoading || microsoftLoading}
+                      aria-label="Continue with Microsoft"
+                      className="flex min-h-[44px] w-full items-center justify-center gap-3 rounded-xl border border-beige-300 bg-white px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-50 focus:outline-none focus:ring-2 focus:ring-beige-200 disabled:opacity-60"
+                    >
+                      {microsoftLoading ? (
+                        <span className="flex items-center gap-2">
+                          <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          Signing in with Microsoft…
+                        </span>
+                      ) : (
+                        <>
+                          <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
+                            <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                            <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                            <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                            <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+                          </svg>
+                          Continue with Microsoft
                         </>
                       )}
                     </button>
