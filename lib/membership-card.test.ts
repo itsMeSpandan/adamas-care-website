@@ -99,10 +99,11 @@ describe("Membership Card Component (Ivory Faceted Gem)", () => {
   });
 
   describe("4. Card Back & Flip Interactivity", () => {
-    it("provides 3D flip card back with check-in QR code, reception instructions, and terms", () => {
-      expect(componentContent).toContain("ADAMAS CARE CHECK-IN");
-      expect(componentContent).toContain("Show this at reception");
-      expect(componentContent).toContain("Tap to flip back • Terms apply");
+    it("provides 3D flip card back with magnetic stripe, signature strip, security code, and barcode", () => {
+      expect(componentContent).toContain("bg-[#2A211C]");
+      expect(componentContent).toContain("SIGNATURE");
+      expect(componentContent).toContain("MembershipCardBarcode");
+      expect(componentContent).toContain("Non-transferable. Property of Adamas Care.");
       expect(componentContent).toContain("rotateY(180deg)");
     });
 

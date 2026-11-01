@@ -157,6 +157,49 @@ export function MembershipCardFacets() {
   );
 }
 
+/**
+ * 1D Barcode SVG matching authentic high-end charge / membership cards.
+ */
+export function MembershipCardBarcode({ className }: { className?: string }) {
+  const barsPattern = [
+    2, 1, 1, 2, 3, 1, 1, 2, 2, 1, 1, 3, 2, 1, 2, 2, 1, 1, 3, 1, 2, 1, 1, 2,
+    3, 2, 1, 1, 2, 2, 1, 3, 1, 2, 1, 1, 2, 3, 1, 2, 2, 1, 1, 2, 3, 1, 1, 2,
+    2, 1, 1, 3, 2, 1, 2, 2, 1, 1, 3, 1, 2, 1, 1, 2, 3, 2, 1, 1, 2, 2, 1, 3,
+    1, 2, 1, 1, 2, 3, 1, 2, 2, 1, 1, 2, 3, 1, 1, 2, 2, 1, 1, 3, 2, 1, 2, 2,
+  ];
+
+  let currentX = 2;
+  const bars: React.ReactNode[] = [];
+
+  for (let i = 0; i < barsPattern.length; i++) {
+    const width = barsPattern[i];
+    if (i % 2 === 0) {
+      bars.push(
+        <rect
+          key={i}
+          x={currentX}
+          y="0"
+          width={width}
+          height="32"
+          fill="#2B2420"
+        />
+      );
+    }
+    currentX += width;
+  }
+
+  return (
+    <svg
+      viewBox={`0 0 ${currentX + 2} 32`}
+      className={className}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      {bars}
+    </svg>
+  );
+}
+
 export interface MembershipCardProps {
   name?: string | null;
   role?: string | null;
@@ -216,6 +259,15 @@ export function MembershipCard({
   const displayMemberId = memberId?.trim() || formatMemberId(userId, createdAt);
   const displayMemberSince = memberSince?.trim() || formatMemberSinceShort(createdAt);
   const pointsFormatted = formatLoyaltyPoints(loyaltyPoints);
+
+  // Extract security code from Member ID (e.g. "0001" from "AC26 0001 8842")
+  const securityCode = (() => {
+    const parts = displayMemberId.split(/\s+/);
+    if (parts.length >= 2 && parts[1]) {
+      return parts[1];
+    }
+    return "0001";
+  })();
 
   const handleFlip = () => {
     if (!interactive) return;
@@ -412,10 +464,10 @@ export function MembershipCard({
               </div>
             </div>
 
-            {/* ── BACK FACE: Front-Desk Check-In QR ── */}
+            {/* ── BACK FACE: Luxury Charge/Membership Card Back ── */}
             <div
               className={cn(
-                "absolute inset-0 w-full h-full flex flex-col items-center justify-between p-[clamp(14px,4.5cqw,20px)] text-center",
+                "absolute inset-0 w-full h-full flex flex-col justify-between overflow-hidden select-none",
                 prefersReducedMotion
                   ? isFlipped
                     ? "opacity-100"
@@ -423,12 +475,52 @@ export function MembershipCard({
                   : "[backface-visibility:hidden] [transform:rotateY(180deg)]"
               )}
             >
-              {/* Facet Artwork on Back */}
-              <MembershipCardFacets />
+              {/* Top Dark Magnetic Stripe */}
+              <div className="w-full mt-4 sm:mt-5 h-[34px] sm:h-[38px] bg-[#2A211C] shrink-0 relative z-10" />
+
+              {/* Signature Row & Security Code */}
+              <div className="relative z-10 px-[clamp(14px,4.5cqw,20px)] mt-2 sm:mt-2.5 flex items-center gap-2 sm:gap-3 w-full">
+                {/* Left signature box */}
+                <div className="flex-1 h-[28px] sm:h-[32px] bg-white/95 rounded-[7px] sm:rounded-[8px] border border-[#DDD3C7] px-2.5 flex items-center justify-between shadow-[inset_0_1px_2px_rgba(43,36,32,0.03)]">
+                  <span className="text-[8px] sm:text-[9px] font-inter font-medium uppercase tracking-[0.2em] text-[#6B5C50] shrink-0 select-none">
+                    SIGNATURE
+                  </span>
+                  <span className="font-serif italic font-medium text-[14px] sm:text-[16px] text-[#2B2420] tracking-wide truncate max-w-[65%] text-right select-none">
+                    {displayName}
+                  </span>
+                </div>
+
+                {/* Right security code box */}
+                <div className="w-[58px] sm:w-[68px] h-[28px] sm:h-[32px] bg-white/95 rounded-[7px] sm:rounded-[8px] border border-[#DDD3C7] flex items-center justify-center shrink-0 shadow-[inset_0_1px_2px_rgba(43,36,32,0.03)]">
+                  <span className="text-[11px] sm:text-[12px] font-inter font-medium tracking-[0.16em] text-[#2B2420] tabular-nums select-all">
+                    {securityCode}
+                  </span>
+                </div>
+              </div>
+
+              {/* Center Barcode Area */}
+              <div className="relative z-10 flex flex-col items-center justify-center my-auto py-1 px-[clamp(14px,4.5cqw,20px)]">
+                <MembershipCardBarcode className="w-[84%] max-w-[280px] h-[24px] sm:h-[28px]" />
+                <p className="font-inter font-medium text-[10px] sm:text-[11px] text-[#2B2420] tracking-[0.24em] tabular-nums mt-1 select-all leading-none">
+                  {displayMemberId}
+                </p>
+              </div>
+
+              {/* Bottom Disclaimer */}
+              <div className="relative z-10 pb-3 sm:pb-3.5 text-center px-4">
+                <p className="font-inter text-[8px] sm:text-[9px] text-[#6B5C50] tracking-[0.03em] leading-none select-none">
+                  Non-transferable. Property of Adamas Care.
+                </p>
+              </div>
+
+              {/* Facet Artwork overlay on back (radiating lines show across background and stripe) */}
+              <div className="absolute inset-0 pointer-events-none z-20" aria-hidden="true">
+                <MembershipCardFacets />
+              </div>
 
               {/* Shimmer Highlight */}
               <div
-                className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]"
+                className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px] z-30"
                 aria-hidden="true"
               >
                 <div
@@ -438,75 +530,6 @@ export function MembershipCard({
                       "linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%)",
                   }}
                 />
-              </div>
-
-              {/* Top Check-In Header */}
-              <div className="relative z-10 text-[9px] font-inter uppercase tracking-[0.28em] text-[#6B5C50] mt-0.5">
-                ADAMAS CARE CHECK-IN
-              </div>
-
-              {/* Center QR Box */}
-              <div className="relative z-10 w-[116px] h-[116px] max-h-[50%] aspect-square rounded-[16px] bg-white p-2.5 shadow-[0_4px_16px_rgba(60,40,25,0.08)] border border-[#DDD3C7]/80 flex items-center justify-center">
-                <svg
-                  viewBox="0 0 100 100"
-                  className="w-full h-full text-[#2B2420]"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  {/* Top-Left Finder */}
-                  <rect x="8" y="8" width="28" height="28" rx="4" fill="#2B2420" />
-                  <rect x="12" y="12" width="20" height="20" rx="2" fill="#FFFFFF" />
-                  <rect x="16" y="16" width="12" height="12" rx="1.5" fill="#2B2420" />
-
-                  {/* Top-Right Finder */}
-                  <rect x="64" y="8" width="28" height="28" rx="4" fill="#2B2420" />
-                  <rect x="68" y="12" width="20" height="20" rx="2" fill="#FFFFFF" />
-                  <rect x="72" y="16" width="12" height="12" rx="1.5" fill="#2B2420" />
-
-                  {/* Bottom-Left Finder */}
-                  <rect x="8" y="64" width="28" height="28" rx="4" fill="#2B2420" />
-                  <rect x="12" y="68" width="20" height="20" rx="2" fill="#FFFFFF" />
-                  <rect x="16" y="72" width="12" height="12" rx="1.5" fill="#2B2420" />
-
-                  {/* Data Modules */}
-                  <rect x="42" y="10" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="52" y="10" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="42" y="18" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="52" y="24" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="42" y="30" width="4" height="4" rx="1" fill="#2B2420" />
-
-                  <rect x="10" y="44" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="20" y="44" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="30" y="44" width="4" height="4" rx="1" fill="#2B2420" />
-
-                  {/* Diamond Center Accent */}
-                  <rect x="44" y="44" width="12" height="12" rx="2.5" fill="#A8483A" />
-
-                  <rect x="64" y="44" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="74" y="44" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="84" y="44" width="4" height="4" rx="1" fill="#2B2420" />
-
-                  <rect x="42" y="64" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="52" y="68" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="42" y="76" width="4" height="4" rx="1" fill="#2B2420" />
-                  <rect x="64" y="64" width="6" height="6" rx="1" fill="#2B2420" />
-                  <rect x="76" y="64" width="6" height="6" rx="1" fill="#2B2420" />
-                  <rect x="64" y="76" width="6" height="6" rx="1" fill="#2B2420" />
-                  <rect x="76" y="76" width="10" height="10" rx="1" fill="#2B2420" />
-                </svg>
-              </div>
-
-              {/* Bottom Instructions */}
-              <div className="relative z-10 flex flex-col items-center gap-0.5">
-                <p className="font-inter text-[12px] font-medium tracking-[0.18em] text-[#2B2420] tabular-nums leading-none">
-                  {displayMemberId}
-                </p>
-                <p className="font-inter text-[11px] text-[#6B5C50] tracking-[0.02em] leading-none mt-1">
-                  Show this at reception
-                </p>
-                <p className="font-inter text-[9px] text-[#8C7A6B] tracking-[0.14em] uppercase leading-none mt-1">
-                  Tap to flip back • Terms apply
-                </p>
               </div>
             </div>
           </div>
