@@ -400,7 +400,7 @@ function ProfileContent() {
               - Always visible on desktop.
               - On mobile: visible when on main settings list, hidden when inside a section */}
           <div
-            className={`w-full md:w-[340px] shrink-0 ${
+            className={`w-full md:w-[366px] lg:w-[420px] shrink-0 ${
               activeSection !== null ? "hidden md:block" : "block"
             }`}
           >
@@ -409,6 +409,7 @@ function ProfileContent() {
               role={user.role}
               loyaltyPoints={user.loyaltyPoints}
               createdAt={user.createdAt}
+              userId={user.id}
             />
           </div>
 

@@ -164,3 +164,88 @@ export function computePushToggleView(state: PushToggleState): {
   return { isOn, isDisabled, ariaLabel, helperText, helperType };
 }
 
+/**
+ * Format account creation timestamp into short format "Member since MM/YY"
+ * (e.g. "Member since 10/26").
+ *
+ * If missing, invalid, or null, provides a safe fallback rather than undefined/NaN.
+ */
+export function formatMemberSinceShort(dateStr?: string | null): string {
+  if (!dateStr || typeof dateStr !== "string") {
+    return "Member since 10/26";
+  }
+  const trimmed = dateStr.trim();
+  if (!trimmed) {
+    return "Member since 10/26";
+  }
+
+  // Already formatted like "Member since MM/YY"
+  const shortMatch = trimmed.match(/^member\s+since\s+(\d{1,2}\/\d{2})$/i);
+  if (shortMatch) {
+    return `Member since ${shortMatch[1]}`;
+  }
+
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) {
+    const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const yy = String(d.getUTCFullYear()).slice(-2);
+    return `Member since ${mm}/${yy}`;
+  }
+
+  // Attempt to parse "Month YYYY" or "Member since Month YYYY"
+  const cleanStr = trimmed.replace(/^member\s+since\s+/i, "");
+  const parsedDate = new Date(`${cleanStr} 1 UTC`);
+  if (!isNaN(parsedDate.getTime())) {
+    const mm = String(parsedDate.getUTCMonth() + 1).padStart(2, "0");
+    const yy = String(parsedDate.getUTCFullYear()).slice(-2);
+    return `Member since ${mm}/${yy}`;
+  }
+
+  return "Member since 10/26";
+}
+
+/**
+ * Format a realistic, elegant member ID: "AC26 0001 8842"
+ * - AC: Adamas Care brand prefix
+ * - 2-digit year from account creation (or 26)
+ * - Two 4-character blocks generated deterministically from the user ID
+ */
+export function formatMemberId(userId?: string | null, createdAt?: string | null): string {
+  let year = "26";
+  if (createdAt) {
+    const d = new Date(createdAt);
+    if (!isNaN(d.getTime())) {
+      year = String(d.getUTCFullYear()).slice(-2);
+    }
+  }
+
+  if (!userId || typeof userId !== "string") {
+    return `AC${year} 0001 8842`;
+  }
+
+  const trimmed = userId.trim();
+  if (!trimmed) {
+    return `AC${year} 0001 8842`;
+  }
+
+  // If already matches ACyy xxxx yyyy
+  if (/^AC\d{2}\s+[A-Z0-9]{4}\s+[A-Z0-9]{4}$/i.test(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+
+  // Deterministic 4-digit numeric blocks from string characters
+  let h1 = 5381;
+  let h2 = 0;
+  for (let i = 0; i < trimmed.length; i++) {
+    const c = trimmed.charCodeAt(i);
+    h1 = ((h1 << 5) + h1) ^ c;
+    h2 = ((h2 << 7) - h2) ^ (c * 31);
+  }
+
+  const b1 = String(Math.abs(h1) % 10000).padStart(4, "0");
+  const b2 = String(Math.abs(h2) % 10000).padStart(4, "0");
+
+  return `AC${year} ${b1} ${b2}`;
+}
+
+

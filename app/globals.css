@@ -108,3 +108,25 @@
   stroke-dasharray: 60;
   stroke-dashoffset: 60;
 }
+
+
+/* Membership Card Shimmer & Flip Utilities */
+@keyframes sweepFacetShimmer {
+  0% {
+    transform: translateX(-150%) translateY(-50%) rotate(15deg);
+  }
+  30%, 100% {
+    transform: translateX(150%) translateY(50%) rotate(15deg);
+  }
+}
+
+.animate-facet-shimmer {
+  animation: sweepFacetShimmer 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-facet-shimmer {
+    animation: none !important;
+    display: none !important;
+  }
+}
