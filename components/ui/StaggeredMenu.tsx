@@ -17,6 +17,13 @@ interface StaggeredMenuSocialItem {
   link: string;
 }
 
+export interface StaggeredMenuHandle {
+  toggle: () => void;
+  open: () => void;
+  close: () => void;
+  isOpen: () => boolean;
+}
+
 interface StaggeredMenuProps {
   position?: "left" | "right";
   colors?: string[];
@@ -33,29 +40,35 @@ interface StaggeredMenuProps {
   isFixed?: boolean;
   closeOnClickAway?: boolean;
   renderHeader?: boolean;
+  renderToggle?: boolean;
   onMenuOpen?: () => void;
   onMenuClose?: () => void;
 }
 
-export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
-  position = "right",
-  colors = ["#B497CF", "#5227FF"],
-  items = [],
-  socialItems = [],
-  displaySocials = true,
-  displayItemNumbering = true,
-  className,
-  logoUrl = "/logo.png",
-  menuButtonColor = "#fff",
-  openMenuButtonColor = "#fff",
-  accentColor = "#5227FF",
-  changeMenuColorOnOpen = true,
-  isFixed = false,
-  closeOnClickAway = true,
-  renderHeader = true,
-  onMenuOpen,
-  onMenuClose,
-}) => {
+export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenuProps>(
+  (
+    {
+      position = "right",
+      colors = ["#B497CF", "#5227FF"],
+      items = [],
+      socialItems = [],
+      displaySocials = true,
+      displayItemNumbering = true,
+      className,
+      logoUrl = "/logo.png",
+      menuButtonColor = "#fff",
+      openMenuButtonColor = "#fff",
+      accentColor = "#5227FF",
+      changeMenuColorOnOpen = true,
+      isFixed = false,
+      closeOnClickAway = true,
+      renderHeader = true,
+      renderToggle = true,
+      onMenuOpen,
+      onMenuClose,
+    },
+    ref
+  ) => {
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
   const panelRef = useRef<HTMLElement | null>(null);
@@ -397,6 +410,15 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
     }
   }, [playClose, animateIcon, animateColor, onMenuClose]);
 
+  React.useImperativeHandle(ref, () => ({
+    toggle: toggleMenu,
+    open: () => {
+      if (!openRef.current) toggleMenu();
+    },
+    close: closeMenu,
+    isOpen: () => openRef.current,
+  }));
+
   React.useEffect(() => {
     if (!closeOnClickAway || !open) return;
 
@@ -477,7 +499,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
             </span>
           </button>
         </header>
-      ) : (
+      ) : renderToggle ? (
         <button
           ref={toggleBtnRef}
           className="sm-toggle sm-toggle-float"
@@ -493,7 +515,7 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
             <span ref={barBotRef} className="sm-icon-line" />
           </span>
         </button>
-      )}
+      ) : null}
 
       <aside
         id="staggered-menu-panel"
@@ -501,6 +523,27 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
         className="staggered-menu-panel"
         aria-hidden={!open}
       >
+        <button
+          type="button"
+          onClick={closeMenu}
+          aria-label="Close menu"
+          className="absolute top-6 right-6 sm:top-8 sm:right-8 w-11 h-11 flex items-center justify-center rounded-full hover:bg-black/5 text-[#2B2420] transition-colors z-20 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B2420]"
+        >
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
         <div className="sm-panel-inner">
           <ul
             className="sm-panel-list"
@@ -558,6 +601,8 @@ export const StaggeredMenu: React.FC<StaggeredMenuProps> = ({
       </aside>
     </div>
   );
-};
+});
+
+StaggeredMenu.displayName = "StaggeredMenu";
 
 export default StaggeredMenu;

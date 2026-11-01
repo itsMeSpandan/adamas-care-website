@@ -1,0 +1,108 @@
+/* Adamas Care - Auth Experience Styles */
+
+.auth-experience-root {
+  --auth-page-cream: #F4EFE8;
+  --auth-card: #FBF8F4;
+  --auth-input-fill: #F1EADF;
+  --auth-border: #DDD3C7;
+  --auth-border-subtle: #E6DDD2;
+  --auth-espresso: #2B2420;
+  --auth-muted: #6B5C50;
+  --auth-accent-coral: #A8483A;
+  --auth-dark-panel: #2A211C;
+  --auth-panel-text: #F4EFE8;
+  --auth-panel-muted: #DCCFC1;
+
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  color: var(--auth-espresso);
+  background-color: var(--auth-page-cream);
+}
+
+.auth-title {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: clamp(1.85rem, 1.4rem + 2vw, 3rem);
+  line-height: 1.15;
+  color: var(--auth-espresso);
+}
+
+.auth-panel-title {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-size: clamp(2rem, 1.6rem + 1.8vw, 2.9rem);
+  line-height: 1.15;
+  color: var(--auth-panel-text);
+}
+
+.auth-logo-wordmark {
+  font-family: var(--font-cormorant), Georgia, serif;
+  letter-spacing: 0.16em;
+}
+
+/* Fluid Full-Screen & Screen-Wide Card */
+.auth-card-container {
+  width: 100%;
+  min-height: 100dvh;
+  background-color: var(--auth-card);
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Sliding Panel */
+.auth-sliding-panel {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  width: calc(50% - 21px);
+  left: 14px;
+  z-index: 20;
+  border-radius: 20px;
+  background-color: var(--auth-dark-panel);
+  will-change: transform;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  .auth-sliding-panel {
+    transition: none !important;
+  }
+}
+
+/* Mobile & Small Phone Breakpoints (< 768px) */
+@media (max-width: 767px) {
+  .auth-card-container {
+    width: 100%;
+    min-height: 100dvh;
+    border-radius: 0;
+    margin: 0;
+  }
+  .auth-sliding-panel {
+    display: none !important;
+  }
+}
+
+/* Small phones (<= 360px) */
+@media (max-width: 360px) {
+  .auth-social-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .auth-gender-icon {
+    width: 22px !important;
+    height: 22px !important;
+  }
+}
+
+/* Landscape phones (max-height: 500px) */
+@media (max-height: 500px) {
+  .auth-sliding-panel {
+    display: none !important;
+  }
+  .auth-decorative-circle {
+    display: none !important;
+  }
+  .auth-card-container {
+    width: 100% !important;
+    min-height: 100dvh !important;
+  }
+  .auth-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

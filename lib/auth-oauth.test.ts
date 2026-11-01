@@ -3,15 +3,24 @@ import { handleOAuthSignIn } from "@/lib/oauth-auth";
 import * as firebaseAdmin from "@/lib/firebase-admin";
 import * as authLib from "@/lib/auth";
 import { db } from "@/lib/db";
+import { POST as registerHandler } from "@/app/api/auth/register/route";
 
 // Mock authLib.setSessionCookies
 vi.mock("@/lib/auth", () => ({
   setSessionCookies: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock email delivery
+vi.mock("@/lib/email", () => ({
+  sendVerificationOtpEmail: vi.fn().mockResolvedValue(true),
+}));
+
 describe("OAuth Sign-In Handling (lib/auth-oauth.test.ts)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default $transaction mock to pass db through to callback without hitting live network
+    vi.spyOn(db, "$transaction").mockImplementation(async (cb: any) => cb(db));
+    vi.spyOn(db.user, "create").mockResolvedValue({} as any);
   });
 
   describe("1. Provider verification & Token Claims", () => {
@@ -51,48 +60,81 @@ describe("OAuth Sign-In Handling (lib/auth-oauth.test.ts)", () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.status).toBe(400);
-        expect(result.error).toContain("Your Microsoft account has no email address");
+        expect(result.error).toContain("does not provide an email address");
       }
+      expect(db.user.create).not.toHaveBeenCalled();
+      expect(authLib.setSessionCookies).not.toHaveBeenCalled();
     });
-  });
 
-  describe("2. Unverified Email Handling & Account Takeover Prevention", () => {
-    it("NEVER links unverified email to an existing account", async () => {
+    it("resolves work/school/university accounts when email is provided via upn or preferred_username (e.g. stu.adamasuniversity.ac.in)", async () => {
       vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
-        uid: "ms-attacker-uid",
-        email: "victim@example.com",
-        email_verified: false, // unverified!
+        uid: "ms-student-uid-999",
+        email: null, // missing standard email
+        upn: "stu123@stu.adamasuniversity.ac.in", // UPN present
+        preferred_username: "stu123@stu.adamasuniversity.ac.in",
+        email_verified: false,
+        name: "Adamas Student",
         firebase: { sign_in_provider: "microsoft.com" },
       } as any);
 
-      // Identity not found
       vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue(null);
+      vi.spyOn(db.user, "findFirst").mockResolvedValue(null);
 
-      // Existing user found by email
-      vi.spyOn(db.user, "findFirst").mockResolvedValue({
-        id: "victim-user-id",
-        email: "victim@example.com",
+      const createdStudentMock = {
+        id: "student-user-1",
+        name: "Adamas Student",
+        email: "stu123@stu.adamasuniversity.ac.in",
         role: "user",
-      } as any);
+        emailVerified: false,
+        password: "$2b$12$randombcryptlock",
+      };
+
+      vi.spyOn(db.user, "create").mockResolvedValue(createdStudentMock as any);
+      vi.spyOn((db as any).authIdentity, "create").mockResolvedValue({ id: "ident-student-1" });
 
       const result = await handleOAuthSignIn({
         credential: "mock-token",
         expectedProvider: "microsoft.com",
       });
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.status).toBe(403);
-        expect(result.error).toContain("An account with this email already exists");
-        expect(result.error).toContain("verify your email address with Microsoft");
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.created).toBe(true);
+        expect(result.user.email).toBe("stu123@stu.adamasuniversity.ac.in");
+        expect(result.user.emailVerified).toBe(false);
       }
-      expect(authLib.setSessionCookies).not.toHaveBeenCalled();
+
+      expect(db.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            email: "stu123@stu.adamasuniversity.ac.in",
+            emailVerified: false,
+            role: "user",
+          }),
+        })
+      );
+
+      expect((db as any).authIdentity.create).toHaveBeenCalledWith({
+        data: {
+          userId: "student-user-1",
+          provider: "microsoft.com",
+          providerUid: "ms-student-uid-999",
+        },
+      });
+
+      expect(authLib.setSessionCookies).toHaveBeenCalledWith({
+        userId: "student-user-1",
+        role: "user",
+        email: "stu123@stu.adamasuniversity.ac.in",
+      });
     });
 
-    it("rejects account creation if email is unverified", async () => {
+    it("handles missing email gracefully without creating an account or crashing", async () => {
       vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
-        uid: "ms-new-unverified",
-        email: "newperson@example.com",
+        uid: "ms-no-email-uid",
+        email: null,
+        upn: "not-an-email",
+        preferred_username: "invalid_format",
         email_verified: false,
         firebase: { sign_in_provider: "microsoft.com" },
       } as any);
@@ -107,16 +149,53 @@ describe("OAuth Sign-In Handling (lib/auth-oauth.test.ts)", () => {
 
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.status).toBe(403);
-        expect(result.error).toContain("email is not verified");
+        expect(result.status).toBe(400);
+        expect(result.error).toContain("does not provide an email address");
       }
+
+      expect(db.user.create).not.toHaveBeenCalled();
+      expect((db as any).authIdentity.create).not.toHaveBeenCalled();
+      expect(authLib.setSessionCookies).not.toHaveBeenCalled();
     });
   });
 
-  describe("3. Role Protection: Admin and Employee accounts cannot sign in via OAuth", () => {
-    it("rejects sign-in if existing account is role admin", async () => {
+  describe("2. Microsoft Sign-In: Existing email blocked & Admin/Employee lockout", () => {
+    it("BLOCKS Microsoft sign-in if an account with that email already exists (any provider/role)", async () => {
       vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
-        uid: "ms-uid-admin",
+        uid: "ms-new-uid-attacker",
+        email: "existing@example.com",
+        email_verified: true,
+        firebase: { sign_in_provider: "microsoft.com" },
+      } as any);
+
+      // Identity not found
+      vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue(null);
+
+      // Existing user found by email
+      vi.spyOn(db.user, "findFirst").mockResolvedValue({
+        id: "existing-user-id",
+        email: "existing@example.com",
+        role: "user",
+      } as any);
+
+      const result = await handleOAuthSignIn({
+        credential: "mock-token",
+        expectedProvider: "microsoft.com",
+      });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.status).toBe(403);
+        expect(result.error).toBe(
+          "An account with this email already exists. Please sign in with your original method (Google, or email and password)."
+        );
+      }
+      expect(authLib.setSessionCookies).not.toHaveBeenCalled();
+    });
+
+    it("NEVER links or logs into an admin or employee account via Microsoft (by email)", async () => {
+      vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
+        uid: "ms-uid-admin-target",
         email: "admin@adamascare.com",
         email_verified: true,
         firebase: { sign_in_provider: "microsoft.com" },
@@ -138,54 +217,25 @@ describe("OAuth Sign-In Handling (lib/auth-oauth.test.ts)", () => {
       if (!result.success) {
         expect(result.status).toBe(403);
         expect(result.error).toBe(
-          "Admin and employee accounts cannot sign in with Microsoft. Please use your email and password."
+          "An account with this email already exists. Please sign in with your original method (Google, or email and password)."
         );
       }
       expect(authLib.setSessionCookies).not.toHaveBeenCalled();
     });
 
-    it("rejects sign-in if existing account is role employee", async () => {
+    it("NEVER allows admin or employee to sign in even if an identity row exists", async () => {
       vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
-        uid: "ms-uid-emp",
-        email: "specialist@adamascare.com",
-        email_verified: true,
-        firebase: { sign_in_provider: "microsoft.com" },
-      } as any);
-
-      vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue(null);
-      vi.spyOn(db.user, "findFirst").mockResolvedValue({
-        id: "emp-id",
-        email: "specialist@adamascare.com",
-        role: "employee",
-      } as any);
-
-      const result = await handleOAuthSignIn({
-        credential: "mock-token",
-        expectedProvider: "microsoft.com",
-      });
-
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.status).toBe(403);
-        expect(result.error).toBe(
-          "Admin and employee accounts cannot sign in with Microsoft. Please use your email and password."
-        );
-      }
-    });
-
-    it("rejects sign-in if identity is already linked to an admin account", async () => {
-      vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
-        uid: "existing-linked-uid",
+        uid: "ms-linked-admin-uid",
         email: "admin@adamascare.com",
         email_verified: true,
         firebase: { sign_in_provider: "microsoft.com" },
       } as any);
 
       vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue({
-        id: "ident-1",
+        id: "ident-admin",
         userId: "admin-id",
         provider: "microsoft.com",
-        providerUid: "existing-linked-uid",
+        providerUid: "ms-linked-admin-uid",
         user: {
           id: "admin-id",
           email: "admin@adamascare.com",
@@ -203,64 +253,96 @@ describe("OAuth Sign-In Handling (lib/auth-oauth.test.ts)", () => {
         expect(result.status).toBe(403);
         expect(result.error).toContain("Admin and employee accounts cannot sign in with Microsoft");
       }
+      expect(authLib.setSessionCookies).not.toHaveBeenCalled();
     });
   });
 
-  describe("4. First-time Linking & Identity Creation", () => {
-    it("authenticates directly via AuthIdentity if already linked", async () => {
+  describe("3. Microsoft Sign-In: New user creation (emailVerified=false) & session issuance", () => {
+    it("creates a customer account with emailVerified=false, locked password, and signs in immediately", async () => {
       vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
-        uid: "ms-known-uid",
-        email: "customer@example.com",
-        email_verified: true,
-        firebase: { sign_in_provider: "microsoft.com" },
-      } as any);
-
-      vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue({
-        id: "ident-2",
-        userId: "cust-123",
-        provider: "microsoft.com",
-        providerUid: "ms-known-uid",
-        user: {
-          id: "cust-123",
-          email: "customer@example.com",
-          role: "user",
-          name: "Customer",
-        },
-      } as any);
-
-      const result = await handleOAuthSignIn({
-        credential: "mock-token",
-        expectedProvider: "microsoft.com",
-      });
-
-      expect(result.success).toBe(true);
-      if (result.success) {
-        expect(result.user.id).toBe("cust-123");
-        expect(result.created).toBe(false);
-      }
-      expect(authLib.setSessionCookies).toHaveBeenCalledWith({
-        userId: "cust-123",
-        role: "user",
-        email: "customer@example.com",
-      });
-    });
-
-    it("links verified email to existing customer and creates AuthIdentity", async () => {
-      vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
-        uid: "ms-new-link-uid",
-        email: "existingcustomer@example.com",
-        email_verified: true,
+        uid: "ms-new-user-uid",
+        email: "brandnew@outlook.com",
+        email_verified: false,
+        name: "New Microsoft User",
+        picture: "https://photo.example.com/ms.jpg",
         firebase: { sign_in_provider: "microsoft.com" },
       } as any);
 
       vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue(null);
-      vi.spyOn((db as any).authIdentity, "create").mockResolvedValue({ id: "new-ident-id" });
+      vi.spyOn(db.user, "findFirst").mockResolvedValue(null);
 
-      vi.spyOn(db.user, "findFirst").mockResolvedValue({
-        id: "cust-456",
-        email: "existingcustomer@example.com",
+      const createdUserMock = {
+        id: "new-user-123",
+        name: "New Microsoft User",
+        email: "brandnew@outlook.com",
         role: "user",
-        name: "Existing Customer",
+        emailVerified: false,
+        password: "$2b$12$randombcryptlock",
+      };
+
+      vi.spyOn(db.user, "create").mockResolvedValue(createdUserMock as any);
+      vi.spyOn((db as any).authIdentity, "create").mockResolvedValue({ id: "ident-created-1" });
+
+      const result = await handleOAuthSignIn({
+        credential: "mock-token",
+        expectedProvider: "microsoft.com",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.created).toBe(true);
+        expect(result.user.id).toBe("new-user-123");
+        expect(result.user.emailVerified).toBe(false);
+        expect(result.user).not.toHaveProperty("password");
+      }
+
+      // Assert user was created with emailVerified: false
+      expect(db.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            email: "brandnew@outlook.com",
+            emailVerified: false,
+            role: "user",
+          }),
+        })
+      );
+
+      // Assert Microsoft identity was stored
+      expect((db as any).authIdentity.create).toHaveBeenCalledWith({
+        data: {
+          userId: "new-user-123",
+          provider: "microsoft.com",
+          providerUid: "ms-new-user-uid",
+        },
+      });
+
+      // Assert session cookies were issued
+      expect(authLib.setSessionCookies).toHaveBeenCalledWith({
+        userId: "new-user-123",
+        role: "user",
+        email: "brandnew@outlook.com",
+      });
+    });
+
+    it("on later logins, matches by provider+uid first and logs in immediately", async () => {
+      vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
+        uid: "ms-returning-uid",
+        email: "returning@outlook.com",
+        email_verified: false,
+        firebase: { sign_in_provider: "microsoft.com" },
+      } as any);
+
+      vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue({
+        id: "ident-existing",
+        userId: "returning-user-id",
+        provider: "microsoft.com",
+        providerUid: "ms-returning-uid",
+        user: {
+          id: "returning-user-id",
+          email: "returning@outlook.com",
+          role: "user",
+          emailVerified: false,
+        },
       } as any);
 
       const result = await handleOAuthSignIn({
@@ -270,21 +352,173 @@ describe("OAuth Sign-In Handling (lib/auth-oauth.test.ts)", () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.user.id).toBe("cust-456");
         expect(result.created).toBe(false);
+        expect(result.user.id).toBe("returning-user-id");
       }
-      expect((db as any).authIdentity.create).toHaveBeenCalledWith({
-        data: {
-          userId: "cust-456",
+
+      // No lookup by email and no user creation
+      expect(db.user.findFirst).not.toHaveBeenCalled();
+      expect(db.user.create).not.toHaveBeenCalled();
+
+      // Session cookies issued
+      expect(authLib.setSessionCookies).toHaveBeenCalledWith({
+        userId: "returning-user-id",
+        role: "user",
+        email: "returning@outlook.com",
+      });
+    });
+  });
+
+  describe("4. Safety Net: Google Takeover Cleanup of Unverified Microsoft Stubs", () => {
+    it("deletes Microsoft identity, sets emailVerified=true, and links Google when verified Google user signs in", async () => {
+      vi.spyOn(firebaseAdmin, "verifyGoogleIdToken").mockResolvedValue({
+        uid: "google-real-owner-uid",
+        email: "victim@example.com",
+        email_verified: true, // Google verified
+        name: "Real Owner",
+        firebase: { sign_in_provider: "google.com" },
+      } as any);
+
+      // Identity for Google not found yet
+      vi.spyOn((db as any).authIdentity, "findUnique").mockResolvedValue(null);
+
+      // Existing user found by email, but created via Microsoft with emailVerified: false
+      const unverifiedStubUser = {
+        id: "stub-user-id",
+        email: "victim@example.com",
+        role: "user",
+        emailVerified: false, // unverified!
+      };
+      vi.spyOn(db.user, "findFirst").mockResolvedValue(unverifiedStubUser as any);
+
+      // Mock cleanup and update
+      vi.spyOn((db as any).authIdentity, "deleteMany").mockResolvedValue({ count: 1 });
+      vi.spyOn(db.user, "update").mockResolvedValue({
+        ...unverifiedStubUser,
+        emailVerified: true,
+      } as any);
+      vi.spyOn((db as any).authIdentity, "create").mockResolvedValue({ id: "new-google-ident" });
+
+      const result = await handleOAuthSignIn({
+        credential: "mock-token",
+        expectedProvider: "google.com",
+      });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.user.id).toBe("stub-user-id");
+        expect(result.user.emailVerified).toBe(true);
+      }
+
+      // Assert Microsoft identity was deleted
+      expect((db as any).authIdentity.deleteMany).toHaveBeenCalledWith({
+        where: {
+          userId: "stub-user-id",
           provider: "microsoft.com",
-          providerUid: "ms-new-link-uid",
         },
       });
-      expect(authLib.setSessionCookies).toHaveBeenCalledWith({
-        userId: "cust-456",
-        role: "user",
-        email: "existingcustomer@example.com",
+
+      // Assert user was marked verified
+      expect(db.user.update).toHaveBeenCalledWith({
+        where: { id: "stub-user-id" },
+        data: { emailVerified: true },
       });
+
+      // Assert Google identity was created
+      expect((db as any).authIdentity.create).toHaveBeenCalledWith({
+        data: {
+          userId: "stub-user-id",
+          provider: "google.com",
+          providerUid: "google-real-owner-uid",
+        },
+      });
+
+      // Session cookies issued
+      expect(authLib.setSessionCookies).toHaveBeenCalledWith({
+        userId: "stub-user-id",
+        role: "user",
+        email: "victim@example.com",
+      });
+    });
+  });
+
+  describe("5. Safety Net: Email/Password Registration Reclaims Microsoft Stub", () => {
+    it("allows real owner to sign up with password, deleting Microsoft identity and sending OTP", async () => {
+      const stubUser = {
+        id: "stub-user-ms-id",
+        email: "realowner@example.com",
+        role: "user",
+        emailVerified: false,
+        whatsappNumber: null,
+        identities: [{ provider: "microsoft.com" }],
+      };
+
+      vi.spyOn(db.user, "findFirst").mockResolvedValue(stubUser as any);
+      vi.spyOn((db as any).authIdentity, "deleteMany").mockResolvedValue({ count: 1 });
+      vi.spyOn(db.user, "update").mockResolvedValue({
+        ...stubUser,
+        name: "Real Owner",
+        emailVerified: false,
+      } as any);
+      vi.spyOn(db.emailVerificationToken, "create").mockResolvedValue({ id: "token-1" } as any);
+
+      const req = new Request("http://localhost/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Real Owner",
+          email: "realowner@example.com",
+          password: "SuperSecretPassword123!",
+        }),
+      });
+
+      const res = await registerHandler(req);
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.user.email).toBe("realowner@example.com");
+
+      // Assert Microsoft identity was purged
+      expect((db as any).authIdentity.deleteMany).toHaveBeenCalledWith({
+        where: {
+          userId: "stub-user-ms-id",
+          provider: "microsoft.com",
+        },
+      });
+
+      // Assert password updated & session issued
+      expect(db.user.update).toHaveBeenCalled();
+      expect(authLib.setSessionCookies).toHaveBeenCalledWith({
+        userId: "stub-user-ms-id",
+        role: "user",
+        email: "realowner@example.com",
+      });
+    });
+
+    it("rejects registration with 409 if existing user is already verified or normal user", async () => {
+      const verifiedUser = {
+        id: "verified-user-id",
+        email: "verified@example.com",
+        role: "user",
+        emailVerified: true,
+        identities: [],
+      };
+
+      vi.spyOn(db.user, "findFirst").mockResolvedValue(verifiedUser as any);
+
+      const req = new Request("http://localhost/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: "Another Person",
+          email: "verified@example.com",
+          password: "SuperSecretPassword123!",
+        }),
+      });
+
+      const res = await registerHandler(req);
+      expect(res.status).toBe(409);
+      const data = await res.json();
+      expect(data.error).toContain("An account with this email already exists");
     });
   });
 });

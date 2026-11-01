@@ -145,6 +145,23 @@ export async function signInWithMicrosoft(): Promise<OAuthSignInResult> {
     return { idToken };
   } catch (err) {
     const code = (err as { code?: string })?.code;
+    const message = ((err as { message?: string })?.message || "").toLowerCase();
+
+    // Detect university/school/corporate tenant admin consent requirements (e.g. AADSTS90094)
+    if (
+      code === "auth/admin-restricted-operation" ||
+      message.includes("aadsts90094") ||
+      message.includes("aadsts65001") ||
+      message.includes("admin approval") ||
+      message.includes("approval required") ||
+      message.includes("need admin approval")
+    ) {
+      return {
+        error:
+          "Your school or organization requires administrator approval to sign in with this Microsoft account. Please contact your IT administrator to approve this application, or sign in using Google or email and password.",
+      };
+    }
+
     // User dismissed the popup — silently ignore.
     if (
       code === "auth/popup-closed-by-user" ||

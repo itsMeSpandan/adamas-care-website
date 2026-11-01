@@ -6,8 +6,9 @@
   position: relative;
   width: 100%;
   height: 100%;
-  z-index: 40;
+  z-index: 100;
   pointer-events: none;
+  font-family: var(--font-jost), "Jost", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 .staggered-menu-wrapper.fixed-wrapper {
@@ -16,7 +17,7 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 40;
+  z-index: 100;
   overflow: hidden;
 }
 
@@ -201,17 +202,19 @@
   position: relative;
   overflow: hidden;
   line-height: 1;
+  font-family: var(--font-jost), "Jost", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 .sm-panel-item {
   position: relative;
-  color: #000;
-  font-weight: 600;
-  font-size: 3.5rem;
+  font-family: var(--font-jost), "Jost", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  font-size: 3.5rem !important;
   cursor: pointer;
-  line-height: 1;
-  letter-spacing: -2px;
-  text-transform: uppercase;
+  line-height: 1 !important;
+  letter-spacing: -2px !important;
+  text-transform: uppercase !important;
   transition: color 0.25s;
   display: inline-block;
   text-decoration: none;
@@ -219,11 +222,18 @@
 }
 
 .sm-panel-item:hover {
-  color: var(--sm-accent, #5227ff);
+  color: var(--sm-accent, #C97B5C) !important;
 }
 
 .sm-panel-itemLabel {
   display: inline-block;
+  font-family: inherit !important;
+  font-weight: inherit !important;
+  font-size: inherit !important;
+  line-height: inherit !important;
+  letter-spacing: inherit !important;
+  text-transform: inherit !important;
+  color: inherit !important;
   will-change: transform;
   transform-origin: 50% 100%;
 }
@@ -240,10 +250,11 @@
   position: absolute;
   top: 0.1em;
   right: 2.8em;
-  font-size: 18px;
-  font-weight: 400;
-  color: var(--sm-accent, #5227ff);
-  letter-spacing: 0;
+  font-family: var(--font-jost), "Jost", system-ui, sans-serif !important;
+  font-size: 18px !important;
+  font-weight: 400 !important;
+  color: var(--sm-accent, #C97B5C) !important;
+  letter-spacing: 0 !important;
   pointer-events: none;
   user-select: none;
   opacity: var(--sm-num-opacity, 0);
@@ -257,13 +268,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  font-family: var(--font-jost), "Jost", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
 .sm-socials-title {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 500;
-  color: var(--sm-accent, #ff0000);
+  font-family: var(--font-jost), "Jost", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  color: var(--sm-accent, #C97B5C) !important;
 }
 
 .sm-socials-list {
@@ -290,7 +303,7 @@
 }
 
 .sm-socials-link:focus-visible {
-  outline: 2px solid var(--sm-accent, #ff0000);
+  outline: 2px solid var(--sm-accent, #C97B5C);
   outline-offset: 3px;
 }
 
@@ -303,9 +316,10 @@
 }
 
 .sm-socials-link {
-  font-size: 1.2rem;
-  font-weight: 500;
-  color: #111;
+  font-family: var(--font-jost), "Jost", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 1.2rem !important;
+  font-weight: 500 !important;
+  color: #111 !important;
   text-decoration: none;
   position: relative;
   padding: 2px 0;
@@ -314,18 +328,19 @@
 }
 
 .sm-socials-link:hover {
-  color: var(--sm-accent, #ff0000);
+  color: var(--sm-accent, #C97B5C) !important;
 }
 
 .sm-panel-title {
   margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
+  font-family: var(--font-jost), "Jost", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
   color: #fff;
   text-transform: uppercase;
 }
 
-/* ── Mobile: full-width panel ── */
+/* ── Mobile: full-width panel & responsive sizing ── */
 
 @media (max-width: 1024px) {
   .staggered-menu-panel {
@@ -342,5 +357,22 @@
 
   .staggered-menu-wrapper[data-open] .sm-logo-img {
     filter: invert(100%);
+  }
+}
+
+@media (max-width: 360px) {
+  .sm-panel-item {
+    font-size: 2.75rem !important;
+    letter-spacing: -1.5px !important;
+  }
+}
+
+@media (max-height: 500px) {
+  .staggered-menu-panel {
+    padding-top: 3.5rem !important;
+  }
+  .sm-panel-item {
+    font-size: 2.25rem !important;
+    letter-spacing: -1px !important;
   }
 }

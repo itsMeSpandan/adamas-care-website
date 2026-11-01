@@ -48,7 +48,7 @@ export default function PrivacyPage() {
                 <strong className="text-beige-700">Third-Party Sign-In Information:</strong>{" "}
                 When you sign in or register through a third-party authentication
                 provider (such as Google or Microsoft), we receive basic profile
-                details including your name, verified email address, and avatar image
+                details including your name, email address (personal or university/work account), and avatar image
                 in accordance with your permissions with that provider.
               </p>
               <p className="leading-relaxed">

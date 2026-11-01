@@ -26,12 +26,20 @@ const PROVIDER_NAMES: Record<string, string> = {
  * (Google and Microsoft).
  *
  * Rules:
- *   1. Authenticates by provider + providerUid via AuthIdentity first.
- *   2. Only links to an existing user by email if decoded.email_verified === true.
- *   3. If unverified email matches an existing account, rejects with an explicit message.
- *   4. Rejects any OAuth sign-in matching an admin or employee account (staff must use password).
- *   5. Newly created accounts are always role "user" with an unguessable bcrypt password.
- *   6. Never logs tokens or PII.
+ *   1. Identity lookup first: Authenticates by (provider + providerUid) via AuthIdentity.
+ *      - Admin & employee accounts cannot sign in via OAuth.
+ *   2. Existing email handling:
+ *      - Microsoft: If an account with this email already exists (any provider/role),
+ *        never link and never log in. Return clear message directing to original method.
+ *      - Google: Links to existing customer account only if Google verified the email.
+ *        If the existing account was created unverified via Microsoft (emailVerified: false),
+ *        deletes the Microsoft identity and sets emailVerified = true.
+ *   3. New account creation:
+ *      - Microsoft: Creates account with emailVerified = false, locked password, role "user",
+ *        and records the Microsoft AuthIdentity.
+ *      - Google: Creates account with emailVerified = true, locked password, role "user",
+ *        and records the Google AuthIdentity.
+ *   4. Zero tokens or PII logged.
  */
 export async function handleOAuthSignIn({
   credential,
@@ -64,14 +72,6 @@ export async function handleOAuthSignIn({
     };
   }
 
-  // Temporary server diagnostic for Microsoft (verified flag and provider only — no PII)
-  if (expectedProvider === "microsoft.com") {
-    console.log("[MicrosoftAuth:Debug]", {
-      emailVerified: decoded.email_verified,
-      provider: decoded.firebase?.sign_in_provider,
-    });
-  }
-
   // Enforce provider matching when provider claim is explicitly populated
   if (
     decoded.firebase?.sign_in_provider &&
@@ -84,14 +84,40 @@ export async function handleOAuthSignIn({
     };
   }
 
-  const email = decoded.email?.trim().toLowerCase();
-  if (!email) {
+  // Resolve email: check standard email claim first, then fallback to preferred_username,
+  // upn, or identities.email array for organizational accounts (e.g. stu.adamasuniversity.ac.in).
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  let resolvedEmail: string | undefined = undefined;
+
+  if (typeof decoded.email === "string" && emailRegex.test(decoded.email.trim())) {
+    resolvedEmail = decoded.email.trim();
+  } else if (
+    typeof decoded.preferred_username === "string" &&
+    emailRegex.test(decoded.preferred_username.trim())
+  ) {
+    resolvedEmail = decoded.preferred_username.trim();
+  } else if (
+    typeof decoded.upn === "string" &&
+    emailRegex.test(decoded.upn.trim())
+  ) {
+    resolvedEmail = decoded.upn.trim();
+  } else if (
+    Array.isArray(decoded.firebase?.identities?.email) &&
+    typeof decoded.firebase.identities.email[0] === "string" &&
+    emailRegex.test(decoded.firebase.identities.email[0].trim())
+  ) {
+    resolvedEmail = decoded.firebase.identities.email[0].trim();
+  }
+
+  if (!resolvedEmail) {
     return {
       success: false,
       status: 400,
-      error: `Your ${providerLabel} account has no email address.`,
+      error: `Your ${providerLabel} account does not provide an email address. Please make sure your ${providerLabel} account has an email configured, or sign in using Google or email and password.`,
     };
   }
+
+  const email = resolvedEmail.toLowerCase();
 
   // Google accounts must always have email_verified === true
   if (expectedProvider === "google.com" && decoded.email_verified !== true) {
@@ -146,20 +172,21 @@ export async function handleOAuthSignIn({
   // 2. Identity not found — check if an account with this email already exists
   const existingUser = await db.user.findFirst({
     where: { email: { equals: email, mode: "insensitive" } },
+    include: { identities: true },
   });
 
   if (existingUser) {
-    // Rule: Never link by unverified email
-    if (decoded.email_verified !== true) {
+    // Rule 1: Microsoft NEVER links or logs into an existing account (any provider or role)
+    if (expectedProvider === "microsoft.com") {
       return {
         success: false,
         status: 403,
         error:
-          "An account with this email already exists. Please sign in with your original method, or verify your email address with Microsoft.",
+          "An account with this email already exists. Please sign in with your original method (Google, or email and password).",
       };
     }
 
-    // Rule: Never allow OAuth to take over admin/employee accounts
+    // Google flow: Staff accounts are strictly forbidden from OAuth takeover
     if (existingUser.role === "admin" || existingUser.role === "employee") {
       return {
         success: false,
@@ -168,13 +195,65 @@ export async function handleOAuthSignIn({
       };
     }
 
-    // Link identity to existing customer account
+    // Rule 3: Safety net — if account was created via Microsoft with emailVerified=false,
+    // Google with verified email claims the account, removes the Microsoft identity, and verifies email.
+    if (existingUser.emailVerified === false) {
+      const cleanupAndLink = async (txOrDb: any) => {
+        if (txOrDb.authIdentity?.deleteMany) {
+          await txOrDb.authIdentity.deleteMany({
+            where: {
+              userId: existingUser.id,
+              provider: "microsoft.com",
+            },
+          });
+        }
+
+        const updatedUser = await txOrDb.user.update({
+          where: { id: existingUser.id },
+          data: { emailVerified: true },
+        });
+
+        if (txOrDb.authIdentity?.create) {
+          try {
+            await txOrDb.authIdentity.create({
+              data: {
+                userId: existingUser.id,
+                provider: "google.com",
+                providerUid,
+              },
+            });
+          } catch (err) {
+            console.warn("[OAuth] Failed to record google authIdentity:", err);
+          }
+        }
+
+        return updatedUser;
+      };
+
+      let updated: any;
+      if (typeof (db as any).$transaction === "function") {
+        updated = await (db as any).$transaction(cleanupAndLink);
+      } else {
+        updated = await cleanupAndLink(db);
+      }
+
+      await setSessionCookies({
+        userId: updated.id,
+        role: updated.role,
+        email: updated.email,
+      });
+
+      const { password: _, ...userWithoutPassword } = updated;
+      return { success: true, user: userWithoutPassword, created: false };
+    }
+
+    // Standard Google linking to existing verified customer account
     if ((db as any).authIdentity?.create) {
       try {
         await (db as any).authIdentity.create({
           data: {
             userId: existingUser.id,
-            provider: expectedProvider,
+            provider: "google.com",
             providerUid,
           },
         });
@@ -194,13 +273,9 @@ export async function handleOAuthSignIn({
   }
 
   // 3. No account exists — create a new user
-  if (decoded.email_verified !== true) {
-    return {
-      success: false,
-      status: 403,
-      error: `Your ${providerLabel} account email is not verified. Please verify your email with ${providerLabel} to continue, or register with email and password.`,
-    };
-  }
+  // For Microsoft: emailVerified is false
+  // For Google: emailVerified is true
+  const isVerified = expectedProvider === "google.com";
 
   const name = decoded.name?.trim() || email.split("@")[0];
   const randomPassword = crypto.randomBytes(48).toString("base64url");
@@ -218,7 +293,7 @@ export async function handleOAuthSignIn({
         avatarUrl:
           decoded.picture ||
           `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e8ddd3&color=7c6e5a`,
-        emailVerified: true,
+        emailVerified: isVerified,
       },
     });
 

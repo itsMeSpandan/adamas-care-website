@@ -37,6 +37,7 @@ interface CountryCodeSelectProps {
   /** Accessible name; defaults to "Country dial code". */
   ariaLabel?: string;
   className?: string;
+  buttonClassName?: string;
 }
 
 const PANEL_WIDTH = 280;
@@ -49,6 +50,7 @@ export default function CountryCodeSelect({
   disabled = false,
   ariaLabel = "Country dial code",
   className = "",
+  buttonClassName,
 }: CountryCodeSelectProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -187,7 +189,10 @@ export default function CountryCodeSelect({
             }
           }
         }}
-        className="flex h-full items-center gap-1.5 rounded-xl border border-beige-300 bg-beige-50 px-2.5 py-3 text-sm text-beige-800 transition-colors hover:border-beige-400 focus:border-beige-500 focus:outline-none focus:ring-2 focus:ring-beige-200 disabled:cursor-not-allowed disabled:opacity-60"
+        className={
+          buttonClassName ||
+          "flex h-full items-center gap-1.5 rounded-xl border border-beige-300 bg-beige-50 px-2.5 py-3 text-sm text-beige-800 transition-colors hover:border-beige-400 focus:border-beige-500 focus:outline-none focus:ring-2 focus:ring-beige-200 disabled:cursor-not-allowed disabled:opacity-60"
+        }
       >
         <img
           src={flagUrl(selected.code)}

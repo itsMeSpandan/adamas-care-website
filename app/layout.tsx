@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Jost } from "next/font/google";
+import { Cormorant_Garamond, Jost, Inter } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/components/ui/Toast";
 
 import { BRAND } from "@/lib/brand";
-import PillNavWrapper from "@/components/layout/PillNavWrapper";
+import Navbar from "@/components/layout/Navbar";
 
 import Footer from "@/components/layout/Footer";
 import CookieConsent from "@/components/ui/CookieConsent";
@@ -24,8 +24,13 @@ const cormorant = Cormorant_Garamond({
 
 const jost = Jost({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
   variable: "--font-jost",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
   display: "swap",
 });
 
@@ -71,13 +76,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${cormorant.variable} ${jost.variable}`}>
+    <html lang="en" className={`${cormorant.variable} ${inter.variable} ${jost.variable}`}>
       <body className="min-h-screen font-sans antialiased">
         <AuthProvider>
           <PwaRegistration />
           <ToastProvider>
-            <PillNavWrapper />
-            <main className="pt-24">{children}</main>
+            <Navbar />
+            <main>{children}</main>
             <Footer />
             <CookieConsent />
             {/* Raised by lib/auth-context after a Google sign-in when the

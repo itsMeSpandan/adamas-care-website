@@ -31,7 +31,7 @@ export default function HeroSection() {
 
   return (
     <>
-      <section className="relative -mt-24 flex min-h-[calc(100vh+6rem)] w-full flex-col overflow-hidden md:flex-row">
+      <section className="relative flex min-h-[calc(100vh-88px)] w-full flex-col overflow-hidden md:flex-row">
         {/* ── Left Panel: Warm Ivory background with text ── */}
         <div
           className="relative z-10 flex w-full flex-col justify-center px-6 py-24 md:w-[55%] md:px-12 lg:w-[50%] lg:px-20"

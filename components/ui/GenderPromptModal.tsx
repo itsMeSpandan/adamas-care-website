@@ -20,12 +20,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/components/ui/Toast";
-
-const GENDERS = [
-  { value: "female", label: "Female" },
-  { value: "male", label: "Male" },
-  { value: "other", label: "Other" },
-] as const;
+import GenderSelector from "@/components/ui/GenderSelector";
 
 export default function GenderPromptModal() {
   const {
@@ -137,27 +132,13 @@ export default function GenderPromptModal() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="px-6 py-5">
-              <fieldset>
-                <legend className="sr-only">Gender</legend>
-                <div className="flex gap-3">
-                  {GENDERS.map((g) => (
-                    <label
-                      key={g.value}
-                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-100 has-[:checked]:border-beige-600 has-[:checked]:bg-beige-100"
-                    >
-                      <input
-                        type="radio"
-                        name="gender"
-                        value={g.value}
-                        checked={gender === g.value}
-                        onChange={(e) => setGender(e.target.value)}
-                        className="text-beige-600 focus:ring-beige-500"
-                      />
-                      {g.label}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
+              <GenderSelector
+                value={gender}
+                onChange={(val) => setGender(val)}
+                name="gender-prompt"
+                label="Select your gender"
+                disabled={saving}
+              />
 
               {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 

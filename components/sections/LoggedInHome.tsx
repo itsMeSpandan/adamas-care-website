@@ -245,20 +245,107 @@ export default function LoggedInHome() {
           (50% wide, full viewport height) instead of being smeared across the
           whole viewport, which cropped it down to a zoomed-in face. The extra
           top padding keeps the greeting itself exactly where it was. */}
-      <section className="relative -mt-24 flex min-h-[calc(100vh+6rem)] items-center overflow-hidden bg-beige-50 px-4 pb-20 pt-44 md:px-8 lg:px-16">
-        {/* Background picture — framed exactly like the first hero section:
-            the picture occupies the right-hand panel (same width ratios, same
-            object-position) instead of stretching across the whole viewport,
-            which is what used to crop it down to a zoomed-in face. Keyed on
-            the source so a replacement fades in. */}
+      <section className="flex flex-col w-full bg-[#F4EFE8] md:relative md:flex-row md:items-center md:min-h-[calc(100vh-88px)] md:overflow-hidden md:bg-beige-50 md:px-8 md:pb-20 md:pt-16 lg:px-16">
+        {/* ── Text Block ── */}
+        <div className="w-full bg-[#F4EFE8] px-5 pt-6 pb-6 max-[360px]:px-4 max-[360px]:py-5 md:bg-transparent md:p-0 md:relative md:z-10 md:max-w-3xl md:text-left">
+          {/* Eyebrow: time-based greeting, Inter 11px uppercase .24em, clay-coral #A8483A */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-3 md:mb-4 flex items-center gap-2.5 md:gap-3"
+          >
+            <span className="h-0.5 w-8 rounded-full bg-[#A8483A] md:w-10 md:bg-[#C9A86A]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#A8483A] font-sans md:font-serif md:text-sm md:tracking-[0.25em] md:text-[#C9A86A]">
+              <span className="md:hidden">{greeting.greeting.toUpperCase()}</span>
+              <span className="hidden md:inline">{greeting.greeting}</span>
+            </span>
+          </motion.div>
+
+          {/* Heading — Single h1, Cormorant medium, espresso #2B2420 */}
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="font-serif text-[clamp(2rem,8vw,2.6rem)] font-medium leading-[1.1] text-[#2B2420] break-words md:text-6xl lg:text-7xl md:font-semibold md:leading-tight md:text-beige-700"
+          >
+            {user?.name ?? "there"}
+          </motion.h1>
+
+          {/* Subtitle: Inter 15px/1.7, #5B4E45 */}
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="mt-3 max-w-md text-[15px] leading-[1.7] text-[#5B4E45] font-sans md:mt-6 md:max-w-xl md:text-lg md:leading-relaxed md:text-beige-800"
+          >
+            {greeting.subline}
+          </motion.p>
+
+          {/* Stats Row (<dl>, 2 cols equal width, 1px divider above on mobile) */}
+          <motion.dl
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.28 }}
+            className="mt-6 border-t border-[#DDD3C7] pt-4 grid grid-cols-2 gap-4 max-[360px]:gap-3 md:border-none md:pt-0 md:mt-8 md:flex md:flex-wrap md:gap-x-12 md:gap-y-4"
+          >
+            <div className="flex flex-col">
+              <dt className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#6B5C50] font-sans md:text-xs md:tracking-[0.15em] md:text-beige-400">
+                MEMBER SINCE
+              </dt>
+              <dd className="mt-1 font-serif text-[20px] font-medium text-[#2B2420] md:text-xl md:text-beige-700">
+                {memberSince}
+              </dd>
+            </div>
+            <div className="flex flex-col">
+              <dt className="text-[11px] font-medium uppercase tracking-[0.16em] text-[#6B5C50] font-sans md:text-xs md:tracking-[0.15em] md:text-beige-400">
+                LOYALTY POINTS
+              </dt>
+              <dd className="mt-1 font-serif text-[20px] font-medium text-[#2B2420] md:text-xl md:text-beige-700">
+                {loyaltyPoints}
+                <span className="ml-1 text-sm font-sans font-normal text-[#6B5C50] md:text-beige-400">
+                  pts
+                </span>
+              </dd>
+            </div>
+          </motion.dl>
+
+          {/* Buttons Row (16px below stats, 12px gap, wraps, stacks full width on <= 360px) */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.36 }}
+            className="mt-6 flex flex-wrap items-center gap-3 max-[360px]:flex-col max-[360px]:w-full md:mt-10 md:flex-nowrap md:gap-4 md:w-auto"
+          >
+            <Link
+              href="/booking"
+              className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 min-h-[44px] text-sm font-medium text-white bg-[#A8483A] shadow-md shadow-[#A8483A]/20 transition-all hover:bg-[#923E31] active:scale-[0.98] max-[360px]:w-full md:btn-primary md:gap-2 md:px-8 md:py-3.5 md:text-base"
+            >
+              <CalendarCheck className="h-4 w-4 md:h-5 md:w-5" />
+              Book a Treatment
+            </Link>
+            <Link
+              href="/account/loyalty?tab=rewards"
+              className="inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 min-h-[44px] text-sm font-medium text-[#2B2420] bg-[#FBF8F4] border border-[#DDD3C7] shadow-xs transition-all hover:bg-white active:scale-[0.98] max-[360px]:w-full md:btn-outline md:gap-2 md:px-6 md:py-3.5 md:text-base"
+            >
+              <Gift className="h-4 w-4 md:h-5 md:w-5" />
+              View Rewards
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* ── 1px Full-Width Hairline Divider (< 768px) ── */}
+        <div className="w-full h-px bg-[#DDD3C7] md:hidden" aria-hidden="true" />
+
+        {/* ── Photo Carousel Container (Below text on mobile, right panel on desktop) ── */}
         <motion.div
           key={backgroundSrc}
-          className="absolute inset-y-0 right-0 w-full md:w-[45%] lg:w-[50%]"
-          initial={{ opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.2, ease: [0.22, 1, 0.36, 1] }}
+          className="relative w-full aspect-[3/4] max-h-[380px] overflow-hidden md:aspect-auto md:max-h-none md:absolute md:inset-y-0 md:right-0 md:w-[45%] lg:md:w-[50%]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* Left edge blends into ivory, as on the home hero */}
+          {/* Left edge blends into ivory on desktop */}
           <div
             className="pointer-events-none absolute inset-y-0 left-0 z-20 hidden w-32 md:block md:w-48 lg:w-64"
             style={{
@@ -266,106 +353,25 @@ export default function LoggedInHome() {
                 "linear-gradient(to right, var(--bg-primary) 0%, var(--bg-primary) 15%, rgba(245,241,234,0.8) 40%, rgba(245,241,234,0.3) 70%, transparent 100%)",
             }}
           />
+
           <HeroCarousel fallbackSrc={backgroundSrc} priority={true} />
+
+          {/* Admin Background Control */}
+          {isAdmin && (
+            <DashboardBackgroundControl
+              custom={customBackground}
+              version={backgroundVersion}
+              onChanged={({ custom, version }) => {
+                setCustomBackground(custom);
+                setBackgroundVersion(version);
+              }}
+            />
+          )}
         </motion.div>
 
-        {/* Veil: keeps the greeting readable on mobile, where the picture is
-            still full-bleed rather than confined to the right-hand panel */}
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-beige-50 via-beige-50/90 to-beige-50/40 md:hidden" />
-        <div className="pointer-events-none absolute inset-0 bg-beige-50/15 md:hidden" />
-
-        {/* Soft gradient overlay */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(200,168,130,0.15),transparent_60%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(140,106,72,0.08),transparent_60%)]" />
-
-        {isAdmin && (
-          <DashboardBackgroundControl
-            custom={customBackground}
-            version={backgroundVersion}
-            onChanged={({ custom, version }) => {
-              setCustomBackground(custom);
-              setBackgroundVersion(version);
-            }}
-          />
-        )}
-
-        <div className="relative z-10 max-w-3xl text-left">
-          {/* Highlighted greeting eyebrow */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="mb-4 flex items-center gap-3"
-          >
-            <span className="h-0.5 w-10 rounded-full bg-[#C9A86A]" />
-            <span className="font-serif text-sm font-semibold uppercase tracking-[0.25em] text-[#C9A86A]">
-              {greeting.greeting}
-            </span>
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="font-serif text-5xl font-semibold leading-tight text-beige-700 md:text-6xl lg:text-7xl"
-          >
-            {user?.name ?? "there"}
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="mt-6 max-w-xl text-lg leading-relaxed text-beige-800"
-          >
-            {greeting.subline}
-          </motion.p>
-
-          {/* Member since + Loyalty points */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.28 }}
-            className="mt-8 flex flex-wrap gap-x-12 gap-y-4"
-          >
-            <div className="flex flex-col">
-              <span className="text-xs font-medium uppercase tracking-[0.15em] text-beige-400">
-                Member since
-              </span>
-              <span className="mt-1 font-serif text-xl text-beige-700">{memberSince}</span>
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-medium uppercase tracking-[0.15em] text-beige-400">
-                Loyalty points
-              </span>
-              <span className="mt-1 font-serif text-xl text-beige-700">
-                {loyaltyPoints}
-                <span className="ml-1 text-sm font-sans font-normal text-beige-400">pts</span>
-              </span>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="mt-10 flex justify-start"
-          >
-            <div className="flex flex-wrap items-center gap-4">
-              <Link href="/booking" className="btn-primary gap-2 px-8 py-3.5 text-base">
-                <CalendarCheck className="h-5 w-5" />
-                Book a Treatment
-              </Link>
-              <Link
-                href="/account/loyalty?tab=rewards"
-                className="btn-outline gap-2 px-6 py-3.5 text-base"
-              >
-                <Gift className="h-5 w-5" />
-                View Rewards
-              </Link>
-            </div>
-          </motion.div>
-        </div>
+        {/* Desktop-only soft radial gradient overlays */}
+        <div className="pointer-events-none absolute inset-0 hidden md:block bg-[radial-gradient(ellipse_at_top_right,_rgba(200,168,130,0.15),transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 hidden md:block bg-[radial-gradient(ellipse_at_bottom_left,_rgba(140,106,72,0.08),transparent_60%)]" />
       </section>
 
       {/* ===== 2. Upcoming Booking ===== */}

@@ -95,19 +95,52 @@ export async function POST(request: Request) {
       where: {
         email: { equals: email.trim().toLowerCase(), mode: "insensitive" },
       },
+      include: {
+        identities: true,
+      },
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
-      );
+      // If the account is already verified or is staff/admin, it is NEVER an unverified stub
+      if (existingUser.role !== "user" || existingUser.emailVerified === true) {
+        return NextResponse.json(
+          { error: "An account with this email already exists" },
+          { status: 409 }
+        );
+      }
+
+      // Check if this unverified user was created via Microsoft
+      let hasMicrosoftIdentity = false;
+      if (Array.isArray((existingUser as any).identities)) {
+        hasMicrosoftIdentity = (existingUser as any).identities.some(
+          (i: any) => i.provider === "microsoft.com"
+        );
+      } else if ((db as any).authIdentity?.findFirst) {
+        try {
+          const ident = await (db as any).authIdentity.findFirst({
+            where: { userId: existingUser.id, provider: "microsoft.com" },
+          });
+          hasMicrosoftIdentity = Boolean(ident);
+        } catch {
+          hasMicrosoftIdentity = false;
+        }
+      }
+
+      if (!hasMicrosoftIdentity) {
+        return NextResponse.json(
+          { error: "An account with this email already exists" },
+          { status: 409 }
+        );
+      }
     }
 
     // Check if this phone number is already used by another account
     if (cleanPhone) {
       const existingPhone = await db.user.findFirst({
-        where: { whatsappNumber: cleanPhone },
+        where: {
+          whatsappNumber: cleanPhone,
+          ...(existingUser ? { NOT: { id: existingUser.id } } : {}),
+        },
       });
       if (existingPhone) {
         return NextResponse.json(
@@ -119,19 +152,43 @@ export async function POST(request: Request) {
 
     const hashedPassword = await hashPassword(password);
 
-    const user = await db.user.create({
-      data: {
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password: hashedPassword,
-        role: "user",
-        gender: gender || null,
-        whatsappNumber: cleanPhone,
-        avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=e8ddd3&color=7c6e5a`,
-      },
-    });
+    let user: any;
+    if (existingUser) {
+      // Reclaim the unverified Microsoft stub for the real owner
+      if ((db as any).authIdentity?.deleteMany) {
+        try {
+          await (db as any).authIdentity.deleteMany({
+            where: { userId: existingUser.id, provider: "microsoft.com" },
+          });
+        } catch (err) {
+          console.warn("[Register] Failed to remove Microsoft identity:", err);
+        }
+      }
 
-    // Set httpOnly session cookies
+      user = await db.user.update({
+        where: { id: existingUser.id },
+        data: {
+          name: name.trim(),
+          password: hashedPassword,
+          gender: gender || null,
+          whatsappNumber: cleanPhone || existingUser.whatsappNumber,
+          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=e8ddd3&color=7c6e5a`,
+        },
+      });
+    } else {
+      user = await db.user.create({
+        data: {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password: hashedPassword,
+          role: "user",
+          gender: gender || null,
+          whatsappNumber: cleanPhone,
+          avatarUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=e8ddd3&color=7c6e5a`,
+        },
+      });
+    }
+
     await setSessionCookies({
       userId: user.id,
       role: user.role,

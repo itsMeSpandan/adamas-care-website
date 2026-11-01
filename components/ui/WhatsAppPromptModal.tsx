@@ -30,6 +30,7 @@ import {
   DEFAULT_COUNTRY,
 } from "@/lib/countries";
 import CountryCodeSelect from "@/components/ui/CountryCodeSelect";
+import GenderSelector from "@/components/ui/GenderSelector";
 
 export default function WhatsAppPromptModal() {
   const { user, whatsappPromptOpen, dismissWhatsAppPrompt, updateUser } = useAuth();
@@ -185,18 +186,14 @@ export default function WhatsAppPromptModal() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-beige-700">Gender</label>
-                  <div className="flex gap-3">
-                    <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-100 has-[:checked]:border-beige-600 has-[:checked]:bg-beige-50">
-                      <input type="radio" name="gender" value="female" checked={gender === "female"} onChange={(e) => setGender(e.target.value)} className="text-beige-600 focus:ring-beige-500" /> Female
-                    </label>
-                    <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-100 has-[:checked]:border-beige-600 has-[:checked]:bg-beige-50">
-                      <input type="radio" name="gender" value="male" checked={gender === "male"} onChange={(e) => setGender(e.target.value)} className="text-beige-600 focus:ring-beige-500" /> Male
-                    </label>
-                    <label className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm font-medium text-beige-700 transition-colors hover:bg-beige-100 has-[:checked]:border-beige-600 has-[:checked]:bg-beige-50">
-                      <input type="radio" name="gender" value="other" checked={gender === "other"} onChange={(e) => setGender(e.target.value)} className="text-beige-600 focus:ring-beige-500" /> Other
-                    </label>
-                  </div>
+                  <label className="mb-1.5 block text-sm font-medium text-beige-700">Gender</label>
+                  <GenderSelector
+                    value={gender}
+                    onChange={(val) => setGender(val)}
+                    name="wa-gender-prompt"
+                    label="Select your gender"
+                    disabled={saving}
+                  />
                 </div>
 
                 {error && <p className="text-sm text-red-600">{error}</p>}

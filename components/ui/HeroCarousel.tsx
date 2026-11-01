@@ -182,7 +182,7 @@ export default function HeroCarousel({
       {/* Dot Indicators: visible only when > 1 live image */}
       {images.length > 1 && (
         <div
-          className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/30 px-3 py-1.5 backdrop-blur-sm"
+          className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-[rgba(42,33,28,0.45)] px-3 py-1.5 backdrop-blur-sm"
           role="tablist"
           aria-label="Hero carousel navigation"
         >
@@ -193,10 +193,10 @@ export default function HeroCarousel({
                 key={img.id}
                 type="button"
                 onClick={() => goToSlide(i)}
-                className="h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-1 focus:ring-offset-black/50"
+                className="h-1.5 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#F4EFE8] focus:ring-offset-1 focus:ring-offset-black/50"
                 style={{
-                  width: isCurrent ? "1.5rem" : "0.5rem",
-                  backgroundColor: isCurrent ? "#ffffff" : "rgba(255, 255, 255, 0.5)",
+                  width: isCurrent ? "1.5rem" : "6px",
+                  backgroundColor: isCurrent ? "#F4EFE8" : "rgba(244, 239, 232, 0.6)",
                 }}
                 role="tab"
                 aria-selected={isCurrent}

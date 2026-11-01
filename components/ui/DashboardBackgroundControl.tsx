@@ -101,16 +101,14 @@ export default function DashboardBackgroundControl({ custom, version, onChanged 
   };
 
   return (
-    // The dashboard hero cancels <main>'s 96px top padding (`-mt-24`) so its
-    // picture spans the full viewport height like the home hero, which means
-    // this button's offsets are measured from under the fixed header. 7rem /
-    // 8rem keeps it where it always was on screen: 112px down on mobile and
-    // 128px on md+, i.e. 16px / 32px below the header.
-    <div className="absolute right-4 top-28 z-30 md:right-8 md:top-32">
+    // On desktop, sits top-right under header. On mobile, sits unobtrusively in
+    // bottom-left corner of the carousel (small 11px dark translucent chip) so
+    // it never overlaps pagination dots or text.
+    <div className="absolute bottom-4 left-4 z-20 md:bottom-auto md:left-auto md:right-8 md:top-32 md:z-30">
       <button
         type="button"
         onClick={() => setOpen((previous) => !previous)}
-        className="flex items-center gap-2 rounded-full border border-beige-300 bg-white/90 px-4 py-2 text-xs font-medium text-beige-700 shadow-sm backdrop-blur transition-colors hover:bg-white"
+        className="flex items-center gap-1.5 rounded-full border border-white/20 bg-[rgba(42,33,28,0.65)] px-2.5 py-1 text-[11px] font-medium text-[#F4EFE8] shadow-sm backdrop-blur transition-colors hover:bg-[rgba(42,33,28,0.85)] md:gap-2 md:border-beige-300 md:bg-white/90 md:px-4 md:py-2 md:text-xs md:text-beige-700 md:hover:bg-white"
         aria-expanded={open}
         aria-label="Change dashboard background"
       >
@@ -119,7 +117,7 @@ export default function DashboardBackgroundControl({ custom, version, onChanged 
       </button>
 
       {open && (
-        <div className="mt-2 w-72 rounded-card border border-beige-200 bg-white/95 p-4 shadow-lg backdrop-blur">
+        <div className="absolute bottom-10 left-0 md:bottom-auto md:left-auto md:right-0 md:top-full mt-2 w-72 rounded-card border border-beige-200 bg-white/95 p-4 shadow-lg backdrop-blur">
           <p className="text-sm font-medium text-beige-700">Fallback background</p>
           <p className="mt-1 text-xs text-beige-500">
             Controls the fallback image shown when no carousel images are live.

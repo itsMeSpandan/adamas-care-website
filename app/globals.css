@@ -15,7 +15,33 @@
   --border-color: #B8AFA3;
   --footer-bg: #1F1F1F;
   --footer-text: #F5F1EA;
-  --footer-link: #C97B5C;
+    --footer-link: #C97B5C;
+
+  /* Brand Tokens - Adamas Care Auth Experience */
+  --auth-page-cream: #F4EFE8;
+  --auth-card: #FBF8F4;
+  --auth-input-fill: #F1EADF;
+  --auth-border: #DDD3C7;
+  --auth-border-subtle: #E6DDD2;
+  --auth-espresso: #2B2420;
+  --auth-muted: #6B5C50;
+  --auth-accent-coral: #A8483A;
+  --auth-dark-panel: #2A211C;
+  --auth-panel-text: #F4EFE8;
+  --auth-panel-muted: #DCCFC1;
+
+  --auth-font-title: var(--font-cormorant), Georgia, serif;
+  --auth-font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+
+  --auth-radius-input: 12px;
+  --auth-radius-button: 12px;
+  --auth-radius-card: 28px;
+  --auth-radius-card-mobile: 20px;
+  --auth-radius-panel: 18px;
+
+  --auth-type-title: clamp(1.75rem, 1.2rem + 2vw, 2.9rem);
+  --auth-type-body: clamp(0.9rem, 0.85rem + 0.25vw, 1rem);
+  --auth-type-label: 0.8125rem;
 }
 
 @layer base {
