@@ -12,6 +12,7 @@
     "start": "next start --hostname 0.0.0.0",
     "lint": "next lint",
     "db:seed": "npx tsx prisma/seed.ts",
+    "db:seed-dev-bookings": "npx tsx scripts/seed-dev-bookings.ts",
     "db:import-services": "npx tsx prisma/import-services.ts",
     "db:push": "npx prisma db push",
     "db:generate": "npx prisma generate",
@@ -62,6 +63,7 @@
     "react-dom": "^18",
     "recharts": "^3.10.1",
     "resend": "^6.12.4",
+    "sharp": "^0.35.5",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.6.5"
   },

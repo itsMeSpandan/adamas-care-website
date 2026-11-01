@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Scissors,
@@ -21,6 +20,7 @@ import TeamCard from "@/components/cards/TeamCard";
 import Skeleton from "@/components/ui/Skeleton";
 import BookingCTA from "@/components/sections/BookingCTA";
 import DashboardBackgroundControl from "@/components/ui/DashboardBackgroundControl";
+import HeroCarousel from "@/components/ui/HeroCarousel";
 
 /**
  * Shown until (or unless) an admin uploads their own background — the same
@@ -264,14 +264,7 @@ export default function LoggedInHome() {
                 "linear-gradient(to right, var(--bg-primary) 0%, var(--bg-primary) 15%, rgba(245,241,234,0.8) 40%, rgba(245,241,234,0.3) 70%, transparent 100%)",
             }}
           />
-          <Image
-            src={backgroundSrc}
-            alt=""
-            fill
-            priority
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover object-[center_20%]"
-          />
+          <HeroCarousel fallbackSrc={backgroundSrc} priority={true} />
         </motion.div>
 
         {/* Veil: keeps the greeting readable on mobile, where the picture is

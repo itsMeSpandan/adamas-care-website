@@ -67,6 +67,7 @@ model User {
   reliability          UserReliability?
   refreshTokens        RefreshToken[]
   notifications        Notification[]
+  feedbacks            Feedback[]
 }
 
 model Service {
@@ -86,6 +87,7 @@ model Service {
   loyaltyRewards   LoyaltyReward[]
   bookingServices  BookingService[]
   waitlist         Waitlist[]
+  feedbackRatings  FeedbackServiceRating[]
 }
 
 model Employee {
@@ -106,6 +108,7 @@ model Employee {
   weeklyAvailability    EmployeeAvailability[]
   availabilityOverrides AvailabilityOverride[]
   waitlistEntries       Waitlist[]
+  feedbackRatings       FeedbackEmployeeRating[]
 }
 
 model EmployeeService {
@@ -156,15 +159,18 @@ model Booking {
   totalDurationMinutes Int?
   reminder24hSentAt    DateTime?
   reminder2hSentAt     DateTime?
+  completedAt          DateTime?
 
   loyaltyTransactions LoyaltyTransaction[]
   rewardRedemptions  RewardRedemption[]
   bookingServices     BookingService[]
   notificationLogs    NotificationLog[]
+  feedback            Feedback?
 
   @@index([employeeId, date])
   @@index([userId])
   @@index([email])
+  @@index([status, completedAt])
 }
 
 model RefreshToken {
@@ -482,3 +488,120 @@ model BookingService {
 }
 
 
+
+// ─── Hero Carousel Images ───────────────────────────────────────────────────
+
+model HeroImage {
+  id          String   @id @default(cuid())
+  alt         String
+  sortOrder   Int      @default(0)
+  enabled     Boolean  @default(true)
+  startDate   String?  // Optional YYYY-MM-DD evaluated in Asia/Kolkata (IST)
+  endDate     String?  // Optional YYYY-MM-DD evaluated in Asia/Kolkata (IST)
+  focalX      Float    @default(50.0)
+  focalY      Float    @default(20.0)
+  width       Int
+  height      Int
+  blurDataUrl String   // Tiny base64 WebP data URL for zero-CLS placeholders
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  asset       HeroImageAsset?
+
+  @@index([enabled, sortOrder])
+  @@index([startDate, endDate])
+}
+
+model HeroImageAsset {
+  id          String   @id @default(cuid())
+  heroImageId String   @unique
+  desktopWebp Bytes    // ~1200px wide WebP binary (<= 250 KB)
+  mobileWebp  Bytes    // ~800px wide WebP binary (<= 100 KB)
+
+  heroImage   HeroImage @relation(fields: [heroImageId], references: [id], onDelete: Cascade)
+}
+
+// ─── Post-Visit 3-Level Feedback System ─────────────────────────────────────
+
+enum FeedbackStatus {
+  NEW
+  REVIEWED
+  FOLLOW_UP
+  RESOLVED
+}
+
+enum FeedbackSource {
+  app
+  legacy
+}
+
+model Feedback {
+  id              String         @id @default(cuid())
+  bookingId       String         @unique
+  userId          String?
+  source          FeedbackSource @default(app)
+
+  // Overall Institution Level (Required in Customer UI)
+  overallRating   Int            // 1 to 5 stars
+  npsScore        Int?           // 0 to 10 ("How likely are you to recommend us?")
+  overallTags     String[]       // e.g. ["cleanliness", "ambience", "booking experience", "staff", "pricing"]
+  overallComment  String?        // Plain text, max 1000 chars
+
+  // Admin Follow-up Workflow
+  status          FeedbackStatus @default(NEW)
+  isFlagged       Boolean        @default(false) // True if overallRating <= 2 or any child rating <= 2
+  adminNotes      String?        // Private admin notes (never visible to customer or employee)
+  reviewedBy      String?        // Admin userId who took action
+  resolvedAt      DateTime?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  booking         Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  employeeRatings FeedbackEmployeeRating[]
+  serviceRatings  FeedbackServiceRating[]
+
+  @@index([status])
+  @@index([isFlagged])
+  @@index([overallRating])
+  @@index([source])
+  @@index([createdAt])
+  @@index([userId])
+}
+
+model FeedbackEmployeeRating {
+  id          String   @id @default(cuid())
+  feedbackId  String
+  employeeId  String
+  rating      Int      // 1 to 5 stars
+  tags        String[] // e.g. ["professional", "punctual", "friendly", "skilled"]
+  comment     String?  // Plain text, max 500 chars
+  createdAt   DateTime @default(now())
+
+  feedback    Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, employeeId])
+  @@index([employeeId, rating])
+  @@index([employeeId, createdAt])
+}
+
+model FeedbackServiceRating {
+  id          String   @id @default(cuid())
+  feedbackId  String
+  serviceId   String
+  rating      Int      // 1 to 5 stars
+  tags        String[] // e.g. ["results", "value for money", "comfort"]
+  comment     String?  // Plain text, max 500 chars
+  createdAt   DateTime @default(now())
+
+  feedback    Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, serviceId])
+  @@index([serviceId, rating])
+  @@index([serviceId, createdAt])
+}

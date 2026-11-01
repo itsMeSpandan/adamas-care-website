@@ -41,7 +41,8 @@ export type BookingEvent =
   | "CANCELLED"
   | "REMINDER_24H"
   | "REMINDER_6H"
-  | "WAITLIST_SLOT_OPEN";
+  | "WAITLIST_SLOT_OPEN"
+  | "FEEDBACK_REMINDER";
 
 type BookingFull = NonNullable<
   Awaited<ReturnType<typeof loadBooking>>
@@ -288,6 +289,25 @@ function buildEmail(
       };
     }
 
+    case "FEEDBACK_REMINDER": {
+      return {
+        subject: "How was your visit to Adamas Care?",
+        html: wrap(`
+          <h2 style="color: #3D5A47;">How was your visit? ✨</h2>
+          <p>Hi ${recipient.name},</p>
+          <p>We hope you enjoyed your visit with <strong>${booking.employee?.name || "our team"}</strong> at Adamas Care.</p>
+          <p>Your feedback helps us continuously elevate your experience.</p>
+          <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <a href="${process.env.NEXT_PUBLIC_BASE_URL || ""}/account/feedback/${booking.id}"
+               style="display: inline-block; background: #C97B5C; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+              Rate Your Visit
+            </a>
+          </div>
+          <p style="color: #666; font-size: 13px;">Takes less than 60 seconds.</p>`),
+        attachIcs: false,
+      };
+    }
+
     case "WAITLIST_SLOT_OPEN": {
       const minutes = recipient.claimMinutes ?? 30;
       // The offered window wins over the cancelled booking's: they are not the
@@ -316,6 +336,25 @@ function buildEmail(
               Claim Your Slot
             </a>
           </div>`),
+        attachIcs: false,
+      };
+    }
+
+    case "FEEDBACK_REMINDER": {
+      return {
+        subject: "How was your visit to Adamas Care?",
+        html: wrap(`
+          <h2 style="color: #3D5A47;">How was your visit? ✨</h2>
+          <p>Hi ${recipient.name},</p>
+          <p>We hope you enjoyed your visit with <strong>${booking.employee?.name || "our team"}</strong> at Adamas Care.</p>
+          <p>Your feedback helps us continuously elevate your experience.</p>
+          <div style="background: #F5F1EA; padding: 16px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <a href="${process.env.NEXT_PUBLIC_BASE_URL || ""}/account/feedback/${booking.id}"
+               style="display: inline-block; background: #C97B5C; color: #ffffff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+              Rate Your Visit
+            </a>
+          </div>
+          <p style="color: #666; font-size: 13px;">Takes less than 60 seconds.</p>`),
         attachIcs: false,
       };
     }
@@ -357,6 +396,11 @@ function pushTitleBody(
       return { title: "Appointment tomorrow ⏰", body: `Reminder: your appointment is tomorrow at ${timeStr}.` };
     case "REMINDER_6H":
       return { title: "Appointment in 6 hours ⏰", body: `Your appointment starts in about 6 hours (${timeStr}).` };
+    case "FEEDBACK_REMINDER":
+      return {
+        title: "How was your visit? ✨",
+        body: `Share your thoughts about your visit with ${booking.employee?.name || "our team"}.`,
+      };
     case "WAITLIST_SLOT_OPEN": // the offered window, not the cancelled appointment
       return {
         title: "A slot opened up! 🎉",
@@ -421,6 +465,8 @@ async function pushChannel(
   const deepLink =
     event === "WAITLIST_SLOT_OPEN"
       ? "/account/waitlist"
+      : event === "FEEDBACK_REMINDER"
+      ? `/account/feedback/${booking.id}`
       : `/bookings/${booking.id}`;
   const data: Record<string, string> = {
     type: event,
@@ -480,6 +526,8 @@ async function inAppChannel(
     deepLink:
       event === "WAITLIST_SLOT_OPEN"
         ? "/account/waitlist"
+        : event === "FEEDBACK_REMINDER"
+        ? `/account/feedback/${booking.id}`
         : `/bookings/${booking.id}`,
     bookingId: booking.id,
   });
@@ -522,5 +570,97 @@ export async function notifyBooking(bookingId: string, event: BookingEvent): Pro
     }
   } catch (err) {
     console.error(`[Notify] notifyBooking failed (${event}/${bookingId}):`, err);
+  }
+}
+
+/**
+ * Notifies account holders to rate their completed visit.
+ * Contract:
+ * - Registered account holders only (guests ignored).
+ * - Push if active DeviceToken exists, else single email.
+ * - In-app notification always.
+ * - Never repeated (guarded by NotificationLog).
+ */
+export async function notifyFeedbackReminder(bookingId: string): Promise<void> {
+  try {
+    const booking = await loadBooking(bookingId);
+    if (!booking || !booking.userId) return; // Account holders only
+
+    if (await alreadySent(booking.id, "FEEDBACK_REMINDER", "in_app")) return;
+
+    const recipient = await resolveRecipient(booking, "FEEDBACK_REMINDER");
+    if (!recipient || !recipient.userId) return;
+
+    // Check if user has consented/registered push devices
+    const tokens = await db.deviceToken.findMany({
+      where: { userId: recipient.userId, revokedAt: null },
+      select: { id: true, token: true },
+    });
+
+    if (tokens.length > 0) {
+      await pushChannel(booking, "FEEDBACK_REMINDER", recipient);
+    } else {
+      await emailChannel(booking, "FEEDBACK_REMINDER", recipient);
+    }
+
+    // Always create in-app notification
+    await inAppChannel(booking, "FEEDBACK_REMINDER", recipient);
+  } catch (err) {
+    console.error(`[Notify] notifyFeedbackReminder failed (${bookingId}):`, err);
+  }
+}
+
+/**
+ * Notifies administrators when a customer leaves a low rating (<= 2 stars).
+ * In-app notification + FCM push to all admin accounts only (no customer email).
+ */
+export async function notifyAdminLowFeedback(params: {
+  feedbackId: string;
+  bookingId: string;
+  rating: number;
+  customerName: string;
+}): Promise<void> {
+  try {
+    const admins = await db.user.findMany({
+      where: { role: "admin" },
+      select: { id: true },
+    });
+
+    const title = `Low Rating Alert (★ ${params.rating})`;
+    const body = `${params.customerName} left a ${params.rating}-star review on visit #${params.bookingId.slice(-6)}. Follow-up requested.`;
+
+    for (const admin of admins) {
+      await createNotification({
+        userId: admin.id,
+        type: "LOW_FEEDBACK_FLAG",
+        title,
+        body,
+        deepLink: `/admin/feedbacks?status=NEW`,
+        bookingId: params.bookingId,
+      });
+
+      const tokens = await db.deviceToken.findMany({
+        where: { userId: admin.id, revokedAt: null },
+        select: { token: true },
+      });
+
+      if (tokens.length > 0) {
+        const messaging = getFirebaseMessaging();
+        if (messaging) {
+          await messaging.sendEachForMulticast({
+            tokens: tokens.map((t) => t.token),
+            data: {
+              type: "LOW_FEEDBACK_FLAG",
+              bookingId: params.bookingId,
+              deepLink: `/admin/feedbacks?status=NEW`,
+              title,
+              body,
+            },
+          }).catch((err) => console.error("[Notify] Admin push error:", err));
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Notify] notifyAdminLowFeedback failed:", err);
   }
 }

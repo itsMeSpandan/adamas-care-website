@@ -39,6 +39,19 @@ export default function EmployeePage() {
   const { user } = useAuth();
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [allBookings, setAllBookings] = useState<BookingWithService[]>([]);
+  const [feedbackData, setFeedbackData] = useState<{
+    totalReviews: number;
+    averageRating: number;
+    topTags: { tag: string; count: number }[];
+    reviews: Array<{
+      id: string;
+      rating: number;
+      tags: string[];
+      comment: string | null;
+      date: string;
+      serviceName: string;
+    }>;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,9 +64,10 @@ export default function EmployeePage() {
 
     async function fetchData() {
       try {
-        const [empRes, bookingsRes] = await Promise.all([
+        const [empRes, bookingsRes, fbRes] = await Promise.all([
           fetch(`/api/employees/${empId}`),
           fetch("/api/bookings"),
+          fetch("/api/employee/feedback"),
         ]);
 
         if (empRes.ok) {
@@ -65,6 +79,11 @@ export default function EmployeePage() {
           const bookingsData = await bookingsRes.json();
           const bookings = (bookingsData.bookings || bookingsData || []) as BookingWithService[];
           setAllBookings(bookings.filter((b) => b.employeeId === empId));
+        }
+
+        if (fbRes?.ok) {
+          const fb = await fbRes.json();
+          setFeedbackData(fb);
         }
       } catch {
         // silently fail
@@ -170,7 +189,9 @@ export default function EmployeePage() {
         <div className="rounded-card border border-beige-200 bg-white p-5 shadow-card">
           <p className="text-xs font-medium uppercase tracking-wider text-beige-400">Avg Rating</p>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-beige-700">{avgRating}</span>
+            <span className="text-2xl font-bold text-beige-700">
+              {feedbackData?.totalReviews ? feedbackData.averageRating.toFixed(1) : avgRating}
+            </span>
             <span className="text-sm text-beige-400">/ 5.0</span>
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-beige-100">
@@ -192,14 +213,62 @@ export default function EmployeePage() {
             Recent Reviews
           </h2>
         </div>
-        {ratedBookings.length > 0 ? (
+        {(feedbackData?.reviews && feedbackData.reviews.length > 0) ? (
+          <div className="divide-y divide-beige-100">
+            {feedbackData.reviews.slice(0, 10).map((r) => (
+              <div key={r.id} className="px-6 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-beige-700">{r.serviceName}</p>
+                    <p className="text-xs text-beige-400 mt-0.5">Visit completed on {r.date}</p>
+                    {r.tags && r.tags.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {r.tags.map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="inline-block rounded bg-beige-100 px-2 py-0.5 text-[11px] font-medium text-beige-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 justify-end">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <svg
+                          key={i}
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill={i < r.rating ? "currentColor" : "none"}
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          className={i < r.rating ? "text-amber-400" : "text-beige-300"}
+                        >
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      ))}
+                    </div>
+                    {r.comment && (
+                      <p className="mt-2 text-xs text-beige-600 max-w-sm italic bg-beige-50/50 p-2 rounded">
+                        &ldquo;{r.comment}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : ratedBookings.length > 0 ? (
           <div className="divide-y divide-beige-100">
             {ratedBookings.slice(0, 10).map((r) => (
               <div key={r.id} className="px-6 py-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-beige-700">{formatServiceNames(r)}</p>
-                    <p className="text-xs text-beige-500">Client: {r.name}</p>
+                    <p className="text-xs text-beige-400">Client Visit</p>
                   </div>
                   <div className="text-right">
                     <div className="flex items-center gap-1">

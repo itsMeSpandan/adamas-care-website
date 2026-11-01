@@ -142,3 +142,28 @@ export async function getSessionFromRequest(
     email: payload.email,
   };
 }
+
+/**
+ * Read session either from an explicit Request object or the Next.js cookies store.
+ */
+export async function getSession(request?: Request): Promise<Session | null> {
+  if (request) {
+    return getSessionFromRequest(request);
+  }
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get(COOKIE_NAMES.session)?.value;
+    if (!token) return null;
+
+    const payload = await verifyToken(token);
+    if (!payload) return null;
+
+    return {
+      userId: payload.userId,
+      role: payload.role,
+      email: payload.email,
+    };
+  } catch {
+    return null;
+  }
+}

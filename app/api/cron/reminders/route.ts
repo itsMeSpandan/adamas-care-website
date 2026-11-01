@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { notifyBooking } from "@/lib/notify";
+import { notifyBooking, notifyFeedbackReminder } from "@/lib/notify";
 import { requireCronAuth } from "@/lib/cron-auth";
 import { bookingStartDate } from "@/lib/booking-time";
+import { shouldSendFeedbackReminderNow } from "@/lib/feedback";
 
 export const dynamic = "force-dynamic";
 
@@ -69,10 +70,39 @@ export async function GET(request: Request) {
     sent6h++;
   }
 
+  // ─── Post-visit feedback reminders ──────────────────────────────────────
+  let sentFeedbackReminders = 0;
+  const completedCandidates = await db.booking.findMany({
+    where: {
+      status: "completed",
+      userId: { not: null },
+      completedAt: { not: null },
+      feedback: null,
+      notificationLogs: {
+        none: {
+          event: "FEEDBACK_REMINDER",
+        },
+      },
+    },
+    select: {
+      id: true,
+      completedAt: true,
+    },
+    take: 50,
+  });
+
+  for (const b of completedCandidates) {
+    if (b.completedAt && shouldSendFeedbackReminderNow(b.completedAt, now)) {
+      await notifyFeedbackReminder(b.id);
+      sentFeedbackReminders++;
+    }
+  }
+
   return NextResponse.json({
     message: "Reminders processed",
     sent24h,
     sent6h,
+    sentFeedbackReminders,
     timestamp: now.toISOString(),
   });
 }

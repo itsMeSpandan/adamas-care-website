@@ -58,7 +58,7 @@ export const PATCH = requireAuth(async (request: Request, context) => {
 
     const existing = await db.booking.findUnique({
       where: { id },
-      select: { id: true, userId: true, date: true, slotStart: true },
+      select: { id: true, userId: true, date: true, slotStart: true, completedAt: true },
     });
     if (!existing) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
@@ -105,7 +105,11 @@ export const PATCH = requireAuth(async (request: Request, context) => {
       }
       // Atomic: status update + loyalty + reliability in a single transaction
       const booking = await db.$transaction(async (tx) => {
-        const updated = await tx.booking.update({ where: { id }, data: { status } });
+        const updateData: { status: "pending" | "confirmed" | "completed" | "cancelled"; completedAt?: Date } = { status };
+        if (status === "completed" && !existing.completedAt) {
+          updateData.completedAt = new Date();
+        }
+        const updated = await tx.booking.update({ where: { id }, data: updateData });
 
         if (status === "completed" && updated.userId) {
           await retryWithBackoff(() => awardPointsForBooking(id, tx));

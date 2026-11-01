@@ -10,6 +10,7 @@
  */
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { ImageUp, RotateCcw, Loader2 } from "lucide-react";
 import {
   BACKGROUND_JPEG_QUALITY,
@@ -114,16 +115,24 @@ export default function DashboardBackgroundControl({ custom, version, onChanged 
         aria-label="Change dashboard background"
       >
         <ImageUp className="h-3.5 w-3.5" />
-        Background
+        Fallback background
       </button>
 
       {open && (
         <div className="mt-2 w-72 rounded-card border border-beige-200 bg-white/95 p-4 shadow-lg backdrop-blur">
-          <p className="text-sm font-medium text-beige-700">Dashboard background</p>
+          <p className="text-sm font-medium text-beige-700">Fallback background</p>
           <p className="mt-1 text-xs text-beige-500">
-            Shows behind the greeting for every signed-in member.
-            {custom ? " A custom image is in use." : " The default image is in use."}
+            Controls the fallback image shown when no carousel images are live.
+            {custom ? " A custom fallback image is in use." : " The default fallback image is in use."}
           </p>
+          <div className="mt-1">
+            <Link
+              href="/admin/images"
+              className="text-xs font-semibold text-beige-700 underline hover:text-beige-900"
+            >
+              Manage Carousel in Admin &rarr;
+            </Link>
+          </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <button

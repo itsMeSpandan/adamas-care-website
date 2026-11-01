@@ -3,10 +3,11 @@
 import { useState, useEffect, Suspense, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth, AuthUser } from "@/lib/auth-context";
 import PasswordToggle from "@/components/ui/PasswordToggle";
-import StarRating from "@/components/ui/StarRating";
+
 import { displayTime, formatBookingDate, getBookingServices, formatServiceNames } from "@/lib/utils";
 import { statusColors } from "@/lib/constants";
 import NotificationSettings from "@/components/ui/NotificationSettings";
@@ -760,31 +761,37 @@ function ProfileContent() {
                                 </button>
                               )}
 
-                              {/* Rating section */}
+                              {/* Feedback / Rating Action */}
                               {booking.status === "completed" && !booking.rating && (
-                                <div className="rounded-xl border-2 border-beige-400 bg-beige-200 p-4 shadow-md">
-                                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-beige-800">Rate this service</p>
-                                  <StarRating
-                                    bookingId={booking.id}
-                                    onRatingSubmitted={(id, rating, review) => {
-                                      setBookings((prev) =>
-                                        prev.map((b) =>
-                                          b.id === id ? { ...b, rating, review } : b
-                                        )
-                                      );
-                                    }}
-                                  />
+                                <div className="rounded-xl border border-[#C97B5C]/30 bg-[#F5F1EA] p-4 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-xs font-bold text-beige-800">How was your visit?</p>
+                                    <p className="text-[11px] text-beige-600">Rate your specialist, services, and experience</p>
+                                  </div>
+                                  <Link
+                                    href={`/account/feedback/${booking.id}`}
+                                    className="rounded-lg bg-[#C97B5C] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#b56b4f] transition-colors"
+                                  >
+                                    Rate Visit →
+                                  </Link>
                                 </div>
                               )}
                               {booking.status === "completed" && !!booking.rating && (
-                                <div className="rounded-xl border-2 border-beige-400 bg-beige-200 p-4 shadow-md">
-                                  <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-beige-800">Your Rating</p>
-                                  <StarRating
-                                    bookingId={booking.id}
-                                    initialRating={booking.rating}
-                                    initialReview={booking.review ?? ""}
-                                    readonly
-                                  />
+                                <div className="rounded-xl border border-beige-300 bg-beige-50/70 p-3.5 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-[11px] font-bold uppercase tracking-wider text-beige-600">Your Rating</p>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-amber-500 font-bold text-sm">★ {booking.rating}/5</span>
+                                      {booking.review && (
+                                        <span className="text-xs text-beige-600 italic truncate max-w-[200px]">
+                                          &ldquo;{booking.review}&rdquo;
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="text-xs text-emerald-700 font-medium bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    Reviewed ✓
+                                  </span>
                                 </div>
                               )}
                               {booking.status !== "completed" && (

@@ -64,6 +64,9 @@ const noStoreHeaders = [
 
 const nextConfig = {
   poweredByHeader: false,
+  experimental: {
+    serverComponentsExternalPackages: ["@opentelemetry/api", "@opentelemetry/core", "sharp"],
+  },
 
   async headers() {
     return [
