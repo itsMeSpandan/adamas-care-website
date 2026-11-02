@@ -95,7 +95,7 @@ export const POST = requireRole("admin", async (request: Request) => {
       longDescription: longDescription || description,
       durationMinutes,
       price,
-      imageUrl: imageUrl || "/images/photo-1560066984-138dadb4c035",
+      imageUrl: imageUrl || "/images/service-illustration.jpg",
       featured: featured ?? false,
       audience: audience ?? "unisex",
       employeeIds: employeeIds || [],

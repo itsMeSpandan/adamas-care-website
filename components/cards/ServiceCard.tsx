@@ -8,6 +8,8 @@ import { formatPrice, formatDuration, cn } from "@/lib/utils";
 import { audienceLabel } from "@/lib/service-audience";
 import { isTreatmentGroup } from "@/lib/service-legacy-map";
 
+export const SERVICE_THUMBNAIL_IMAGE = "/images/service-illustration.jpg";
+
 const categoryColors: Record<string, string> = {
   "Classic Combos": "bg-indigo-50 text-indigo-800",
   "Fab Facials": "bg-rose-50 text-rose-800",
@@ -47,7 +49,7 @@ function TreatmentGroupCard({ group }: { group: TreatmentGroup }) {
         {/* Image & Header */}
         <Link href={`/services/${activeVariant.id}`} className="block relative aspect-video overflow-hidden">
           <Image
-            src={group.imageUrl}
+            src={SERVICE_THUMBNAIL_IMAGE}
             alt={group.groupName}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -159,7 +161,7 @@ function SingleServiceCard({ service }: { service: Service }) {
         {/* Image */}
         <Link href={`/services/${service.id}`} className="block relative aspect-video overflow-hidden">
           <Image
-            src={service.imageUrl}
+            src={SERVICE_THUMBNAIL_IMAGE}
             alt={service.name}
             fill
             className="object-cover transition-transform duration-500 group-hover:scale-105"

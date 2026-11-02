@@ -189,23 +189,24 @@ const COPY: Record<string, { short: string; long: string }> = {
 };
 
 /**
- * Placeholder photography. The CSV carries no images; these are the salon's
- * existing body-treatment shots, reused until real ones are supplied.
+ * Service illustration photography.
  */
+const SERVICE_ILLUSTRATION = "/images/service-illustration.jpg";
+
 const IMAGES: Record<string, string> = {
-  "Deep Tissue Massage": "/images/photo-1544161515-4ab6ce6db874",
-  "Thai Massage": "/images/photo-1544161515-4ab6ce6db874",
-  "Body Polishing": "/images/photo-1544161515-4ab6ce6db874",
-  "Swedish Massage": "/images/photo-1515377905703-c4788e51af15",
-  Aromatherapy: "/images/photo-1515377905703-c4788e51af15",
-  "Full Body Scrubbing": "/images/photo-1515377905703-c4788e51af15",
-  "Head Massage": "/images/photo-1515377905703-c4788e51af15",
-  "Head, Neck & Shoulder Massage": "/images/photo-1515377905703-c4788e51af15",
-  "Foot Massage": "/images/photo-1544161515-4ab6ce6db874",
-  "Foot Reflexology": "/images/photo-1544161515-4ab6ce6db874",
+  "Deep Tissue Massage": SERVICE_ILLUSTRATION,
+  "Thai Massage": SERVICE_ILLUSTRATION,
+  "Body Polishing": SERVICE_ILLUSTRATION,
+  "Swedish Massage": SERVICE_ILLUSTRATION,
+  Aromatherapy: SERVICE_ILLUSTRATION,
+  "Full Body Scrubbing": SERVICE_ILLUSTRATION,
+  "Head Massage": SERVICE_ILLUSTRATION,
+  "Head, Neck & Shoulder Massage": SERVICE_ILLUSTRATION,
+  "Foot Massage": SERVICE_ILLUSTRATION,
+  "Foot Reflexology": SERVICE_ILLUSTRATION,
 };
 
-const FALLBACK_IMAGE = "/images/photo-1544161515-4ab6ce6db874";
+const FALLBACK_IMAGE = SERVICE_ILLUSTRATION;
 
 /** Which services lead the marketing grid. */
 const FEATURED = new Set([
