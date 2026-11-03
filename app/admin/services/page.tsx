@@ -1,11 +1,16 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { Upload, X } from "lucide-react";
 import { formatPrice, formatDuration } from "@/lib/utils";
 import { AUDIENCE_LABELS, SERVICE_AUDIENCES } from "@/lib/service-audience";
 import { SERVICE_CATEGORIES } from "@/lib/types";
 import type { ServiceAudience } from "@/lib/types";
+import { checkPickedFile, resizeImageToDataUrl } from "@/lib/image-field";
+
+const DEFAULT_SERVICE_IMAGE = "/images/service-illustration.jpg";
 
 interface Service {
   id: string;
@@ -54,7 +59,7 @@ const emptyForm = {
   longDescription: "",
   durationMinutes: 60,
   price: 0,
-  imageUrl: "",
+  imageUrl: DEFAULT_SERVICE_IMAGE,
   featured: false,
   audience: "unisex" as ServiceAudience,
   employeeIds: [] as string[],
@@ -84,6 +89,32 @@ export default function AdminServicesPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [processingPhoto, setProcessingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (photoInputRef.current) photoInputRef.current.value = "";
+    if (!file) return;
+
+    const problem = checkPickedFile(file);
+    if (problem) {
+      setPhotoError(problem);
+      return;
+    }
+
+    setPhotoError(null);
+    setProcessingPhoto(true);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file, { maxEdge: 800, quality: 0.85 });
+      setForm((prev) => ({ ...prev, imageUrl: dataUrl }));
+    } catch {
+      setPhotoError("That image could not be read. Try a different file.");
+    } finally {
+      setProcessingPhoto(false);
+    }
+  };
 
   const fetchData = () => {
     Promise.all([
@@ -124,6 +155,7 @@ export default function AdminServicesPage() {
   const openAdd = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setPhotoError(null);
     setFormError(null);
     setModalOpen(true);
   };
@@ -137,7 +169,7 @@ export default function AdminServicesPage() {
       longDescription: svc.longDescription,
       durationMinutes: svc.durationMinutes,
       price: svc.price,
-      imageUrl: svc.imageUrl,
+      imageUrl: svc.imageUrl || DEFAULT_SERVICE_IMAGE,
       featured: svc.featured,
       audience: svc.audience ?? "unisex",
       employeeIds: svc.employeeIds || [],
@@ -147,6 +179,7 @@ export default function AdminServicesPage() {
       groupType: svc.groupType || "duration",
       isActive: svc.isActive !== false,
     });
+    setPhotoError(null);
     setFormError(null);
     setModalOpen(true);
   };
@@ -205,6 +238,7 @@ export default function AdminServicesPage() {
 
     const payload = {
       ...form,
+      imageUrl: form.imageUrl?.trim() || DEFAULT_SERVICE_IMAGE,
       groupKey: derivedGroupKey || null,
       groupName: form.groupName.trim() || null,
       variantLabel: form.variantLabel.trim() || null,
@@ -603,7 +637,7 @@ export default function AdminServicesPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="flex items-center gap-3 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-700">
+                      <label className="flex h-full items-center gap-2.5 rounded-xl border border-beige-300 bg-beige-50 px-3 py-2.5 text-xs sm:text-[13px] text-beige-700 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={form.isActive}
@@ -614,15 +648,73 @@ export default function AdminServicesPage() {
                       </label>
                     </div>
                     <div>
-                      <label className="flex items-center gap-3 rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-700">
-                        <input
-                          type="checkbox"
-                          checked={form.featured}
-                          onChange={(e) => setForm({ ...form, featured: e.target.checked })}
-                          className="h-4 w-4 rounded border-beige-300 text-beige-600 focus:ring-beige-200"
-                        />
-                        Featured on homepage
-                      </label>
+                      <div className="flex h-full items-center justify-between gap-1.5 rounded-xl border border-beige-300 bg-beige-50 px-3 py-2 text-xs sm:text-[13px] text-beige-700">
+                        <label className="flex items-center gap-2 cursor-pointer select-none min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={form.featured}
+                            onChange={(e) => setForm({ ...form, featured: e.target.checked })}
+                            className="h-4 w-4 rounded border-beige-300 text-beige-600 focus:ring-beige-200 flex-shrink-0"
+                          />
+                          <span className="whitespace-nowrap">Featured on homepage</span>
+                        </label>
+
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <input
+                            type="file"
+                            ref={photoInputRef}
+                            onChange={handlePhotoPicked}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => photoInputRef.current?.click()}
+                            disabled={processingPhoto}
+                            title={
+                              form.imageUrl && form.imageUrl !== DEFAULT_SERVICE_IMAGE
+                                ? "Click to change service image"
+                                : "Upload service image (default illustration in use)"
+                            }
+                            className="group/img relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg border border-beige-300 bg-white text-beige-700 shadow-sm transition hover:border-beige-400 hover:bg-beige-100 disabled:opacity-50"
+                            aria-label="Upload service image"
+                          >
+                            {processingPhoto ? (
+                              <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-beige-400 border-t-beige-700" />
+                            ) : form.imageUrl && form.imageUrl !== DEFAULT_SERVICE_IMAGE ? (
+                              <>
+                                <Image
+                                  src={form.imageUrl}
+                                  alt="Custom service thumbnail"
+                                  fill
+                                  className="object-cover transition-opacity group-hover/img:opacity-40"
+                                  sizes="28px"
+                                />
+                                <Upload className="relative z-10 h-3 w-3 text-beige-800 opacity-0 transition-opacity group-hover/img:opacity-100" />
+                              </>
+                            ) : (
+                              <Upload className="h-3.5 w-3.5 text-beige-600" />
+                            )}
+                          </button>
+                          {form.imageUrl && form.imageUrl !== DEFAULT_SERVICE_IMAGE && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPhotoError(null);
+                                setForm((prev) => ({ ...prev, imageUrl: DEFAULT_SERVICE_IMAGE }));
+                              }}
+                              title="Reset to default illustration"
+                              className="flex h-7 w-5 items-center justify-center rounded text-beige-400 hover:text-red-600 transition"
+                              aria-label="Reset to default image"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {photoError && (
+                        <p className="mt-1 text-xs text-red-600">{photoError}</p>
+                      )}
                     </div>
                   </div>
 
@@ -648,16 +740,7 @@ export default function AdminServicesPage() {
                     />
                   </div>
 
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-beige-700">Image URL</label>
-                    <input
-                      type="text"
-                      value={form.imageUrl}
-                      onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                      placeholder="/images/photo-1560066984-138dadb4c035"
-                      className="w-full rounded-xl border border-beige-300 bg-beige-50 px-4 py-3 text-sm text-beige-800 placeholder:text-beige-400 focus:border-beige-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-beige-200"
-                    />
-                  </div>
+
 
                   {/* Employee assignments */}
                   <div>

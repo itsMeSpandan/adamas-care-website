@@ -323,6 +323,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setWhatsappPromptOpen(false);
       setGenderPromptOpen(false);
+      if (typeof window !== "undefined") {
+        window.location.href = "/";
+      }
     }
   }, []);
 

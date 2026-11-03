@@ -13,7 +13,6 @@ export default function CardPreviewPage() {
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [memberSince, setMemberSince] = useState("Member since 10/26");
   const [previewWidth, setPreviewWidth] = useState<number | "100%">("100%");
-  const [isFlipped, setIsFlipped] = useState(false);
   const [showButtons, setShowButtons] = useState(true);
 
   return (
@@ -117,12 +116,11 @@ export default function CardPreviewPage() {
               memberSince={memberSince}
               interactive={true}
               showActions={showButtons}
-              onFlipChange={(f) => setIsFlipped(f)}
             />
           </div>
 
           <p className="text-xs text-[#6B5C50] mt-3 text-center">
-            💡 {isFlipped ? "Card flipped (Showing check-in QR code)." : "Click the card or press Enter/Space to flip for reception check-in code."}
+            ✨ Click or tap the card (or press Enter/Space) to see the radiant shining glare sweep across the facets.
           </p>
         </div>
 

@@ -132,6 +132,8 @@ export default function Footer() {
             <Link href="/privacy" className="ml-1 transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Privacy</Link>
             {' · '}
             <Link href="/terms" className="transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Terms</Link>
+            {' · '}
+            <Link href="/developers" className="transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Developers</Link>
           </p>
           <div className="flex items-center gap-4">
             {/* WhatsApp — links to chat with the salon */}

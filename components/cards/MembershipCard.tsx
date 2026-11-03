@@ -214,6 +214,8 @@ export interface MembershipCardProps {
   adminTagFilled?: boolean;
   className?: string;
   onFlipChange?: (flipped: boolean) => void;
+  onClick?: () => void;
+  onShine?: () => void;
 }
 
 export function MembershipCard({
@@ -230,8 +232,11 @@ export function MembershipCard({
   adminTagFilled = false,
   className,
   onFlipChange,
+  onClick,
+  onShine,
 }: MembershipCardProps) {
-  const [isFlipped, setIsFlipped] = useState(false);
+  const [glareKey, setGlareKey] = useState(0);
+  const [isGlaring, setIsGlaring] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -260,27 +265,20 @@ export function MembershipCard({
   const displayMemberSince = memberSince?.trim() || formatMemberSinceShort(createdAt);
   const pointsFormatted = formatLoyaltyPoints(loyaltyPoints);
 
-  // Extract security code from Member ID (e.g. "0001" from "AC26 0001 8842")
-  const securityCode = (() => {
-    const parts = displayMemberId.split(/\s+/);
-    if (parts.length >= 2 && parts[1]) {
-      return parts[1];
-    }
-    return "0001";
-  })();
-
-  const handleFlip = () => {
+  const triggerShine = () => {
     if (!interactive) return;
-    const next = !isFlipped;
-    setIsFlipped(next);
-    onFlipChange?.(next);
+    setGlareKey((prev) => prev + 1);
+    setIsGlaring(true);
+    onClick?.();
+    onShine?.();
+    onFlipChange?.(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!interactive) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      handleFlip();
+      triggerShine();
     }
   };
 
@@ -288,249 +286,162 @@ export function MembershipCard({
 
   return (
     <div className={cn("w-full max-w-full md:max-w-[420px] flex flex-col", className)}>
-      {/* ── CARD ELEMENT CONTAINER (3D Perspective) ── */}
-      <div
-        className="w-full [container-type:inline-size]"
-        style={{
-          perspective: "1000px",
-        }}
-      >
+      {/* ── CARD ELEMENT CONTAINER ── */}
+      <div className="w-full [container-type:inline-size]">
         <div
           role={interactive ? "button" : "img"}
           tabIndex={interactive ? 0 : undefined}
           aria-label={
             interactive
-              ? `${ariaLabel} ${isFlipped ? "Showing check-in code. Click or press Enter to flip back." : "Click or press Enter to flip for check-in QR code."}`
+              ? `${ariaLabel} Click or press Enter to shine.`
               : ariaLabel
           }
-          aria-expanded={interactive ? isFlipped : undefined}
-          onClick={handleFlip}
+          onClick={triggerShine}
           onKeyDown={handleKeyDown}
           className={cn(
-            "group relative w-full aspect-[1.58/1] select-none rounded-[22px] outline-none transition-all duration-300",
+            "group relative w-full aspect-[1.58/1] select-none rounded-[22px] overflow-hidden border border-[#DDD3C7] shadow-[0_14px_34px_rgba(60,40,25,0.12)] p-[clamp(18px,5.5cqw,24px)] flex flex-col justify-between outline-none transition-transform duration-200",
             interactive &&
-              "cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2B2420] focus-visible:ring-offset-2 active:scale-[0.99]"
+              "cursor-pointer focus-visible:ring-2 focus-visible:ring-[#2B2420] focus-visible:ring-offset-2 active:scale-[0.985]"
           )}
           style={{
-            transformStyle: "preserve-3d",
+            background: tierConfig.cardGradient,
           }}
         >
-          {/* Card inner flipper wrapper */}
+          {/* Diamond-cut Facet Artwork */}
+          <MembershipCardFacets />
+
+          {/* Ambient Subtle Shimmer Layer on hover */}
           <div
-            className={cn(
-              "relative w-full h-full rounded-[22px] shadow-[0_14px_34px_rgba(60,40,25,0.12)] border border-[#DDD3C7] overflow-hidden",
-              prefersReducedMotion
-                ? "transition-opacity duration-300"
-                : "transition-transform duration-700 [transform-style:preserve-3d]"
-            )}
-            style={{
-              transform:
-                !prefersReducedMotion && isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-              background: tierConfig.cardGradient,
-            }}
+            className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]"
+            aria-hidden="true"
           >
-            {/* ── FRONT FACE ── */}
             <div
-              className={cn(
-                "absolute inset-0 w-full h-full flex flex-col justify-between p-[clamp(18px,5.5cqw,24px)]",
-                prefersReducedMotion && isFlipped
-                  ? "opacity-0 pointer-events-none"
-                  : "opacity-100",
-                "[backface-visibility:hidden]"
-              )}
-            >
-              {/* Facet Artwork */}
-              <MembershipCardFacets />
+              className="absolute -inset-[150%] opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-facet-shimmer pointer-events-none"
+              style={{
+                background:
+                  "linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%)",
+              }}
+            />
+          </div>
 
-              {/* Shimmer Highlight Layer */}
+          {/* Active Click / Tap Glare & Shine Beam */}
+          {isGlaring && !prefersReducedMotion && (
+            <div
+              key={glareKey}
+              onAnimationEnd={() => setIsGlaring(false)}
+              className="pointer-events-none absolute -inset-[150%] z-20 animate-card-glare"
+              style={{
+                background:
+                  "linear-gradient(115deg, transparent 32%, rgba(255,255,255,0.18) 42%, rgba(255,255,255,0.88) 50%, rgba(255,255,255,0.18) 58%, transparent 68%)",
+              }}
+              aria-hidden="true"
+            />
+          )}
+
+          {/* ROW 1: Wordmark & Tier Badge */}
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
               <div
-                className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px]"
-                aria-hidden="true"
+                className="font-serif font-medium leading-none text-[#2B2420] tracking-[0.16em]"
+                style={{
+                  fontSize: "clamp(20px, 6.5cqw, 24px)",
+                  letterSpacing: "0.16em",
+                }}
               >
-                <div
-                  className="absolute -inset-[150%] opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-facet-shimmer pointer-events-none"
-                  style={{
-                    background:
-                      "linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%)",
-                  }}
-                />
+                ADAMAS
               </div>
-
-              {/* ROW 1: Wordmark & Tier Badge */}
-              <div className="relative z-10 flex items-start justify-between">
-                <div>
-                  <div
-                    className="font-serif font-medium leading-none text-[#2B2420] tracking-[0.16em]"
-                    style={{
-                      fontSize: "clamp(20px, 6.5cqw, 24px)",
-                      letterSpacing: "0.16em",
-                    }}
-                  >
-                    ADAMAS
-                  </div>
-                  <div
-                    className="font-inter text-[9px] text-[#2B2420] uppercase mt-1 leading-none font-normal tracking-[0.5em]"
-                    style={{
-                      letterSpacing: "0.5em",
-                    }}
-                  >
-                    CARE
-                  </div>
-                </div>
-
-                {/* Role/Tier Tag */}
-                <span
-                  className={cn(
-                    "rounded-full px-[11px] py-[5px] text-[10px] font-medium font-inter uppercase leading-none tracking-[0.26em] transition-colors",
-                    adminTagFilled && resolvedTier === "admin"
-                      ? "bg-[#A8483A] text-[#FBF8F4] border-transparent"
-                      : "border"
-                  )}
-                  style={{
-                    letterSpacing: "0.26em",
-                    borderWidth: "1px",
-                    borderColor:
-                      adminTagFilled && resolvedTier === "admin"
-                        ? "transparent"
-                        : tierConfig.tagBorder,
-                    color:
-                      adminTagFilled && resolvedTier === "admin"
-                        ? "#FBF8F4"
-                        : tierConfig.tagColor,
-                    backgroundColor:
-                      adminTagFilled && resolvedTier === "admin"
-                        ? "#A8483A"
-                        : tierConfig.tagBg,
-                  }}
-                >
-                  {tierConfig.badgeLabel}
-                </span>
-              </div>
-
-              {/* ROW 2: Member ID */}
-              <div className="relative z-10 my-auto py-1">
-                <p
-                  className="font-inter font-medium text-[#2B2420] tabular-nums select-all leading-none"
-                  style={{
-                    fontSize: "clamp(13px, 4cqw, 15px)",
-                    letterSpacing: "0.22em",
-                  }}
-                >
-                  {displayMemberId}
-                </p>
-              </div>
-
-              {/* ROW 3: Member Name, Date & Points */}
-              <div className="relative z-10 flex items-end justify-between gap-3 min-w-0">
-                <div className="min-w-0 max-w-[70%]">
-                  <p
-                    className="font-serif font-medium leading-tight text-[#2B2420] line-clamp-2 break-words"
-                    style={{
-                      fontSize: "clamp(22px, 7.5cqw, 28px)",
-                      letterSpacing: "0.02em",
-                    }}
-                    title={displayName}
-                  >
-                    {displayName}
-                  </p>
-                  <p
-                    className="font-inter text-[11px] text-[#6B5C50] mt-1 leading-none"
-                    style={{
-                      letterSpacing: "0.06em",
-                    }}
-                  >
-                    {displayMemberSince}
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <p
-                    className="font-inter text-[9px] text-[#6B5C50] uppercase leading-none"
-                    style={{
-                      letterSpacing: "0.24em",
-                    }}
-                  >
-                    POINTS
-                  </p>
-                  <p
-                    className="font-serif font-medium text-[#A8483A] mt-1 leading-none text-right"
-                    style={{
-                      fontSize: "clamp(22px, 7cqw, 26px)",
-                    }}
-                  >
-                    {pointsFormatted}
-                  </p>
-                </div>
+              <div
+                className="font-inter text-[9px] text-[#2B2420] uppercase mt-1 leading-none font-normal tracking-[0.5em]"
+                style={{
+                  letterSpacing: "0.5em",
+                }}
+              >
+                CARE
               </div>
             </div>
 
-            {/* ── BACK FACE: Luxury Charge/Membership Card Back ── */}
-            <div
+            {/* Role/Tier Tag */}
+            <span
               className={cn(
-                "absolute inset-0 w-full h-full flex flex-col justify-between overflow-hidden select-none",
-                prefersReducedMotion
-                  ? isFlipped
-                    ? "opacity-100"
-                    : "opacity-0 pointer-events-none"
-                  : "[backface-visibility:hidden] [transform:rotateY(180deg)]"
+                "rounded-full px-[11px] py-[5px] text-[10px] font-medium font-inter uppercase leading-none tracking-[0.26em] transition-colors",
+                adminTagFilled && resolvedTier === "admin"
+                  ? "bg-[#A8483A] text-[#FBF8F4] border-transparent"
+                  : "border"
               )}
+              style={{
+                letterSpacing: "0.26em",
+                borderWidth: "1px",
+                borderColor:
+                  adminTagFilled && resolvedTier === "admin"
+                    ? "transparent"
+                    : tierConfig.tagBorder,
+                color:
+                  adminTagFilled && resolvedTier === "admin"
+                    ? "#FBF8F4"
+                    : tierConfig.tagColor,
+                backgroundColor:
+                  adminTagFilled && resolvedTier === "admin"
+                    ? "#A8483A"
+                    : tierConfig.tagBg,
+              }}
             >
-              {/* Top Dark Magnetic Stripe */}
-              <div className="w-full mt-4 sm:mt-5 h-[34px] sm:h-[38px] bg-[#2A211C] shrink-0 relative z-10" />
+              {tierConfig.badgeLabel}
+            </span>
+          </div>
 
-              {/* Signature Row & Security Code */}
-              <div className="relative z-10 px-[clamp(14px,4.5cqw,20px)] mt-2 sm:mt-2.5 flex items-center gap-2 sm:gap-3 w-full">
-                {/* Left signature box */}
-                <div className="flex-1 h-[28px] sm:h-[32px] bg-white/95 rounded-[7px] sm:rounded-[8px] border border-[#DDD3C7] px-2.5 flex items-center justify-between shadow-[inset_0_1px_2px_rgba(43,36,32,0.03)]">
-                  <span className="text-[8px] sm:text-[9px] font-inter font-medium uppercase tracking-[0.2em] text-[#6B5C50] shrink-0 select-none">
-                    SIGNATURE
-                  </span>
-                  <span className="font-serif italic font-medium text-[14px] sm:text-[16px] text-[#2B2420] tracking-wide truncate max-w-[65%] text-right select-none">
-                    {displayName}
-                  </span>
-                </div>
+          {/* ROW 2: Member ID */}
+          <div className="relative z-10 my-auto py-1">
+            <p
+              className="font-inter font-medium text-[#2B2420] tabular-nums select-all leading-none"
+              style={{
+                fontSize: "clamp(13px, 4cqw, 15px)",
+                letterSpacing: "0.22em",
+              }}
+            >
+              {displayMemberId}
+            </p>
+          </div>
 
-                {/* Right security code box */}
-                <div className="w-[58px] sm:w-[68px] h-[28px] sm:h-[32px] bg-white/95 rounded-[7px] sm:rounded-[8px] border border-[#DDD3C7] flex items-center justify-center shrink-0 shadow-[inset_0_1px_2px_rgba(43,36,32,0.03)]">
-                  <span className="text-[11px] sm:text-[12px] font-inter font-medium tracking-[0.16em] text-[#2B2420] tabular-nums select-all">
-                    {securityCode}
-                  </span>
-                </div>
-              </div>
-
-              {/* Center Barcode Area */}
-              <div className="relative z-10 flex flex-col items-center justify-center my-auto py-1 px-[clamp(14px,4.5cqw,20px)]">
-                <MembershipCardBarcode className="w-[84%] max-w-[280px] h-[24px] sm:h-[28px]" />
-                <p className="font-inter font-medium text-[10px] sm:text-[11px] text-[#2B2420] tracking-[0.24em] tabular-nums mt-1 select-all leading-none">
-                  {displayMemberId}
-                </p>
-              </div>
-
-              {/* Bottom Disclaimer */}
-              <div className="relative z-10 pb-3 sm:pb-3.5 text-center px-4">
-                <p className="font-inter text-[8px] sm:text-[9px] text-[#6B5C50] tracking-[0.03em] leading-none select-none">
-                  Non-transferable. Property of Adamas Care.
-                </p>
-              </div>
-
-              {/* Facet Artwork overlay on back (radiating lines show across background and stripe) */}
-              <div className="absolute inset-0 pointer-events-none z-20" aria-hidden="true">
-                <MembershipCardFacets />
-              </div>
-
-              {/* Shimmer Highlight */}
-              <div
-                className="pointer-events-none absolute inset-0 overflow-hidden rounded-[22px] z-30"
-                aria-hidden="true"
+          {/* ROW 3: Member Name, Date & Points */}
+          <div className="relative z-10 flex items-end justify-between gap-3 min-w-0">
+            <div className="min-w-0 max-w-[70%]">
+              <p
+                className="font-serif font-medium leading-tight text-[#2B2420] line-clamp-2 break-words"
+                style={{
+                  fontSize: "clamp(22px, 7.5cqw, 28px)",
+                  letterSpacing: "0.02em",
+                }}
+                title={displayName}
               >
-                <div
-                  className="absolute -inset-[150%] opacity-0 group-hover:opacity-100 transition-opacity duration-700 animate-facet-shimmer pointer-events-none"
-                  style={{
-                    background:
-                      "linear-gradient(115deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%)",
-                  }}
-                />
-              </div>
+                {displayName}
+              </p>
+              <p
+                className="font-inter text-[11px] text-[#6B5C50] mt-1 leading-none"
+                style={{
+                  letterSpacing: "0.06em",
+                }}
+              >
+                {displayMemberSince}
+              </p>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <p
+                className="font-inter text-[9px] text-[#6B5C50] uppercase leading-none"
+                style={{
+                  letterSpacing: "0.24em",
+                }}
+              >
+                POINTS
+              </p>
+              <p
+                className="font-serif font-medium text-[#A8483A] mt-1 leading-none text-right"
+                style={{
+                  fontSize: "clamp(22px, 7cqw, 26px)",
+                }}
+              >
+                {pointsFormatted}
+              </p>
             </div>
           </div>
         </div>

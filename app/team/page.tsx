@@ -28,8 +28,14 @@ export default async function TeamPage() {
             exceptional results every time.
           </p>
 
-          {/* Masonry-style grid */}
-          <div className="columns-1 gap-6 sm:columns-2 lg:columns-3 [&>*]:mb-6 [&>*]:break-inside-avoid">
+          {/* Team Grid */}
+          <div
+            className={`grid gap-6 ${
+              employees.length <= 3
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto"
+                : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+            }`}
+          >
             {employees.map((employee) => (
               <TeamCard key={employee.id} employee={employee} />
             ))}

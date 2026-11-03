@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 import { PushNotificationRow } from "./PushNotificationRow";
 
 function ChevronRight() {
@@ -23,6 +24,8 @@ function ChevronRight() {
 }
 
 export function ProfileSettingsList() {
+  const { isAdmin, logout } = useAuth();
+
   return (
     <nav aria-label="Account Settings" className="w-full space-y-6">
       {/* ACCOUNT Group */}
@@ -86,6 +89,26 @@ export function ProfileSettingsList() {
         </div>
       </div>
 
+      {/* ADMINISTRATION Group (Admin only) */}
+      {isAdmin && (
+        <div>
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#6B5F52] px-1 mb-2">
+            ADMINISTRATION
+          </h2>
+          <div className="bg-white rounded-[20px] border border-[#E6DDD0] overflow-hidden shadow-xs">
+            <Link
+              href="/admin"
+              className="group min-h-[56px] px-5 py-4 flex items-center justify-between text-left hover:bg-[#FAF7F2] active:bg-[#F2ECE3] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#A8573A]"
+            >
+              <span className="text-[15px] font-medium text-[#A8573A]">
+                Admin Console
+              </span>
+              <ChevronRight />
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* PREFERENCES Group */}
       <div>
         <h2 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-[#6B5F52] px-1 mb-2">
@@ -94,6 +117,32 @@ export function ProfileSettingsList() {
         <div className="bg-white rounded-[20px] border border-[#E6DDD0] overflow-hidden shadow-xs">
           <PushNotificationRow />
         </div>
+      </div>
+
+      {/* SIGN OUT Button */}
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => logout()}
+          className="w-full min-h-[52px] rounded-[16px] border border-[#E6DDD0] bg-white hover:bg-red-50/60 active:scale-[0.99] text-red-600 font-medium text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-red-400"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          <span>Sign Out</span>
+        </button>
       </div>
     </nav>
   );

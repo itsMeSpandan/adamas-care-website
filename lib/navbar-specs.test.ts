@@ -206,5 +206,11 @@ describe("Navbar Design Specifications", () => {
       expect(menuCss).toContain(".sm-socials-link");
       expect(menuCss).toContain("color: var(--sm-accent, #C97B5C)");
     });
+
+    it("configures danger / sign out item in an elegant red shade (#B91C1C) with darker hover (#7F1D1D)", () => {
+      expect(menuCss).toContain(".sm-panel-item.sm-panel-item-danger");
+      expect(menuCss).toContain("color: #B91C1C !important;");
+      expect(menuCss).toContain("color: #7F1D1D !important;");
+    });
   });
 });

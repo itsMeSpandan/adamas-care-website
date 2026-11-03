@@ -84,14 +84,9 @@ const PillNav = ({
               ariaLabel: item.ariaLabel || item.label,
               link: item.href,
             })),
-            isAuthenticated
-              ? { label: "Book Appointment", ariaLabel: "Book Appointment", link: "/booking" }
-              : {
-                  label: "Book Appointment",
-                  ariaLabel: "Book Appointment",
-                  link: "#",
-                  onClick: () => setLoginOpen(true),
-                },
+            ...(isAuthenticated
+              ? [{ label: "Book Appointment", ariaLabel: "Book Appointment", link: "/booking" }]
+              : []),
           ]}
           socialItems={[
             { label: "WhatsApp", link: "https://wa.me/919238381831" },

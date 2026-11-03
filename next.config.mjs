@@ -12,7 +12,7 @@ const csp = [
   "default-src 'self'",
   // lh3.googleusercontent.com = Google profile photos on User.avatarUrl.
   // flagcdn.com = country flags in the phone country-code dropdown.
-  "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com https://lh3.googleusercontent.com https://flagcdn.com data: blob:",
+  "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com https://lh3.googleusercontent.com https://flagcdn.com https://res.cloudinary.com data: blob:",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://www.gstatic.com https://apis.google.com https://accounts.google.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",

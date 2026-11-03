@@ -21,13 +21,11 @@ interface NotificationItem {
 export default function Navbar() {
   const { user, isAuthenticated, logout, isAdmin, isEmployee } = useAuth();
 
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
 
-  const userMenuRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const staggeredMenuRef = useRef<StaggeredMenuHandle>(null);
 
@@ -55,7 +53,6 @@ export default function Navbar() {
   const guestItems = [
     { label: "Home", link: "/" },
     { label: "Services", link: "/services" },
-    { label: "Book Appointment", link: "/booking" },
     { label: "Our Team", link: "/team" },
     { label: "About", link: "/about" },
     { label: "Contact", link: "/contact" },
@@ -74,6 +71,12 @@ export default function Navbar() {
     { label: "Profile", link: "/profile" },
     { label: "Rewards & Points", link: "/rewards" },
     { label: "Contact", link: "/contact" },
+    {
+      label: "Sign Out",
+      link: "#signout",
+      danger: true,
+      onClick: () => logout(),
+    },
   ];
 
   const employeeItems = [
@@ -82,15 +85,28 @@ export default function Navbar() {
     { label: "Services", link: "/services" },
     { label: "Bookings", link: "/booking" },
     { label: "Profile", link: "/profile" },
+    {
+      label: "Sign Out",
+      link: "#signout",
+      danger: true,
+      onClick: () => logout(),
+    },
   ];
 
   const adminItems = [
     { label: "Home", link: "/" },
     { label: "Dashboard", link: "/admin" },
+    { label: "Profile", link: "/profile" },
     { label: "Services", link: "/admin/services" },
     { label: "Schedule", link: "/admin/schedule" },
     { label: "Employees", link: "/admin/employees" },
     { label: "Bookings", link: "/admin/bookings" },
+    {
+      label: "Sign Out",
+      link: "#signout",
+      danger: true,
+      onClick: () => logout(),
+    },
   ];
 
   let menuItems = guestItems;
@@ -128,9 +144,6 @@ export default function Navbar() {
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       const target = e.target as Node;
-      if (userMenuRef.current && !userMenuRef.current.contains(target)) {
-        setUserMenuOpen(false);
-      }
       if (notificationsRef.current && !notificationsRef.current.contains(target)) {
         setNotificationsOpen(false);
       }
@@ -144,7 +157,6 @@ export default function Navbar() {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        setUserMenuOpen(false);
         setNotificationsOpen(false);
         staggeredMenuRef.current?.close();
       }
@@ -157,7 +169,6 @@ export default function Navbar() {
     const next = !notificationsOpen;
     setNotificationsOpen(next);
     if (next) {
-      setUserMenuOpen(false);
       setHasUnreadNotifications(false);
       if (isAuthenticated) {
         fetch("/api/notifications", {
@@ -169,14 +180,12 @@ export default function Navbar() {
     }
   };
 
-  const toggleUserMenu = () => {
-    setUserMenuOpen((prev) => !prev);
-    setNotificationsOpen(false);
-  };
-
   return (
     <>
-      <header className="sticky top-0 z-40 w-full bg-[#F4EFE8] border-b border-[#DDD3C7] shadow-none font-inter">
+      <header
+        className="sticky top-0 z-40 w-full border-b border-[#DDD3C7] shadow-none font-inter"
+        style={{ backgroundColor: "var(--bg-primary)" }}
+      >
         <div className="mx-auto w-full max-w-[1280px] h-[88px] px-5 sm:px-8 md:px-[40px] flex items-center justify-between">
           {/* ── LEFT: LOGO ── */}
           <Link
@@ -288,189 +297,32 @@ export default function Navbar() {
                 {/* 2. Vertical divider (1px x 24px, #D8CCBE) */}
                 <div className="w-[1px] h-[24px] bg-[#D8CCBE] shrink-0" aria-hidden="true" />
 
-                {/* 3. User menu (no pill or border, 34px avatar, name, chevron) */}
-                <div ref={userMenuRef} className="relative">
-                  <button
-                    type="button"
-                    onClick={toggleUserMenu}
-                    aria-label="Account menu"
-                    aria-haspopup="menu"
-                    aria-expanded={userMenuOpen}
-                    className="flex items-center gap-[12px] bg-transparent border-none p-0 cursor-pointer min-h-[44px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B2420] group"
-                  >
-                    {/* 34px circular avatar with #E4D8CA bg, initials in #5B4636 */}
-                    <div className="w-[34px] h-[34px] rounded-full bg-[#E4D8CA] flex items-center justify-center shrink-0 text-[12px] font-medium text-[#5B4636] font-sans select-none shadow-xs group-hover:opacity-90 transition-opacity overflow-hidden relative">
-                      {user.avatarUrl ? (
-                        <Image
-                          src={user.avatarUrl}
-                          alt={user.name || displayName}
-                          fill
-                          sizes="34px"
-                          className="object-cover"
-                          unoptimized
-                        />
-                      ) : null}
-                      <span className={user.avatarUrl ? "sr-only" : ""}>{userInitials}</span>
-                    </div>
+                {/* 3. User profile link (34px avatar, name, direct link to /profile, dropdown disabled) */}
+                <Link
+                  href="/profile"
+                  aria-label={`Profile: ${displayName}`}
+                  className="flex items-center gap-[12px] bg-transparent border-none p-0 cursor-pointer min-h-[44px] rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B2420] group"
+                >
+                  {/* 34px circular avatar with #E4D8CA bg, initials in #5B4636 */}
+                  <div className="w-[34px] h-[34px] rounded-full bg-[#E4D8CA] flex items-center justify-center shrink-0 text-[12px] font-medium text-[#5B4636] font-sans select-none shadow-xs group-hover:opacity-90 transition-opacity overflow-hidden relative">
+                    {user.avatarUrl ? (
+                      <Image
+                        src={user.avatarUrl}
+                        alt={user.name || displayName}
+                        fill
+                        sizes="34px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : null}
+                    <span className={user.avatarUrl ? "sr-only" : ""}>{userInitials}</span>
+                  </div>
 
-                    {/* Name (15px, medium) - hidden on mobile */}
-                    <span className="hidden sm:inline text-[15px] font-medium text-[#2B2420] font-sans">
-                      {displayName}
-                    </span>
-
-                    {/* Small chevron-down icon */}
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#2B2420"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                      className={`transition-transform duration-200 ${userMenuOpen ? "rotate-180" : ""}`}
-                    >
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
-
-                  {/* User Menu Popover */}
-                  {userMenuOpen && (
-                    <div
-                      role="menu"
-                      aria-label="Account settings"
-                      className="absolute right-0 top-full mt-3 w-60 bg-white rounded-[18px] border border-[#DDD3C7] shadow-[0_12px_32px_rgba(43,36,32,0.12)] py-2 z-50 animate-in fade-in zoom-in-95 duration-150"
-                    >
-                      {/* User identity card */}
-                      <div className="px-4 py-3 border-b border-[#EEE6DA]">
-                        <p className="text-sm font-semibold text-[#2B2420] truncate">
-                          {user.name || displayName}
-                        </p>
-                        <p className="text-xs text-[#6B5C50] truncate mt-0.5">
-                          {user.email}
-                        </p>
-                        {isAdmin && (
-                          <span className="mt-1.5 inline-block rounded-full bg-[#FAF7F2] border border-[#DDD3C7] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#A8573A]">
-                            Admin
-                          </span>
-                        )}
-                        {isEmployee && (
-                          <span className="mt-1.5 inline-block rounded-full bg-[#FAF7F2] border border-[#DDD3C7] px-2 py-0.5 text-[10px] font-semibold uppercase text-[#6B5C50]">
-                            Specialist
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Menu Links */}
-                      <div className="py-1">
-                        <Link
-                          href="/profile?section=profile"
-                          role="menuitem"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2B2420] hover:bg-[#FAF7F2] transition-colors"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-[#6B5C50]">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                            <circle cx="12" cy="7" r="4" />
-                          </svg>
-                          <span>Profile Details</span>
-                        </Link>
-
-                        <Link
-                          href="/profile?section=bookings"
-                          role="menuitem"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2B2420] hover:bg-[#FAF7F2] transition-colors"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-[#6B5C50]">
-                            <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" x2="21" y1="10" y2="10" />
-                          </svg>
-                          <span>My Bookings</span>
-                        </Link>
-
-                        <Link
-                          href="/profile?section=waitlist"
-                          role="menuitem"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2B2420] hover:bg-[#FAF7F2] transition-colors"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-[#6B5C50]">
-                            <circle cx="12" cy="12" r="9" />
-                            <polyline points="12 7 12 12 15.5 14" />
-                          </svg>
-                          <span>My Waitlist</span>
-                        </Link>
-
-                        <Link
-                          href="/rewards"
-                          role="menuitem"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2B2420] hover:bg-[#FAF7F2] transition-colors"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-[#6B5C50]">
-                            <circle cx="12" cy="8" r="6" />
-                            <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11" />
-                          </svg>
-                          <span>Rewards & Points</span>
-                        </Link>
-
-                        {isAdmin && (
-                          <Link
-                            href="/admin"
-                            role="menuitem"
-                            onClick={() => setUserMenuOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#A8573A] font-medium hover:bg-[#FAF7F2] transition-colors"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                              <rect width="18" height="18" x="3" y="3" rx="2" />
-                              <path d="M3 9h18" />
-                              <path d="M9 21V9" />
-                            </svg>
-                            <span>Admin Console</span>
-                          </Link>
-                        )}
-
-                        {isEmployee && (
-                          <Link
-                            href="/employee"
-                            role="menuitem"
-                            onClick={() => setUserMenuOpen(false)}
-                            className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#2B2420] font-medium hover:bg-[#FAF7F2] transition-colors"
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="text-[#6B5C50]">
-                              <rect width="18" height="18" x="3" y="3" rx="2" />
-                              <path d="M9 3v18" />
-                            </svg>
-                            <span>Specialist View</span>
-                          </Link>
-                        )}
-                      </div>
-
-                      <div className="border-t border-[#EEE6DA] pt-1">
-                        <button
-                          type="button"
-                          role="menuitem"
-                          onClick={() => {
-                            setUserMenuOpen(false);
-                            logout();
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50/60 transition-colors text-left cursor-pointer"
-                        >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                            <polyline points="16 17 21 12 16 7" />
-                            <line x1="21" y1="12" x2="9" y2="12" />
-                          </svg>
-                          <span>Sign Out</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                  {/* Name (15px, medium) - hidden on mobile */}
+                  <span className="hidden sm:inline text-[15px] font-medium text-[#2B2420] font-sans group-hover:opacity-80 transition-opacity">
+                    {displayName}
+                  </span>
+                </Link>
 
                 {/* 4. Vertical divider (1px x 24px, #D8CCBE) */}
                 <div className="w-[1px] h-[24px] bg-[#D8CCBE] shrink-0" aria-hidden="true" />
@@ -526,7 +378,6 @@ export default function Navbar() {
         isFixed={true}
         logoUrl="/logo.png"
         onMenuOpen={() => {
-          setUserMenuOpen(false);
           setNotificationsOpen(false);
         }}
       />

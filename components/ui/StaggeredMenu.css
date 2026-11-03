@@ -225,6 +225,17 @@
   color: var(--sm-accent, #C97B5C) !important;
 }
 
+/* ── Danger / Sign Out Item (red / darker red shade) ── */
+.sm-panel-item.sm-panel-item-danger,
+.sm-panel-item[data-danger="true"] {
+  color: #B91C1C !important;
+}
+
+.sm-panel-item.sm-panel-item-danger:hover,
+.sm-panel-item[data-danger="true"]:hover {
+  color: #7F1D1D !important;
+}
+
 .sm-panel-itemLabel {
   display: inline-block;
   font-family: inherit !important;
@@ -258,6 +269,11 @@
   pointer-events: none;
   user-select: none;
   opacity: var(--sm-num-opacity, 0);
+}
+
+.sm-panel-list[data-numbering] .sm-panel-item.sm-panel-item-danger::after,
+.sm-panel-list[data-numbering] .sm-panel-item[data-danger="true"]::after {
+  color: #B91C1C !important;
 }
 
 /* ── Socials ── */

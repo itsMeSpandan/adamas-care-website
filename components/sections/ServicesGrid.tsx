@@ -23,8 +23,10 @@ export default function ServicesGrid({ featured = false }: { featured?: boolean 
 
   const displayedServices = Array.isArray(services)
     ? services.filter((s) => {
-        const matchesCategory = activeCategory === "All" || s.category === activeCategory;
-        return featured ? s.featured && matchesCategory : matchesCategory;
+        if (activeCategory === "All") {
+          return featured ? s.featured : true;
+        }
+        return s.category === activeCategory;
       })
     : [];
 
@@ -91,27 +93,34 @@ export default function ServicesGrid({ featured = false }: { featured?: boolean 
           ))}
         </motion.div>
 
-        {/* Grid */}
-        <motion.div
-          layout
-          className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {groupedTreatments.map((item, i) => {
-            const key = isTreatmentGroup(item) ? item.groupKey : item.id;
-            return (
-              <motion.div
-                key={key}
-                layout
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ duration: 0.5, delay: i * 0.05 }}
-              >
-                <ServiceCard item={item} />
-              </motion.div>
-            );
-          })}
-        </motion.div>
+        {/* Grid or Empty State */}
+        {groupedTreatments.length === 0 ? (
+          <div className="py-16 text-center text-beige-600">
+            <p className="font-serif text-lg font-medium">No treatments found in this category.</p>
+          </div>
+        ) : (
+          <motion.div
+            layout
+            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 items-stretch"
+          >
+            {groupedTreatments.map((item, i) => {
+              const key = isTreatmentGroup(item) ? item.groupKey : item.id;
+              return (
+                <motion.div
+                  key={key}
+                  layout
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ duration: 0.5, delay: i * 0.05 }}
+                  className="h-full flex flex-col"
+                >
+                  <ServiceCard item={item} />
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
       </div>
     </section>
   );

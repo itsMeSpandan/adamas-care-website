@@ -80,7 +80,12 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
       }
     }
 
-    const service = await updateService(id, body);
+    const updatePayload = { ...body };
+    if ("imageUrl" in body) {
+      updatePayload.imageUrl = body.imageUrl?.trim() || "/images/service-illustration.jpg";
+    }
+
+    const service = await updateService(id, updatePayload);
 
     const session = await getSessionFromRequest(request);
     logAudit({

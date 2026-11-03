@@ -5,11 +5,13 @@ import { gsap } from "gsap";
 import Image from "next/image";
 import "./StaggeredMenu.css";
 
-interface StaggeredMenuItem {
+export interface StaggeredMenuItem {
   label: string;
   ariaLabel?: string;
   link: string;
   onClick?: () => void;
+  className?: string;
+  danger?: boolean;
 }
 
 interface StaggeredMenuSocialItem {
@@ -551,25 +553,32 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
             data-numbering={displayItemNumbering || undefined}
           >
             {items && items.length ? (
-              items.map((it, idx) => (
-                <li className="sm-panel-itemWrap" key={it.label + idx}>
-                  <a
-                    className="sm-panel-item"
-                    href={it.link}
-                    aria-label={it.ariaLabel}
-                    data-index={idx + 1}
-                    onClick={(e) => {
-                      if (it.onClick) {
-                        e.preventDefault();
-                        it.onClick();
-                        closeMenu();
-                      }
-                    }}
-                  >
-                    <span className="sm-panel-itemLabel">{it.label}</span>
-                  </a>
-                </li>
-              ))
+              items.map((it, idx) => {
+                const isSignOut =
+                  it.danger ||
+                  it.label.trim().toLowerCase() === "sign out" ||
+                  it.label.trim().toLowerCase() === "logout";
+                return (
+                  <li className="sm-panel-itemWrap" key={it.label + idx}>
+                    <a
+                      className={`sm-panel-item ${isSignOut ? "sm-panel-item-danger" : ""} ${it.className || ""}`}
+                      href={it.link}
+                      aria-label={it.ariaLabel}
+                      data-index={idx + 1}
+                      data-danger={isSignOut ? "true" : undefined}
+                      onClick={(e) => {
+                        if (it.onClick) {
+                          e.preventDefault();
+                          it.onClick();
+                          closeMenu();
+                        }
+                      }}
+                    >
+                      <span className="sm-panel-itemLabel">{it.label}</span>
+                    </a>
+                  </li>
+                );
+              })
             ) : (
               <li className="sm-panel-itemWrap" aria-hidden="true">
                 <span className="sm-panel-item">

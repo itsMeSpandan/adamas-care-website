@@ -20,7 +20,7 @@ export default function TeamCard({ employee }: TeamCardProps) {
           alt={employee.name}
           fill
           className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
         />
         {/* Gradient overlay at bottom for text legibility */}
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />

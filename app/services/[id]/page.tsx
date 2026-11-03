@@ -64,7 +64,7 @@ export default async function ServiceDetailPage({ params }: Props) {
         {/* Left: image */}
         <div className="relative aspect-[4/3] overflow-hidden rounded-card">
           <Image
-            src={service.imageUrl}
+            src={service.imageUrl || "/images/service-illustration.jpg"}
             alt={service.name}
             fill
             className="object-cover"

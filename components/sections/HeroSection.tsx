@@ -31,27 +31,16 @@ export default function HeroSection() {
 
   return (
     <>
-      <section className="relative flex min-h-[calc(100vh-88px)] w-full flex-col overflow-hidden md:flex-row">
+      <section className="relative flex flex-col w-full h-[calc(100dvh-88px)] min-h-[calc(100dvh-88px)] overflow-hidden md:h-auto md:min-h-[calc(100vh-88px)] md:flex-row">
         {/* ── Left Panel: Warm Ivory background with text ── */}
         <div
-          className="relative z-10 flex w-full flex-col justify-center px-6 py-24 md:w-[55%] md:px-12 lg:w-[50%] lg:px-20"
+          className="relative z-10 flex w-full shrink-0 flex-col justify-center px-5 pt-4 pb-2 sm:px-8 sm:py-8 md:w-[55%] md:px-12 md:py-24 lg:w-[50%] lg:px-20"
           style={{ backgroundColor: "var(--bg-primary)" }}
         >
           <div className="max-w-xl">
-            {/* Uppercase label */}
-            <span
-              className="mb-4 inline-block rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest"
-              style={{
-                backgroundColor: "var(--bg-secondary)",
-                color: "var(--accent-primary)",
-              }}
-            >
-              Adamas Care
-            </span>
-
             {/* Headline — staggered word reveal */}
             <h1
-              className="mt-5 font-serif text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
+              className="font-serif text-[1.75rem] font-bold leading-[1.12] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl"
               style={{ color: "var(--text-primary)" }}
             >
               <span className="block">
@@ -102,7 +91,7 @@ export default function HeroSection() {
 
             {/* Subtext — delayed fade in */}
             <motion.p
-              className="mt-6 max-w-md text-sm leading-relaxed sm:text-base md:text-lg"
+              className="mt-2 sm:mt-6 max-w-md text-xs sm:text-base md:text-lg leading-relaxed"
               style={{ color: "var(--text-muted)" }}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -113,7 +102,7 @@ export default function HeroSection() {
 
             {/* CTA — delayed fade in */}
             <motion.div
-              className="mt-10 flex items-center gap-4"
+              className="mt-3.5 sm:mt-10 flex items-center gap-3 sm:gap-4"
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.2, ease: "easeOut" }}
@@ -121,14 +110,14 @@ export default function HeroSection() {
               <button
                 type="button"
                 onClick={handleBookClick}
-                className="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-3.5"
+                className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-xs sm:px-8 sm:py-3.5 sm:text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                 style={{ backgroundColor: "var(--accent-primary)" }}
               >
                 Book Appointment
               </button>
               <button
                 onClick={() => { setLoginMode("signin"); setLoginOpen(true); }}
-                className="inline-flex items-center justify-center rounded-full border px-6 py-3 text-sm font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] sm:px-8 sm:py-3.5"
+                className="inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-xs sm:px-8 sm:py-3.5 sm:text-sm font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   color: "var(--text-primary)",
                   borderColor: "var(--border-color)",
@@ -164,10 +153,10 @@ export default function HeroSection() {
         </div>
 
         {/* ── Mobile: Hero Carousel below text ── */}
-        <div className="relative h-[50vh] w-full md:hidden">
+        <div className="relative flex-1 min-h-0 w-full md:hidden">
           {/* Gradient overlay on top edge — blends into ivory */}
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-24"
+            className="pointer-events-none absolute inset-x-0 top-0 z-20 h-16 sm:h-24"
             style={{
               background:
                 "linear-gradient(to bottom, var(--bg-primary) 0%, var(--bg-primary) 15%, rgba(245,241,234,0.8) 40%, rgba(245,241,234,0.3) 70%, transparent 100%)",

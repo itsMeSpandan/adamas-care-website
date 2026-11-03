@@ -98,16 +98,18 @@ describe("Membership Card Component (Ivory Faceted Gem)", () => {
     });
   });
 
-  describe("4. Card Back & Flip Interactivity", () => {
-    it("provides 3D flip card back with magnetic stripe, signature strip, security code, and barcode", () => {
-      expect(componentContent).toContain("bg-[#2A211C]");
-      expect(componentContent).toContain("SIGNATURE");
-      expect(componentContent).toContain("MembershipCardBarcode");
-      expect(componentContent).toContain("Non-transferable. Property of Adamas Care.");
-      expect(componentContent).toContain("rotateY(180deg)");
+  describe("4. Shining Glare Interactivity & Stable Card Face", () => {
+    it("triggers a radiant shining glare beam animation on click or tap", () => {
+      expect(componentContent).toContain("animate-card-glare");
+      expect(componentContent).toContain("triggerShine");
+      expect(componentContent).toContain("isGlaring");
     });
 
-    it("supports keyboard flipping via Enter and Space with focus-visible ring", () => {
+    it("removes 3D flip to prevent blank card screen and keeps card face permanently stable", () => {
+      expect(componentContent).not.toContain("rotateY(180deg)");
+    });
+
+    it("supports keyboard activation via Enter and Space with focus-visible ring", () => {
       expect(componentContent).toContain('e.key === "Enter"');
       expect(componentContent).toContain('e.key === " "');
       expect(componentContent).toContain("focus-visible:ring-2");

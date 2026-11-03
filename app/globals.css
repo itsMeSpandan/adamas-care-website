@@ -110,7 +110,7 @@
 }
 
 
-/* Membership Card Shimmer & Flip Utilities */
+/* Membership Card Shimmer & Click Glare Utilities */
 @keyframes sweepFacetShimmer {
   0% {
     transform: translateX(-150%) translateY(-50%) rotate(15deg);
@@ -124,8 +124,30 @@
   animation: sweepFacetShimmer 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
+@keyframes cardGlareSweep {
+  0% {
+    transform: translateX(-150%) translateY(-60%) rotate(25deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(160%) translateY(60%) rotate(25deg);
+    opacity: 0;
+  }
+}
+
+.animate-card-glare {
+  animation: cardGlareSweep 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-facet-shimmer {
+  .animate-facet-shimmer,
+  .animate-card-glare {
     animation: none !important;
     display: none !important;
   }
