@@ -3,13 +3,26 @@
 const isDev = process.env.NODE_ENV === "development";
 
 /**
- * Security headers.
+ * Content-Security-Policy.
  *
- * Content-Security-Policy is generated dynamically per request in middleware.ts
- * with a cryptographic nonce (replacing 'unsafe-inline' in script-src) and
- * 'strict-dynamic' for secure Next.js hydration.
- *
- * Static security headers below are applied to all routes.
+ * 'unsafe-inline' removed from script-src; uses hashes & 'strict-dynamic'
+ * with trusted domains. Dynamic nonces are also attached via middleware.ts.
+ */
+const csp = [
+  "default-src 'self'",
+  "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com https://lh3.googleusercontent.com https://flagcdn.com https://res.cloudinary.com data: blob:",
+  `script-src 'self' 'sha256-Q+8tPsjVtiDsjF/Cv8FMOpg2Yg91oKFKDAJat1PPb2g=' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://www.gstatic.com https://apis.google.com https://accounts.google.com`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://fcm.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://www.googleapis.com https://apis.google.com https://www.google.com https://login.microsoftonline.com https://login.live.com",
+  "frame-src 'self' https://www.google.com https://maps.google.com https://accounts.google.com https://apis.google.com https://*.firebaseapp.com https://login.microsoftonline.com https://login.live.com",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join("; ");
+
+/**
+ * Security headers applied to all responses.
  */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -23,6 +36,7 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
+  { key: "Content-Security-Policy", value: csp },
 ];
 
 /** Never let a proxy or CDN cache an API response. */
