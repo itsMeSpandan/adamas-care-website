@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
@@ -293,9 +294,11 @@ function WaitlistContent() {
                           className="flex flex-col gap-3 rounded-card border border-beige-200 bg-white p-5 shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover sm:flex-row sm:items-center sm:justify-between"
                         >
                           <div className="flex items-center gap-4">
-                            <img
+                            <Image
                               src={entry.employee.imageUrl}
                               alt={entry.employee.name}
+                              width={48}
+                              height={48}
                               className="h-12 w-12 rounded-full object-cover"
                             />
                             <div>
@@ -371,9 +374,11 @@ function WaitlistContent() {
                             className="flex items-center justify-between rounded-card border border-beige-200 bg-white p-4 opacity-70 shadow-card"
                           >
                             <div className="flex items-center gap-4">
-                              <img
+                              <Image
                                 src={entry.employee.imageUrl}
                                 alt={entry.employee.name}
+                                width={40}
+                                height={40}
                                 className="h-10 w-10 rounded-full object-cover grayscale"
                               />
                               <div>

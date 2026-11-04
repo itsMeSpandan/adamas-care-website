@@ -376,7 +376,7 @@ export default function Navbar() {
         colors={["#e8ddd3", "#c9b8a8"]}
         accentColor="#C97B5C"
         isFixed={true}
-        logoUrl="/logo.png"
+        logoUrl="/logo.svg"
         onMenuOpen={() => {
           setNotificationsOpen(false);
         }}

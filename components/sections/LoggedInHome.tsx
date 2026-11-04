@@ -27,7 +27,7 @@ import HeroCarousel from "@/components/ui/HeroCarousel";
  * Shown until (or unless) an admin uploads their own background — the same
  * picture the public hero opens with, so the dashboard fades in the same way.
  */
-const DEFAULT_BACKGROUND = "/images/hero-beauty.png";
+const DEFAULT_BACKGROUND = "/images/hero-beauty.webp";
 
 /* ---------- types ---------- */
 

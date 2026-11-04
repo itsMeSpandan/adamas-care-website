@@ -57,7 +57,7 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
       displaySocials = true,
       displayItemNumbering = true,
       className,
-      logoUrl = "/logo.png",
+      logoUrl = "/logo.svg",
       menuButtonColor = "#fff",
       openMenuButtonColor = "#fff",
       accentColor = "#5227FF",

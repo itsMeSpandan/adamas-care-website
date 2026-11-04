@@ -133,9 +133,31 @@ export default function HeroCarousel({
       {images.length === 0 && (
         <div className="absolute inset-0">
           <picture>
+            <source
+              media="(max-width: 768px)"
+              type="image/avif"
+              srcSet="/images/hero-beauty-mobile.avif"
+            />
+            <source
+              media="(max-width: 768px)"
+              type="image/webp"
+              srcSet="/images/hero-beauty-mobile.webp"
+            />
+            <source
+              media="(min-width: 769px)"
+              type="image/avif"
+              srcSet="/images/hero-beauty.avif"
+            />
+            <source
+              media="(min-width: 769px)"
+              type="image/webp"
+              srcSet="/images/hero-beauty.webp"
+            />
             <img
               src={fallbackSrc || DEFAULT_HERO_IMAGE}
               alt="Adamas Care luxury salon and spa treatment"
+              width={1200}
+              height={1800}
               loading={priority ? "eager" : "lazy"}
               // @ts-expect-error fetchpriority attribute in modern HTML
               fetchpriority={priority ? "high" : "auto"}
@@ -166,6 +188,8 @@ export default function HeroCarousel({
               <img
                 src={img.desktopUrl}
                 alt={img.alt}
+                width={1200}
+                height={1800}
                 loading={isFirst || isNext ? "eager" : "lazy"}
                 // @ts-expect-error fetchpriority attribute in modern HTML
                 fetchpriority={isFirst ? "high" : "auto"}

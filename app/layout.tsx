@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import dynamic from "next/dynamic";
 import { Cormorant_Garamond, Jost, Inter } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -8,12 +9,26 @@ import Navbar from "@/components/layout/Navbar";
 
 import Footer from "@/components/layout/Footer";
 import CookieConsent from "@/components/ui/CookieConsent";
-import WhatsAppPromptModal from "@/components/ui/WhatsAppPromptModal";
-import GenderPromptModal from "@/components/ui/GenderPromptModal";
-import NotificationPromptModal from "@/components/ui/NotificationPromptModal";
-import InstallBanner from "@/components/ui/InstallBanner";
 import PwaRegistration from "@/components/PwaRegistration";
 import "./globals.css";
+
+// Defer non-critical modals and prompt dialogs from the critical render path
+const WhatsAppPromptModal = dynamic(
+  () => import("@/components/ui/WhatsAppPromptModal"),
+  { ssr: false }
+);
+const GenderPromptModal = dynamic(
+  () => import("@/components/ui/GenderPromptModal"),
+  { ssr: false }
+);
+const NotificationPromptModal = dynamic(
+  () => import("@/components/ui/NotificationPromptModal"),
+  { ssr: false }
+);
+const InstallBanner = dynamic(
+  () => import("@/components/ui/InstallBanner"),
+  { ssr: false }
+);
 
 const cormorant = Cormorant_Garamond({
   subsets: ["latin"],
@@ -45,9 +60,25 @@ export const metadata: Metadata = {
   openGraph: {
     title: BRAND.title,
     description: `${BRAND.name} — massages, body treatments and relaxing spa therapies in Kolkata.`,
+    url: BRAND.baseUrl,
     siteName: BRAND.name,
     type: "website",
     locale: "en_IN",
+    images: [
+      {
+        url: `${BRAND.baseUrl}/og-image.jpg`,
+        width: 1200,
+        height: 630,
+        alt: `${BRAND.name} | ${BRAND.tagline}`,
+        type: "image/jpeg",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: BRAND.title,
+    description: `${BRAND.name} — massages, body treatments and relaxing spa therapies in Kolkata.`,
+    images: [`${BRAND.baseUrl}/og-image.jpg`],
   },
   // ─── PWA ───
   // app/manifest.ts is linked automatically; these cover iOS Safari,

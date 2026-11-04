@@ -226,6 +226,9 @@ function DesktopLayout({
                 <img
                   src={dev1.imageUrl}
                   alt={`${dev1.firstName} ${dev1.lastName}`}
+                  width={400}
+                  height={500}
+                  loading="lazy"
                   className="w-full h-full object-cover object-center rounded-t-[18px] grayscale contrast-[1.05]"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
@@ -253,6 +256,9 @@ function DesktopLayout({
                 <img
                   src={dev2.imageUrl}
                   alt={`${dev2.firstName} ${dev2.lastName}`}
+                  width={400}
+                  height={500}
+                  loading="lazy"
                   className="w-full h-full object-cover object-center rounded-t-[18px] grayscale contrast-[1.05]"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
@@ -327,6 +333,9 @@ function TabletLayout({
                 <img
                   src={dev1.imageUrl}
                   alt={`${dev1.firstName} ${dev1.lastName}`}
+                  width={400}
+                  height={500}
+                  loading="lazy"
                   className="w-full h-full object-cover object-center rounded-t-[18px] grayscale contrast-[1.05]"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
@@ -353,6 +362,9 @@ function TabletLayout({
                 <img
                   src={dev2.imageUrl}
                   alt={`${dev2.firstName} ${dev2.lastName}`}
+                  width={400}
+                  height={500}
+                  loading="lazy"
                   className="w-full h-full object-cover object-center rounded-t-[18px] grayscale contrast-[1.05]"
                   style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
@@ -424,6 +436,9 @@ function PhoneLayout({
               <img
                 src={dev1.imageUrl}
                 alt={`${dev1.firstName} ${dev1.lastName}`}
+                width={400}
+                height={500}
+                loading="lazy"
                 className="w-full h-full object-cover object-center rounded-[18px] grayscale contrast-[1.05]"
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
@@ -452,6 +467,9 @@ function PhoneLayout({
             <img
               src={dev2.imageUrl}
               alt={`${dev2.firstName} ${dev2.lastName}`}
+              width={400}
+              height={500}
+              loading="lazy"
               className="w-full h-full object-cover object-center rounded-t-[18px] grayscale contrast-[1.05]"
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
             />

@@ -55,7 +55,7 @@ export default function PillNavWrapper() {
 
   return (
     <PillNav
-      logo="/logo.png"
+      logo="/logo.svg"
       logoAlt="Adamas Care"
       items={items}
       activeHref={pathname}

@@ -14,7 +14,7 @@ export const HERO_MIN_HEIGHT = 1800;
 export const HERO_OUTPUT_DESKTOP_WIDTH = 1200;
 export const HERO_OUTPUT_MOBILE_WIDTH = 800;
 
-export const DEFAULT_HERO_IMAGE = "/images/hero-beauty.png";
+export const DEFAULT_HERO_IMAGE = "/images/hero-beauty.webp";
 
 /** Returns the current date in Asia/Kolkata (IST) in "YYYY-MM-DD" format. */
 export function getTodayIST(date: Date = new Date()): string {

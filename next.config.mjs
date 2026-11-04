@@ -3,39 +3,13 @@
 const isDev = process.env.NODE_ENV === "development";
 
 /**
- * Content-Security-Policy.
- *
- * 'unsafe-inline' for script-src is required by Next.js (hydration,
- * theme-init). 'unsafe-inline' for style-src is required by Tailwind CSS.
- */
-const csp = [
-  "default-src 'self'",
-  // lh3.googleusercontent.com = Google profile photos on User.avatarUrl.
-  // flagcdn.com = country flags in the phone country-code dropdown.
-  "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com https://lh3.googleusercontent.com https://flagcdn.com https://res.cloudinary.com data: blob:",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://maps.googleapis.com https://www.gstatic.com https://apis.google.com https://accounts.google.com`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  // Firebase Cloud Messaging (web push token registration) + Google sign-in
-  // (Firebase Auth popup): token exchange + Google endpoints.
-  "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://fcm.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://www.googleapis.com https://apis.google.com https://www.google.com https://login.microsoftonline.com https://login.live.com",
-  // *.firebaseapp.com hosts the Firebase Auth handshake iframe; apis.google.com
-  // is loaded by the Google popup helper. Both are required by signInWithPopup.
-  "frame-src 'self' https://www.google.com https://maps.google.com https://accounts.google.com https://apis.google.com https://*.firebaseapp.com https://login.microsoftonline.com https://login.live.com",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-].join("; ");
-
-/**
  * Security headers.
  *
- * These live here rather than in middleware.ts on purpose. Netlify serves
- * middleware.ts as an edge function whose response headers never reach the
- * client, so production was sending only Netlify's own HSTS plus the nosniff
- * entry below. next.config's headers() IS honoured by the adapter, so this is
- * the only place the browser actually receives them — do not move them back
- * into middleware.
+ * Content-Security-Policy is generated dynamically per request in middleware.ts
+ * with a cryptographic nonce (replacing 'unsafe-inline' in script-src) and
+ * 'strict-dynamic' for secure Next.js hydration.
+ *
+ * Static security headers below are applied to all routes.
  */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -49,7 +23,6 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
-  { key: "Content-Security-Policy", value: csp },
 ];
 
 /** Never let a proxy or CDN cache an API response. */
@@ -62,8 +35,29 @@ const noStoreHeaders = [
   { key: "Expires", value: "0" },
 ];
 
+/** 1-year immutable caching for static public media assets. */
+const immutableStaticHeaders = [
+  {
+    key: "Cache-Control",
+    value: "public, max-age=31536000, immutable",
+  },
+];
+
+/** Plain text content-type for security.txt. */
+const securityTxtHeaders = [
+  {
+    key: "Content-Type",
+    value: "text/plain; charset=utf-8",
+  },
+  {
+    key: "Cache-Control",
+    value: "public, max-age=86400, stale-while-revalidate=604800",
+  },
+];
+
 const nextConfig = {
   poweredByHeader: false,
+  compress: true,
   experimental: {
     serverComponentsExternalPackages: ["@opentelemetry/api", "@opentelemetry/core", "sharp"],
   },
@@ -78,10 +72,32 @@ const nextConfig = {
         source: "/api/(.*)",
         headers: noStoreHeaders,
       },
+      {
+        source: "/images/(.*)",
+        headers: immutableStaticHeaders,
+      },
+      {
+        source: "/icons/(.*)",
+        headers: immutableStaticHeaders,
+      },
+      {
+        source: "/.well-known/security.txt",
+        headers: securityTxtHeaders,
+      },
+      {
+        source: "/(logo.svg|logo.png|og-image.jpg|favicon.ico)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=604800",
+          },
+        ],
+      },
     ];
   },
 
   images: {
+    formats: ["image/avif", "image/webp"],
     // Exact icon widths/heights used by public/icons/* (see
     // app/manifest.ts + metadata.icons). Without these the optimizer
     // rejects w=192/512/180 with a 400, since they are not in Next's
@@ -109,6 +125,10 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "images.unsplash.com",
+      },
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
       },
     ],
   },

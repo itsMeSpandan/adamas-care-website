@@ -20,3 +20,26 @@
   # are committed. Omitting by key (not disabling scanning entirely) keeps
   # the scanner active for everything else.
   SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_BASE_URL,FIREBASE_PROJECT_ID,EMAIL_FROM"
+
+# Long-term immutable caching for static assets
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# security.txt served as plain text
+[[headers]]
+  for = "/.well-known/security.txt"
+  [headers.values]
+    Content-Type = "text/plain; charset=utf-8"
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
