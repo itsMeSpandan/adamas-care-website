@@ -124,14 +124,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(httpsUrl);
   }
 
-  // ─── Nonce & CSP ──────────────────────────────────────────────────────────
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const isDev = process.env.NODE_ENV === "development";
-
+  // ─── Content-Security-Policy ──────────────────────────────────────────
   const cspHeader = [
     "default-src 'self'",
     "img-src 'self' https://ui-avatars.com https://maps.googleapis.com https://maps.gstatic.com https://www.gstatic.com https://lh3.googleusercontent.com https://flagcdn.com https://res.cloudinary.com data: blob:",
-    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://maps.googleapis.com https://www.gstatic.com https://apis.google.com https://accounts.google.com${isDev ? " 'unsafe-eval'" : ""}`,
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com https://www.gstatic.com https://apis.google.com https://accounts.google.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://fcmregistrations.googleapis.com https://firebaseinstallations.googleapis.com https://fcm.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://accounts.google.com https://www.googleapis.com https://apis.google.com https://www.google.com https://login.microsoftonline.com https://login.live.com",
@@ -142,7 +139,6 @@ export async function middleware(request: NextRequest) {
   ].join("; ");
 
   const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
   requestHeaders.set("Content-Security-Policy", cspHeader);
 
   const response = NextResponse.next({
