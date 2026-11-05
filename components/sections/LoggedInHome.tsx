@@ -221,7 +221,7 @@ export default function LoggedInHome() {
     fetch("/api/employees")
       .then((res) => res.json())
       .then((data: Employee[]) => {
-        setEmployees(data.slice(0, 3));
+        setEmployees(Array.isArray(data) ? data : []);
         setEmployeesLoading(false);
       })
       .catch(() => setEmployeesLoading(false));
@@ -645,9 +645,9 @@ export default function LoggedInHome() {
               variants={stagger}
               initial="hidden"
               animate="visible"
-              className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+              className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4"
             >
-              {Array.from({ length: 3 }).map((_, i) => (
+              {Array.from({ length: 4 }).map((_, i) => (
                 <motion.div key={i} variants={fadeUp}>
                   <Skeleton className="h-80 w-full" />
                 </motion.div>
@@ -659,7 +659,11 @@ export default function LoggedInHome() {
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-50px" }}
-              className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+              className={`grid gap-6 ${
+                employees.length <= 3
+                  ? "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto"
+                  : "sm:grid-cols-2 lg:grid-cols-4"
+              }`}
             >
               {employees.map((employee) => (
                 <motion.div key={employee.id} variants={fadeUp}>

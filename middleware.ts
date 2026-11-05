@@ -68,6 +68,24 @@ export async function middleware(request: NextRequest) {
   const isAdminArea = pathname === "/admin" || pathname.startsWith("/admin/");
   const isEmployeeArea =
     pathname === "/employee" || pathname.startsWith("/employee/");
+  const isBookingArea =
+    pathname === "/booking" || pathname.startsWith("/booking/");
+
+  // ─── Booking guard ───────────────────────────────────────────────────────
+  // Unauthenticated visitors are redirected to the sign-in page with their
+  // intended destination preserved in the redirect query parameter.
+  if (isBookingArea) {
+    if (SECRET_KEY) {
+      const session = await readPortalSession(request);
+      if (!session) {
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = "/login";
+        const redirectTarget = pathname + (request.nextUrl.search || "");
+        loginUrl.search = `?redirect=${encodeURIComponent(redirectTarget)}`;
+        return NextResponse.redirect(loginUrl);
+      }
+    }
+  }
 
   // ─── Portal guard ────────────────────────────────────────────────────────
   if (isAdminArea || isEmployeeArea) {

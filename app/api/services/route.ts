@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServices, createService } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
 import { logAudit, getClientIp } from "@/lib/audit";
@@ -116,6 +117,8 @@ export const POST = requireRole("admin", async (request: Request) => {
       ip: getClientIp(request),
     });
 
+    revalidatePath("/");
+    revalidatePath("/services");
     return NextResponse.json({ service }, { status: 201 });
   } catch (error) {
     console.error("Failed to create service:", error);

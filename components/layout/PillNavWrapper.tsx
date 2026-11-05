@@ -9,6 +9,7 @@ type NavItem = { label: string; href: string };
 const guestItems: NavItem[] = [
   { label: "Home", href: "/" },
   { label: "Services", href: "/services" },
+  { label: "Book", href: "/login?redirect=/booking" },
   { label: "Our Team", href: "/team" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },

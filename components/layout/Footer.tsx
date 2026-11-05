@@ -37,9 +37,9 @@ export default function Footer() {
 
           {/* Column 2: Quick links */}
           <div>
-            <h4 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
+            <h3 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
               Quick Links
-            </h4>
+            </h3>
             <ul className="space-y-2">
               {quickLinks.map((link) => (
                 <li key={link.href}>
@@ -57,9 +57,9 @@ export default function Footer() {
 
           {/* Column 3: Services */}
           <div>
-            <h4 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
+            <h3 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
               Services
-            </h4>
+            </h3>
             <ul className="space-y-2">
               {serviceLinks.map((link) => (
                 <li key={link.href}>
@@ -77,9 +77,9 @@ export default function Footer() {
 
           {/* Column 4: Contact */}
           <div>
-            <h4 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
+            <h3 className="mb-4 font-serif text-base font-semibold" style={{ color: 'var(--footer-text)' }}>
               Contact
-            </h4>
+            </h3>
             <ul className="space-y-2 text-sm" style={{ color: 'var(--footer-text)', opacity: 0.8 }}>
               <li className="whitespace-pre-line leading-relaxed">{BRAND.address}</li>
               <li className="pt-2">
@@ -126,14 +126,14 @@ export default function Footer() {
       {/* Bottom bar */}
       <div className="border-t" style={{ borderColor: 'rgba(245,241,234,0.2)' }}>
         <div className="section-container mx-auto flex flex-col items-center justify-between gap-4 px-4 py-6 md:flex-row md:px-8">
-          <p className="text-xs" style={{ color: 'var(--footer-text)', opacity: 0.6 }}>
+          <p className="text-xs text-[#B8AFA3]">
             &copy; {new Date().getFullYear()} {BRAND.name}. All rights
             reserved. ·
-            <Link href="/privacy" className="ml-1 transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Privacy</Link>
+            <Link href="/privacy" className="ml-1 underline transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Privacy</Link>
             {' · '}
-            <Link href="/terms" className="transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Terms</Link>
+            <Link href="/terms" className="underline transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Terms</Link>
             {' · '}
-            <Link href="/developers" className="transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Developers</Link>
+            <Link href="/developers" className="underline transition-colors hover:opacity-80" style={{ color: 'var(--footer-link)' }}>Developers</Link>
           </p>
           <div className="flex items-center gap-4">
             {/* WhatsApp — links to chat with the salon */}

@@ -3,6 +3,7 @@ import { BRAND } from "@/lib/brand";
 import { getEmployees } from "@/lib/queries";
 import TeamCard from "@/components/cards/TeamCard";
 import BookingCTA from "@/components/sections/BookingCTA";
+import { Employee } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Our Team",
@@ -10,10 +11,15 @@ export const metadata: Metadata = {
     "Meet our talented team of certified beauty professionals, from expert hairstylists to master aestheticians.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function TeamPage() {
-  const employees = await getEmployees();
+  let employees: Employee[] = [];
+  try {
+    employees = await getEmployees();
+  } catch (error) {
+    console.error("Failed to load employees on server:", error);
+  }
 
   return (
     <>
@@ -22,13 +28,15 @@ export default async function TeamPage() {
           <h1 className="mb-4 text-center font-serif text-4xl font-semibold text-beige-700 md:text-5xl">
             Our Team
           </h1>
-          <p className="mx-auto mb-12 max-w-2xl text-center text-beige-800">              Every member of the {BRAND.name} team is a passionate professional
+          <p className="mx-auto mb-12 max-w-2xl text-center text-beige-800">
+            Every member of the {BRAND.name} team is a passionate professional
             dedicated to helping you look and feel your absolute best. With
             specialized training and years of experience, our experts deliver
             exceptional results every time.
           </p>
 
           {/* Team Grid */}
+          <h2 className="sr-only">Our Specialists</h2>
           <div
             className={`grid gap-6 ${
               employees.length <= 3

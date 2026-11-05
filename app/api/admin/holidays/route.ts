@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/require-auth";
 import { getHolidaysForYear } from "@/lib/holidays";
@@ -79,6 +80,7 @@ export const POST = requireRole("admin", async (request: Request) => {
       ip: getClientIp(request),
     });
 
+    revalidatePath("/booking");
     return NextResponse.json({ holiday }, { status: 201 });
   } catch (error) {
     console.error("Failed to create holiday:", error);
@@ -109,6 +111,7 @@ export const DELETE = requireRole("admin", async (request: Request) => {
       ip: getClientIp(request),
     });
 
+    revalidatePath("/booking");
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete holiday:", error);

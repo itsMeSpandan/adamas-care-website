@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getEmployeeById, updateEmployee, deleteEmployee } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
 import { logAudit, getClientIp } from "@/lib/audit";
@@ -70,6 +71,9 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
       ip: getClientIp(request),
     });
 
+    revalidatePath("/");
+    revalidatePath("/team");
+    revalidatePath(`/team/${id}`);
     return NextResponse.json({ employee });
   } catch (error) {
     console.error("Failed to update employee:", error);
@@ -104,6 +108,9 @@ export const DELETE = requireRole("admin", async (request: Request, context) => 
       ip: getClientIp(request),
     });
 
+    revalidatePath("/");
+    revalidatePath("/team");
+    revalidatePath(`/team/${id}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete employee:", error);

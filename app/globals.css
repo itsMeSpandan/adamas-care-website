@@ -15,7 +15,7 @@
   --border-color: #B8AFA3;
   --footer-bg: #1F1F1F;
   --footer-text: #F5F1EA;
-    --footer-link: #C97B5C;
+    --footer-link: #D98D6F;
 
   /* Brand Tokens - Adamas Care Auth Experience */
   --auth-page-cream: #F4EFE8;
@@ -45,6 +45,10 @@
 }
 
 @layer base {
+  :focus-visible {
+    outline: 2px solid #C97B5C;
+    outline-offset: 2px;
+  }
   html {
     scroll-behavior: smooth;
   }
@@ -146,6 +150,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
   .animate-facet-shimmer,
   .animate-card-glare {
     animation: none !important;

@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum UserRole {
@@ -111,6 +112,8 @@ model Service {
 
   @@index([groupKey])
   @@index([isActive])
+  @@index([category])
+  @@index([featured])
 }
 
 model Employee {
@@ -194,6 +197,8 @@ model Booking {
   @@index([userId])
   @@index([email])
   @@index([status, completedAt])
+  @@index([createdAt])
+  @@index([date])
 }
 
 model RefreshToken {

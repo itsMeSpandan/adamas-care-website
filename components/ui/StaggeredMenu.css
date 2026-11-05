@@ -113,43 +113,56 @@
   display: none !important;
 }
 
+/* ── Backdrop Overlay ── */
+
+.sm-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(35, 28, 24, 0.4);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: none;
+  z-index: 8;
+  opacity: 0;
+  visibility: hidden;
+  cursor: pointer;
+}
+
+[data-open] .sm-backdrop {
+  visibility: visible;
+  pointer-events: auto;
+}
+
 /* ── Panel ── */
 
 .staggered-menu-panel {
+  visibility: hidden;
   position: absolute;
   top: 0;
   right: 0;
   width: clamp(300px, 42vw, 520px);
   height: 100%;
   background: white;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  box-shadow: -12px 0 36px rgba(43, 36, 32, 0.12);
   display: flex;
   flex-direction: column;
   padding: 6em 2em 2em 2em;
   overflow-y: auto;
-  z-index: 10;
+  z-index: 15;
   pointer-events: none;
-  opacity: 0;
-  transform: translateX(100%);
-  transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
-/* CSS fallback: show panel when data-open is set (before GSAP hydrates) */
 [data-open] .staggered-menu-panel {
-  opacity: 1 !important;
-  transform: translateX(0) !important;
-  pointer-events: auto !important;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 [data-position='left'] .staggered-menu-panel {
   right: auto;
   left: 0;
-  transform: translateX(-100%);
-}
-
-[data-position='left'][data-open] .staggered-menu-panel {
-  transform: translateX(0) !important;
+  box-shadow: 12px 0 36px rgba(43, 36, 32, 0.12);
 }
 
 /* ── Pre-layers (colored underlays) ── */
@@ -161,8 +174,12 @@
   bottom: 0;
   width: clamp(300px, 42vw, 520px);
   pointer-events: none;
-  z-index: 5;
-  opacity: 0;
+  z-index: 12;
+  visibility: hidden;
+}
+
+[data-open] .sm-prelayers {
+  visibility: visible;
 }
 
 [data-position='left'] .sm-prelayers {
@@ -176,8 +193,13 @@
   right: 0;
   height: 100%;
   width: 100%;
-  transform: translateX(0);
-  opacity: 0;
+  box-shadow: -6px 0 20px rgba(0, 0, 0, 0.05);
+}
+
+[data-position='left'] .sm-prelayer {
+  right: auto;
+  left: 0;
+  box-shadow: 6px 0 20px rgba(0, 0, 0, 0.05);
 }
 
 /* ── Panel inner content ── */

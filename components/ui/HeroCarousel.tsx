@@ -159,8 +159,7 @@ export default function HeroCarousel({
               width={1200}
               height={1800}
               loading={priority ? "eager" : "lazy"}
-              // @ts-expect-error fetchpriority attribute in modern HTML
-              fetchpriority={priority ? "high" : "auto"}
+              fetchPriority={priority ? "high" : "auto"}
               className="h-full w-full object-cover object-[center_20%]"
             />
           </picture>
@@ -170,7 +169,6 @@ export default function HeroCarousel({
       {/* Live Images Slides with smooth CSS crossfade */}
       {images.map((img, index) => {
         const isActive = index === activeIndex;
-        const isNext = index === (activeIndex + 1) % images.length;
         const isFirst = index === 0;
 
         return (
@@ -190,9 +188,8 @@ export default function HeroCarousel({
                 alt={img.alt}
                 width={1200}
                 height={1800}
-                loading={isFirst || isNext ? "eager" : "lazy"}
-                // @ts-expect-error fetchpriority attribute in modern HTML
-                fetchpriority={isFirst ? "high" : "auto"}
+                loading={isFirst ? "eager" : "lazy"}
+                fetchPriority={isFirst ? "high" : "auto"}
                 className="h-full w-full object-cover"
                 style={{
                   objectPosition: `${img.focalX}% ${img.focalY}%`,

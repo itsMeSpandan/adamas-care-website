@@ -5,11 +5,17 @@ import { motion } from "framer-motion";
 import { Employee } from "@/lib/types";
 import TeamCard from "@/components/cards/TeamCard";
 
-export default function TeamGrid({ limit }: { limit?: number }) {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+interface TeamGridProps {
+  limit?: number;
+  initialEmployees?: Employee[];
+}
+
+export default function TeamGrid({ limit, initialEmployees }: TeamGridProps) {
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees || []);
+  const [loading, setLoading] = useState(!initialEmployees || initialEmployees.length === 0);
 
   useEffect(() => {
+    if (initialEmployees && initialEmployees.length > 0) return;
     fetch("/api/employees")
       .then((res) => res.json())
       .then((data) => {
@@ -17,7 +23,7 @@ export default function TeamGrid({ limit }: { limit?: number }) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [initialEmployees]);
 
   const displayed = Array.isArray(employees)
     ? (limit ? employees.slice(0, limit) : employees)
@@ -30,8 +36,8 @@ export default function TeamGrid({ limit }: { limit?: number }) {
           <div className="mb-12 text-center font-serif text-3xl font-semibold text-beige-700 md:text-4xl">
             Meet the Specialists
           </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="h-80 animate-pulse rounded-card bg-beige-200" />
             ))}
           </div>
@@ -53,8 +59,14 @@ export default function TeamGrid({ limit }: { limit?: number }) {
           Meet the Specialists
         </motion.h2>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {displayed.map((employee, i) => (
+          <div
+            className={`grid gap-6 ${
+              displayed.length <= 3
+                ? "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto"
+                : "sm:grid-cols-2 lg:grid-cols-4"
+            }`}
+          >
+            {displayed.map((employee, i) => (
             <motion.div
               key={employee.id}
               initial={{ opacity: 0, y: 24 }}

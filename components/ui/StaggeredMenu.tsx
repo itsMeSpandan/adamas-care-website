@@ -74,6 +74,7 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
   const panelRef = useRef<HTMLElement | null>(null);
+  const backdropRef = useRef<HTMLDivElement | null>(null);
   const preLayersRef = useRef<HTMLDivElement | null>(null);
   const preLayerElsRef = useRef<HTMLElement[]>([]);
   // The toggle is a hamburger: three bars that morph into a close (×) on open.
@@ -95,12 +96,13 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
 
     const ctx = gsap.context(() => {
       const panel = panelRef.current;
+      const backdrop = backdropRef.current;
       const preContainer = preLayersRef.current;
       const icon = iconRef.current;
       const barTop = barTopRef.current;
       const barMid = barMidRef.current;
       const barBot = barBotRef.current;
-      if (!panel || !icon || !barTop || !barMid || !barBot) return;
+      if (!panel) return;
 
       let preLayers: HTMLElement[] = [];
       if (preContainer) {
@@ -111,24 +113,33 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
       preLayerElsRef.current = preLayers;
 
       const offscreen = position === "left" ? -100 : 100;
-      // Set initial hidden state via GSAP (CSS fallback also handles this via data-open)
-      // Clear any CSS transition so GSAP can take over smoothly
+      // Set initial hidden state via GSAP
       gsap.set(panel, { clearProps: 'transition' });
+      gsap.set(panel, { xPercent: offscreen, opacity: 0 });
+
+      if (backdrop) {
+        gsap.set(backdrop, { clearProps: 'transition' });
+        gsap.set(backdrop, { opacity: 0 });
+      }
+
       gsap.set(preLayers, { clearProps: 'transition' });
-      gsap.set(preLayers, { xPercent: offscreen, opacity: 0 });
+      gsap.set(preLayers, { xPercent: offscreen, opacity: 1 });
       if (preContainer) {
         gsap.set(preContainer, { xPercent: 0, opacity: 1 });
       }
+
       // Closed state: three stacked bars centred on each other.
-      gsap.set([barTop, barMid, barBot], {
-        transformOrigin: "50% 50%",
-        rotate: 0,
-        x: 0,
-        y: 0,
-        opacity: 1,
-        scaleX: 1,
-      });
-      gsap.set(icon, { transformOrigin: "50% 50%" });
+      if (icon && barTop && barMid && barBot) {
+        gsap.set([barTop, barMid, barBot], {
+          transformOrigin: "50% 50%",
+          rotate: 0,
+          x: 0,
+          y: 0,
+          opacity: 1,
+          scaleX: 1,
+        });
+        gsap.set(icon, { transformOrigin: "50% 50%" });
+      }
       if (toggleBtnRef.current)
         gsap.set(toggleBtnRef.current, { color: menuButtonColor });
     });
@@ -138,6 +149,7 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
   const buildOpenTimeline = useCallback(() => {
     const panel = panelRef.current;
     const layers = preLayerElsRef.current;
+    const backdrop = backdropRef.current;
     if (!panel) return null;
 
     openTlRef.current?.kill();
@@ -163,51 +175,67 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
     const panelStart = offscreen;
 
     if (itemEls.length) {
-      gsap.set(itemEls, { yPercent: 140, rotate: 10 });
+      gsap.set(itemEls, { yPercent: 120, rotate: 6, opacity: 0 });
     }
     if (numberEls.length) {
       gsap.set(numberEls, { "--sm-num-opacity": 0 });
     }
     if (socialTitle) {
-      gsap.set(socialTitle, { opacity: 0 });
+      gsap.set(socialTitle, { opacity: 0, y: 15 });
     }
     if (socialLinks.length) {
-      gsap.set(socialLinks, { y: 25, opacity: 0 });
+      gsap.set(socialLinks, { y: 20, opacity: 0 });
     }
 
     const tl = gsap.timeline({ paused: true });
 
+    // 1. Subtle backdrop fade in
+    if (backdrop) {
+      tl.fromTo(
+        backdrop,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.38, ease: "power2.out" },
+        0
+      );
+    }
+
+    // 2. Pre-layers slide in gracefully with stagger
     layerStates.forEach((ls, i) => {
       tl.fromTo(
         ls.el,
-        { xPercent: ls.start },
-        { xPercent: 0, duration: 0.5, ease: "power4.out" },
-        i * 0.07
+        { xPercent: ls.start, opacity: 1 },
+        { xPercent: 0, opacity: 1, duration: 0.45, ease: "power3.out" },
+        i * 0.05
       );
     });
+
     const lastTime = layerStates.length
-      ? (layerStates.length - 1) * 0.07
+      ? (layerStates.length - 1) * 0.05
       : 0;
-    const panelInsertTime = lastTime + (layerStates.length ? 0.08 : 0);
-    const panelDuration = 0.65;
+    const panelInsertTime = lastTime + (layerStates.length ? 0.06 : 0);
+    const panelDuration = 0.5;
+
+    // 3. Panel slides in smoothly
     tl.fromTo(
       panel,
-      { xPercent: panelStart, opacity: 0 },
-      { xPercent: 0, opacity: 1, duration: panelDuration, ease: "power4.out" },
+      { xPercent: panelStart, opacity: 0.8 },
+      { xPercent: 0, opacity: 1, duration: panelDuration, ease: "power3.out" },
       panelInsertTime
     );
 
+    // 4. Staggered menu items appear with subtle, elegant upward lift
     if (itemEls.length) {
-      const itemsStartRatio = 0.15;
+      const itemsStartRatio = 0.22;
       const itemsStart = panelInsertTime + panelDuration * itemsStartRatio;
       tl.to(
         itemEls,
         {
           yPercent: 0,
           rotate: 0,
-          duration: 1,
-          ease: "power4.out",
-          stagger: { each: 0.1, from: "start" },
+          opacity: 1,
+          duration: 0.6,
+          ease: "power3.out",
+          stagger: { each: 0.06, from: "start" },
         },
         itemsStart
       );
@@ -215,22 +243,23 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
         tl.to(
           numberEls,
           {
-            duration: 0.6,
+            duration: 0.5,
             ease: "power2.out",
             "--sm-num-opacity": 1,
-            stagger: { each: 0.08, from: "start" },
+            stagger: { each: 0.06, from: "start" },
           },
-          itemsStart + 0.1
+          itemsStart + 0.08
         );
       }
     }
 
+    // 5. Social links reveal
     if (socialTitle || socialLinks.length) {
       const socialsStart = panelInsertTime + panelDuration * 0.4;
       if (socialTitle) {
         tl.to(
           socialTitle,
-          { opacity: 1, duration: 0.5, ease: "power2.out" },
+          { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" },
           socialsStart
         );
       }
@@ -240,9 +269,9 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
           {
             y: 0,
             opacity: 1,
-            duration: 0.55,
+            duration: 0.45,
             ease: "power3.out",
-            stagger: { each: 0.08, from: "start" },
+            stagger: { each: 0.06, from: "start" },
             onComplete: () => {
               gsap.set(socialLinks, { clearProps: "opacity" });
             },
@@ -257,7 +286,6 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
   }, [position]);
 
   const playOpen = useCallback(() => {
-    if (busyRef.current) return;
     busyRef.current = true;
     const tl = buildOpenTimeline();
     if (tl) {
@@ -270,30 +298,55 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
     }
   }, [buildOpenTimeline]);
 
-  const playClose = useCallback(() => {
+  const playClose = useCallback((onFinished?: () => void) => {
     openTlRef.current?.kill();
     openTlRef.current = null;
     itemEntranceTweenRef.current?.kill();
 
     const panel = panelRef.current;
     const layers = preLayerElsRef.current;
-    if (!panel) return;
+    const backdrop = backdropRef.current;
+    if (!panel) {
+      onFinished?.();
+      return;
+    }
 
     const all = [...layers, panel];
     closeTweenRef.current?.kill();
     const offscreen = position === "left" ? -100 : 100;
+
+    // Fade out backdrop smoothly
+    if (backdrop) {
+      gsap.to(backdrop, {
+        opacity: 0,
+        duration: 0.32,
+        ease: "power2.inOut",
+      });
+    }
+
+    // Softly fade menu items as drawer exits
+    const itemEls = Array.from(
+      panel.querySelectorAll(".sm-panel-itemLabel")
+    );
+    if (itemEls.length) {
+      gsap.to(itemEls, {
+        opacity: 0.3,
+        yPercent: 20,
+        duration: 0.2,
+        ease: "power2.in",
+      });
+    }
+
+    // Slide panel and underlayers offscreen with subtle ease
     closeTweenRef.current = gsap.to(all, {
       xPercent: offscreen,
       opacity: 0,
-      duration: 0.32,
-      ease: "power3.in",
+      duration: 0.35,
+      ease: "power3.inOut",
       overwrite: "auto",
       onComplete: () => {
-        const itemEls = Array.from(
-          panel.querySelectorAll(".sm-panel-itemLabel")
-        );
         if (itemEls.length) {
-          gsap.set(itemEls, { yPercent: 140, rotate: 10 });
+          gsap.set(itemEls, { yPercent: 120, rotate: 6, opacity: 0 });
         }
         const numberEls = Array.from(
           panel.querySelectorAll(
@@ -307,9 +360,10 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
         const socialLinks = Array.from(
           panel.querySelectorAll(".sm-socials-link")
         );
-        if (socialTitle) gsap.set(socialTitle, { opacity: 0 });
-        if (socialLinks.length) gsap.set(socialLinks, { y: 25, opacity: 0 });
+        if (socialTitle) gsap.set(socialTitle, { opacity: 0, y: 15 });
+        if (socialLinks.length) gsap.set(socialLinks, { y: 20, opacity: 0 });
         busyRef.current = false;
+        onFinished?.();
       },
     });
   }, [position]);
@@ -379,67 +433,94 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
     }
   }, [changeMenuColorOnOpen, menuButtonColor, openMenuButtonColor]);
 
-  const toggleMenu = useCallback(() => {
-    const target = !openRef.current;
-    openRef.current = target;
-    setOpen(target);
-    if (target) {
-      onMenuOpen?.();
-      playOpen();
-    } else {
-      onMenuClose?.();
-      playClose();
-    }
-    animateIcon(target);
-    animateColor(target);
-  }, [
-    playOpen,
-    playClose,
-    animateIcon,
-    animateColor,
-    onMenuOpen,
-    onMenuClose,
-  ]);
+  const openMenu = useCallback(() => {
+    if (openRef.current) return;
+    openRef.current = true;
+    setOpen(true);
+    onMenuOpen?.();
+    playOpen();
+    animateIcon(true);
+    animateColor(true);
+  }, [playOpen, animateIcon, animateColor, onMenuOpen]);
 
   const closeMenu = useCallback(() => {
-    if (openRef.current) {
-      openRef.current = false;
+    if (!openRef.current) return;
+    openRef.current = false;
+    animateIcon(false);
+    animateColor(false);
+    onMenuClose?.();
+    playClose(() => {
       setOpen(false);
-      onMenuClose?.();
-      playClose();
-      animateIcon(false);
-      animateColor(false);
-    }
+    });
   }, [playClose, animateIcon, animateColor, onMenuClose]);
+
+  const toggleMenu = useCallback(() => {
+    if (openRef.current) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  }, [closeMenu, openMenu]);
 
   React.useImperativeHandle(ref, () => ({
     toggle: toggleMenu,
-    open: () => {
-      if (!openRef.current) toggleMenu();
-    },
+    open: openMenu,
     close: closeMenu,
     isOpen: () => openRef.current,
-  }));
+  }), [toggleMenu, openMenu, closeMenu]);
 
   React.useEffect(() => {
     if (!closeOnClickAway || !open) return;
 
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(event.target as Node) &&
-        toggleBtnRef.current &&
-        !toggleBtnRef.current.contains(event.target as Node)
-      ) {
-        closeMenu();
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+
+      // Inside menu panel? Ignore.
+      if (panelRef.current && panelRef.current.contains(target)) {
+        return;
       }
+
+      // Internal toggle button? Ignore (it handles its own click).
+      if (toggleBtnRef.current && toggleBtnRef.current.contains(target)) {
+        return;
+      }
+
+      // External toggle button in Navbar? Ignore so its own toggle handler manages it cleanly.
+      if (
+        target instanceof Element &&
+        Boolean(target.closest('[data-menu-toggle="true"], #nav-menu-toggle'))
+      ) {
+        return;
+      }
+
+      // Anywhere else was clicked while open! Close menu.
+      closeMenu();
     };
 
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside, { passive: true });
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
     };
   }, [closeOnClickAway, open, closeMenu]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        closeMenu();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, closeMenu]);
 
   return (
     <div
@@ -452,6 +533,12 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
       data-position={position}
       data-open={open || undefined}
     >
+      <div
+        ref={backdropRef}
+        className="sm-backdrop"
+        onClick={closeMenu}
+        aria-hidden="true"
+      />
       <div ref={preLayersRef} className="sm-prelayers" aria-hidden="true">
         {(() => {
           const raw =
@@ -478,7 +565,7 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
           <div className="sm-logo" aria-label="Logo">
             <Image
               src={logoUrl}
-              alt="Logo"
+              alt="Adamas Care Logo"
               className="sm-logo-img"
               draggable={false}
               width={110}
@@ -524,6 +611,7 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
         ref={panelRef}
         className="staggered-menu-panel"
         aria-hidden={!open}
+        inert={(!open ? "" : undefined) as unknown as boolean}
       >
         <button
           type="button"
@@ -570,8 +658,8 @@ export const StaggeredMenu = React.forwardRef<StaggeredMenuHandle, StaggeredMenu
                         if (it.onClick) {
                           e.preventDefault();
                           it.onClick();
-                          closeMenu();
                         }
+                        closeMenu();
                       }}
                     >
                       <span className="sm-panel-itemLabel">{it.label}</span>

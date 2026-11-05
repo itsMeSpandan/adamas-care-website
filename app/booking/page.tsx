@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { DayPicker } from "react-day-picker";
@@ -69,10 +69,20 @@ function hourParts(hour: number): { h: number; period: "AM" | "PM" } {
 }
 
 function BookingContent() {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const { showToast } = useToast();
   const searchParams = useSearchParams();
   const preselectServiceId = searchParams.get("service");
+
+  // Auth guard: unauthenticated users are immediately bounced to sign in
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) {
+      const qs = searchParams.toString();
+      const redirectTarget = qs ? `/booking?${qs}` : "/booking";
+      router.replace(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
+    }
+  }, [authLoading, isAuthenticated, router, searchParams]);
   const [services, setServices] = useState<Service[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -472,6 +482,15 @@ function BookingContent() {
       setIsSubmitting(false);
     }
   };
+
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="section-padding bg-beige-50 min-h-[60vh] flex flex-col items-center justify-center">
+        <span className="h-8 w-8 animate-spin rounded-full border-2 border-beige-600 border-t-transparent mb-4" />
+        <p className="text-sm font-medium text-beige-700">Please sign in to book an appointment...</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

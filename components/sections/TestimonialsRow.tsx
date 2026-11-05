@@ -6,11 +6,16 @@ import Image from "next/image";
 import { Testimonial } from "@/lib/types";
 import StarIcon from "@/components/ui/StarIcon";
 
-export default function TestimonialsRow() {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
-  const [loading, setLoading] = useState(true);
+interface TestimonialsRowProps {
+  initialTestimonials?: Testimonial[];
+}
+
+export default function TestimonialsRow({ initialTestimonials }: TestimonialsRowProps = {}) {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(initialTestimonials || []);
+  const [loading, setLoading] = useState(!initialTestimonials || initialTestimonials.length === 0);
 
   useEffect(() => {
+    if (initialTestimonials && initialTestimonials.length > 0) return;
     fetch("/api/testimonials")
       .then((res) => res.json())
       .then((data) => {
@@ -18,7 +23,7 @@ export default function TestimonialsRow() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [initialTestimonials]);
 
   if (loading) {
     return (

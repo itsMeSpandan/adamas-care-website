@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getServices } from "@/lib/queries";
 import ServiceCard from "@/components/cards/ServiceCard";
 import { groupServicesIntoTreatments, isTreatmentGroup } from "@/lib/service-legacy-map";
+import { Service } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Services",
@@ -9,10 +10,15 @@ export const metadata: Metadata = {
     "Explore our full range of massages and body treatments, with prices and durations from our salon menu.",
 };
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 export default async function ServicesPage() {
-  const services = await getServices();
+  let services: Service[] = [];
+  try {
+    services = await getServices();
+  } catch (error) {
+    console.error("Failed to load services on server:", error);
+  }
   const groupedTreatments = groupServicesIntoTreatments(services);
 
   return (
@@ -21,6 +27,7 @@ export default async function ServicesPage() {
         <h1 className="mb-4 text-center font-serif text-4xl font-semibold text-beige-700 md:text-5xl">
           Our Services
         </h1>
+        <h2 className="sr-only">Treatments and Therapies</h2>
         <p className="mx-auto mb-12 max-w-2xl text-center text-beige-800">
           From luxurious hair treatments to rejuvenating facials, we offer a
           comprehensive range of beauty services designed to pamper and perfect.

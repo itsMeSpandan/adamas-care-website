@@ -21,7 +21,7 @@ export default function HomeShell() {
       <HeroSection />
       <WhyUsSection />
       <ServicesGrid featured />
-      <TeamGrid limit={3} />
+      <TeamGrid limit={4} />
       <TestimonialsRow />
       <BookingCTA />
     </>

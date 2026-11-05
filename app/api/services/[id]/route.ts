@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getServiceById, updateService, deleteService } from "@/lib/queries";
 import { requireRole } from "@/lib/require-auth";
 import { logAudit, getClientIp } from "@/lib/audit";
@@ -98,6 +99,9 @@ export const PUT = requireRole("admin", async (request: Request, context) => {
       ip: getClientIp(request),
     });
 
+    revalidatePath("/");
+    revalidatePath("/services");
+    revalidatePath(`/services/${id}`);
     return NextResponse.json({ service });
   } catch (error) {
     console.error("Failed to update service:", error);
@@ -126,6 +130,9 @@ export const DELETE = requireRole("admin", async (request: Request, context) => 
       ip: getClientIp(request),
     });
 
+    revalidatePath("/");
+    revalidatePath("/services");
+    revalidatePath(`/services/${id}`);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete service:", error);

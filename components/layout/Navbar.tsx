@@ -25,6 +25,7 @@ export default function Navbar() {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const notificationsRef = useRef<HTMLDivElement>(null);
   const staggeredMenuRef = useRef<StaggeredMenuHandle>(null);
@@ -53,6 +54,7 @@ export default function Navbar() {
   const guestItems = [
     { label: "Home", link: "/" },
     { label: "Services", link: "/services" },
+    { label: "Book Appointment", link: "/login?redirect=/booking" },
     { label: "Our Team", link: "/team" },
     { label: "About", link: "/about" },
     { label: "Contact", link: "/contact" },
@@ -191,7 +193,7 @@ export default function Navbar() {
           <Link
             href="/"
             className="group flex flex-col items-center select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B2420] rounded-sm py-1"
-            aria-label="Adamas Care Home"
+            
           >
             <span className="font-serif text-[32px] font-medium leading-none tracking-[0.16em] text-[#2B2420] transition-opacity group-hover:opacity-90">
               ADAMAS
@@ -331,9 +333,12 @@ export default function Navbar() {
 
             {/* 5. HAMBURGER MENU (Triggers previous StaggeredMenu with exact icon) */}
             <button
+              id="nav-menu-toggle"
+              data-menu-toggle="true"
               type="button"
               onClick={() => staggeredMenuRef.current?.toggle()}
-              aria-label="Open menu"
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
               className="w-11 h-11 flex items-center justify-center bg-transparent border-none p-0 cursor-pointer rounded-lg hover:bg-[#EAE2D7]/70 active:scale-95 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2B2420]"
             >
               {/* Exact matching icon:
@@ -379,6 +384,10 @@ export default function Navbar() {
         logoUrl="/logo.svg"
         onMenuOpen={() => {
           setNotificationsOpen(false);
+          setMenuOpen(true);
+        }}
+        onMenuClose={() => {
+          setMenuOpen(false);
         }}
       />
 

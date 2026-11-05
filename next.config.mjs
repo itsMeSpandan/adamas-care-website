@@ -83,8 +83,17 @@ const nextConfig = {
         headers: securityHeaders,
       },
       {
-        source: "/api/(.*)",
+        source: "/api/((?!services|employees|testimonials|holidays).*)",
         headers: noStoreHeaders,
+      },
+      {
+        source: "/api/:path(services|employees|testimonials|holidays)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, s-maxage=300, stale-while-revalidate=600",
+          },
+        ],
       },
       {
         source: "/images/(.*)",

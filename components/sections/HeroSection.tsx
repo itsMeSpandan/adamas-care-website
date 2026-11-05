@@ -1,13 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import dynamic from "next/dynamic";
 import HeroCarousel from "@/components/ui/HeroCarousel";
-
-const LoginModal = dynamic(() => import("@/components/ui/LoginModal"), {
-  ssr: false,
-});
 
 /* ─── copy ─── */
 const headline = "Hair That Moves. Skin That Glows.";
@@ -16,22 +11,13 @@ const subtext =
   "Precision cuts, colour that lasts, and facials that actually change your skin — done by specialists who remember your name and your last appointment.";
 
 export default function HeroSection() {
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [loginMode, setLoginMode] = useState<"signin" | "signup">("signup");
-
   const words = headline.split(" ");
   const mid = Math.ceil(words.length / 2);
   const line1 = words.slice(0, mid);
   const line2 = words.slice(mid);
 
-  const handleBookClick = () => {
-    setLoginMode("signup");
-    setLoginOpen(true);
-  };
-
   return (
-    <>
-      <section className="relative flex flex-col w-full h-[calc(100dvh-88px)] min-h-[calc(100dvh-88px)] overflow-hidden md:h-auto md:min-h-[calc(100vh-88px)] md:flex-row">
+    <section className="relative flex flex-col w-full h-[calc(100dvh-88px)] min-h-[calc(100dvh-88px)] overflow-hidden md:h-auto md:min-h-[calc(100vh-88px)] md:flex-row">
         {/* ── Left Panel: Warm Ivory background with text ── */}
         <div
           className="relative z-10 flex w-full shrink-0 flex-col justify-center px-5 pt-4 pb-2 sm:px-8 sm:py-8 md:w-[55%] md:px-12 md:py-24 lg:w-[50%] lg:px-20"
@@ -107,16 +93,15 @@ export default function HeroSection() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.2, ease: "easeOut" }}
             >
-              <button
-                type="button"
-                onClick={handleBookClick}
+              <Link
+                href="/login?redirect=/booking"
                 className="inline-flex items-center justify-center rounded-full px-5 py-2.5 text-xs sm:px-8 sm:py-3.5 sm:text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                 style={{ backgroundColor: "var(--accent-primary)" }}
               >
                 Book Appointment
-              </button>
-              <button
-                onClick={() => { setLoginMode("signin"); setLoginOpen(true); }}
+              </Link>
+              <Link
+                href="/login"
                 className="inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-xs sm:px-8 sm:py-3.5 sm:text-sm font-semibold shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   color: "var(--text-primary)",
@@ -125,7 +110,7 @@ export default function HeroSection() {
                 }}
               >
                 Sign In
-              </button>
+              </Link>
             </motion.div>
           </div>
         </div>
@@ -166,7 +151,5 @@ export default function HeroSection() {
           <HeroCarousel priority={true} />
         </div>
       </section>
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)} initialMode={loginMode} />
-    </>
   );
 }

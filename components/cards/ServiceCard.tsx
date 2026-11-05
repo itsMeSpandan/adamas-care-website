@@ -8,6 +8,7 @@ import { Service, TreatmentGroup } from "@/lib/types";
 import { formatPrice, formatDuration, cn } from "@/lib/utils";
 import { audienceLabel } from "@/lib/service-audience";
 import { isTreatmentGroup } from "@/lib/service-legacy-map";
+import { useAuth } from "@/lib/auth-context";
 
 export const SERVICE_THUMBNAIL_IMAGE = "/images/service-illustration.jpg";
 
@@ -41,8 +42,12 @@ export default function ServiceCard({ service, item }: ServiceCardProps) {
 }
 
 function TreatmentGroupCard({ group }: { group: TreatmentGroup }) {
+  const { isAuthenticated } = useAuth();
   const [selectedVariantId, setSelectedVariantId] = useState(group.variants[0]?.id || "");
   const activeVariant = group.variants.find((v) => v.id === selectedVariantId) || group.variants[0];
+  const bookHref = isAuthenticated
+    ? `/booking?service=${activeVariant.id}`
+    : `/login?redirect=${encodeURIComponent(`/booking?service=${activeVariant.id}`)}`;
 
   return (
     <div className="group flex h-full flex-col justify-between overflow-hidden rounded-card border border-beige-200 bg-white shadow-card transition-all duration-300 hover:scale-[1.01] hover:shadow-card-hover">
@@ -94,7 +99,7 @@ function TreatmentGroupCard({ group }: { group: TreatmentGroup }) {
       {/* Footer */}
       <div className="p-5 pt-0 mt-auto shrink-0">
         <div className="flex items-center justify-between border-t border-beige-100 pt-3 min-h-[48px]">
-          <div className="flex items-center gap-2 text-sm text-beige-600">
+          <div className="flex items-center gap-2 text-sm text-[#6B5C50]">
             <span className="font-semibold text-beige-700">{formatPrice(activeVariant.price)}</span>
             <span className="text-beige-300">|</span>
             {group.variants.length > 1 ? (
@@ -118,8 +123,9 @@ function TreatmentGroupCard({ group }: { group: TreatmentGroup }) {
             )}
           </div>
           <Link
-            href={`/booking?service=${activeVariant.id}`}
-            className="rounded-full bg-beige-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-beige-700"
+            href={bookHref}
+            aria-label={`Book ${group.groupName}`}
+            className="rounded-full bg-[#A8483A] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#8F3B30]"
           >
             Book
           </Link>
@@ -130,6 +136,11 @@ function TreatmentGroupCard({ group }: { group: TreatmentGroup }) {
 }
 
 function SingleServiceCard({ service }: { service: Service }) {
+  const { isAuthenticated } = useAuth();
+  const bookHref = isAuthenticated
+    ? `/booking?service=${service.id}`
+    : `/login?redirect=${encodeURIComponent(`/booking?service=${service.id}`)}`;
+
   return (
     <div className="group flex h-full flex-col justify-between overflow-hidden rounded-card border border-beige-200 bg-white shadow-card transition-all duration-300 hover:scale-[1.01] hover:shadow-card-hover">
       <div className="flex flex-col flex-1">
@@ -176,14 +187,15 @@ function SingleServiceCard({ service }: { service: Service }) {
       {/* Footer */}
       <div className="p-5 pt-0 mt-auto shrink-0">
         <div className="flex items-center justify-between border-t border-beige-100 pt-3 min-h-[48px]">
-          <div className="flex items-center gap-2 text-sm text-beige-600">
+          <div className="flex items-center gap-2 text-sm text-[#6B5C50]">
             <span className="font-semibold text-beige-700">{formatPrice(service.price)}</span>
             <span className="text-beige-300">|</span>
             <span>{formatDuration(service.durationMinutes)}</span>
           </div>
           <Link
-            href={`/booking?service=${service.id}`}
-            className="rounded-full bg-beige-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-beige-700"
+            href={bookHref}
+            aria-label={`Book ${service.name}`}
+            className="rounded-full bg-[#A8483A] px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#8F3B30]"
           >
             Book
           </Link>

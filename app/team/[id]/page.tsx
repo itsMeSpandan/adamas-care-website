@@ -5,7 +5,7 @@ import { getEmployeeById, getServices } from "@/lib/queries";
 import { formatDuration } from "@/lib/utils";
 import StarIcon from "@/components/ui/StarIcon";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 interface Props {
   params: Promise<{ id: string }>;

@@ -35,7 +35,7 @@ export default function TeamCard({ employee }: TeamCardProps) {
             {Array.from({ length: 5 }).map((_, i) => (
               <StarIcon key={i} filled={i < Math.round(employee.rating)} />
             ))}
-            <span className="ml-1 text-xs text-white/70">
+            <span className="ml-1 text-xs text-white/90">
               {employee.rating} ({employee.reviewCount})
             </span>
           </div>

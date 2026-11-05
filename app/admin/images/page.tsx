@@ -12,7 +12,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
-  Crosshair,
   Loader2,
   X,
   Sparkles,
@@ -279,8 +278,8 @@ export default function AdminImagesPage() {
     }
   };
 
-  // Open focal point editor
-  const openFocalEditor = (img: AdminHeroItem) => {
+  // Open focal point editor (preserved if focal editing is re-enabled)
+  const _openFocalEditor = (img: AdminHeroItem) => {
     setEditingImage(img);
     setTempFocalX(img.focalX);
     setTempFocalY(img.focalY);
@@ -504,7 +503,7 @@ export default function AdminImagesPage() {
             </div>
 
             <div className="mt-4 rounded border border-amber-200 bg-amber-50 p-3 text-[11px] leading-relaxed text-amber-800">
-              <span className="font-semibold">Note on non-portrait photos:</span> Landscape images are accepted but will be cropped heavily on desktop and mobile. Click &quot;Crop &amp; Focal Point&quot; after uploading to adjust.
+              <span className="font-semibold">Note on non-portrait photos:</span> Landscape images are accepted but will be cropped heavily to fit portrait viewports on desktop and mobile.
             </div>
           </div>
         </div>
@@ -630,17 +629,8 @@ export default function AdminImagesPage() {
                     </div>
                   </div>
 
-                  {/* Actions: Focal Point & Delete */}
+                  {/* Actions: Delete */}
                   <div className="flex items-center gap-2 self-end md:self-center">
-                    <button
-                      type="button"
-                      onClick={() => openFocalEditor(item)}
-                      className="flex items-center gap-1.5 rounded-md border border-beige-300 bg-white px-3 py-1.5 text-xs font-medium text-beige-700 shadow-sm hover:bg-beige-50 transition-colors"
-                    >
-                      <Crosshair className="h-3.5 w-3.5 text-beige-500" />
-                      Crop & Focal Point
-                    </button>
-
                     <button
                       type="button"
                       onClick={() => setDeletingId(item.id)}

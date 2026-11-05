@@ -109,11 +109,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${cormorant.variable} ${inter.variable} ${jost.variable}`}>
       <body className="min-h-screen font-sans antialiased">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:rounded-md focus:bg-[#2B2420] focus:px-4 focus:py-2 focus:text-white focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-[#C97B5C]"
+        >
+          Skip to content
+        </a>
         <AuthProvider>
           <PwaRegistration />
           <ToastProvider>
             <Navbar />
-            <main>{children}</main>
+            <main id="main-content">{children}</main>
             <Footer />
             <CookieConsent />
             {/* Raised by lib/auth-context after a Google sign-in when the

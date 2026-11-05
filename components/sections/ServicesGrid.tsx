@@ -6,12 +6,18 @@ import { Service, ServiceCategory } from "@/lib/types";
 import ServiceCard from "@/components/cards/ServiceCard";
 import { groupServicesIntoTreatments, isTreatmentGroup } from "@/lib/service-legacy-map";
 
-export default function ServicesGrid({ featured = false }: { featured?: boolean }) {
+interface ServicesGridProps {
+  featured?: boolean;
+  initialServices?: Service[];
+}
+
+export default function ServicesGrid({ featured = false, initialServices }: ServicesGridProps) {
   const [activeCategory, setActiveCategory] = useState<ServiceCategory | "All">("All");
-  const [services, setServices] = useState<Service[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [services, setServices] = useState<Service[]>(initialServices || []);
+  const [loading, setLoading] = useState(!initialServices);
 
   useEffect(() => {
+    if (initialServices && initialServices.length > 0) return;
     fetch("/api/services")
       .then((res) => res.json())
       .then((data) => {
@@ -19,7 +25,7 @@ export default function ServicesGrid({ featured = false }: { featured?: boolean 
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [initialServices]);
 
   const displayedServices = Array.isArray(services)
     ? services.filter((s) => {

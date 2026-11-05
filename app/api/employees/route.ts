@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getEligibleEmployees } from "@/lib/scoring-engine";
 import { getSessionFromRequest } from "@/lib/auth";
 
@@ -171,6 +172,8 @@ export async function POST(request: NextRequest) {
       data: { employeeId: employee.id }
     });
 
+    revalidatePath("/");
+    revalidatePath("/team");
     return NextResponse.json({
       ...employee,
       email,
